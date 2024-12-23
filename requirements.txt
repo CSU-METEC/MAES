@@ -1,0 +1,9 @@
+pandas==2.0.*
+numpy==1.24.3
+xlrd
+simpy
+scipy
+pyarrow
+bokeh
+openpyxl
+xlsxwriter
