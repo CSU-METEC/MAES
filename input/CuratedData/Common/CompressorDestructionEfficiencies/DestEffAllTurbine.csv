@@ -1,0 +1,7 @@
+Data Type,Destruction Efficiency of Turbine
+Use,Destruction efficiencies for compressors
+Source,Calculated based on AP-42 Document for Stationary Gas Turb. (Table 3.1-2a) 
+Source Link,https://www3.epa.gov/ttnchie1/ap42/ch03/final/c03s01.pdf
+%%%ENDOFMETADATA%%%,
+Species,Destruction Efficiency
+ALL,0.9998

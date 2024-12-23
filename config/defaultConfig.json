@@ -1,0 +1,92 @@
+{
+  "intakeSpreadsheetConfigParams": {
+    "Simulation Start Date":            {"configVar": "simulationStartDate"},
+    "Simulation Duration [Days]":       {"configVar": "simDurationDays"},
+    "Number of Monte Carlo Iterations": {"configVar": "monteCarloIterations"},
+    "Output Directory Template":        {"configVar": "simulationRoot"},
+    "Simulation Fixed Directory Name":  {"configVar": "outputSymlink"},
+    "Activity / Emission Factor Name":  {"configVar": "factorName"},
+    "Graph Specification File":         {"configVar": "graphSpec"},
+    "Flash Composition Name":           {"configVar": "gcFilename"},
+	"Facility Type":                    {"configVar": "facilityType"}
+  },
+
+  "phaseValues": {
+
+    "defaultValues": {
+      "inputRoot": "input",
+      "outputRoot": "output",
+      "scenarioTimestampFormat": "%Y%m%d_%H%M%S",
+      "disableSimulation": false,
+      "disableGraph": false,
+      "disableSummary": false,
+
+      "simDurationDays": 30,
+      "monteCarloIterations": 10
+
+    },
+
+    "arguments": {
+      "studyFilename": "{inputRoot}/Studies/{studyDefinitionFile}"
+    },
+
+    "siteDefinitionParams": {
+      "factorName": "{inputRoot}/CuratedData/FactorsFileReference/Factors.csv"
+    },
+
+    "start": {
+      "emitterProfileDir": "{inputRoot}/CuratedData",
+      "studyRoot": "{outputRoot}/{studyName}",
+      "site": ""
+    },
+
+    "simulation": {
+      "simulationRoot": "{studyRoot}/MC_{scenarioTimestamp}",
+      "simulationRootRE": "MC_(?P<scenarioTimestamp>[0-9_]*)",
+      "templateDir": "{simulationRoot}/{site}/template",
+      "metadataFile": "{templateDir}/metadata.csv",
+      "equipmentFile": "{templateDir}/equipment.json",
+      "mdIndexFile": "{templateDir}/mdIndex.csv",
+      "parquetDir": "{simulationRoot}/parquet",
+
+      "parquetEventDS":          "{parquetDir}/events",
+      "parquetTimeseriesDS":     "{parquetDir}/timeseries",
+      "parquetGasCompositionDS": "{parquetDir}/gascomposition",
+      "parquetMetadataDS":       "{parquetDir}/metadata",
+      "parquetSummaryDS":        "{parquetDir}/simsummary",
+      "parquetEventListDS":      "{parquetDir}/eventList"
+    },
+
+    "MCIteration": {
+      "resultsRoot": "{simulationRoot}/{site}/{MCIteration}",
+      "gcFilename": "{resultsRoot}/gasCompositions.csv",
+      "tsFilename": "{resultsRoot}/emissionTimeseries.csv",
+      "ffFilename": "{resultsRoot}/fluidFlows.csv",
+      "eventFilename": "{resultsRoot}/instantaneousEvents.csv",
+      "gasCompositionLogFilename": "{resultsRoot}/gasCompositions.csv",
+      "emissionDriverFilename": "{resultsRoot}/emissionDrivers.json",
+      "mdScenarioFilename": "{resultsRoot}/metadata.csv",
+      "equipmentFilename": "{resultsRoot}/equipment.json",
+      "stateSummaryFilename": "{resultsRoot}/summaryState.csv",
+      "ffSummaryFilename": "{resultsRoot}/summaryFluidFlow.csv",
+      "ffRollupFilename": "{resultsRoot}/summaryFluidFlowRollup.csv",
+      "emitterSummaryFilename": "{resultsRoot}/summaryEmission.csv",
+      "emissionSummaryFilename": "{resultsRoot}/summaryEmissionCategory.csv",
+      "configFilename": "{resultsRoot}/config.csv",
+      "secondaryInfoFilename": "{resultsRoot}/secondaryEventInfo.csv"
+    }
+  },
+
+  "dynamicTemplates": {
+    "modelTemplate": "{inputRoot}/ModelFormulation/{modelID}",
+    "directoryRootTemplate": "{inputRoot}/Studies/{directory}",
+    "relativeStudyFileTemplate": "{directory}/{studyFilename}",
+    "graphTemplate": "{resultsRoot}/graphs/{graphName}.html",
+
+    "parquetBaseTemplate": "{parquetDir}/{dataset}",
+    "daskWorkerLog": "{simulationRoot}/logs/worker_{workerPID}.log",
+    "siteEmissions": "{simulationRoot}/{facilityID}.csv",
+
+    "ffDumpTemplate": "{resultsRoot}/{facilityID}.csv"
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETBattery",
+  "Readable Name":   "Tank Battery",
+  
+  "Description": "Tank Battery is a group of tanks that are used for storing liquids for sale. Tank Batteries are filling most of the time denoted by 'OPERATING' state. Overpressure situation in tanks is modelled as 'OVERPRESSURE_VENT', where excess of gas is released through the prvs. 'OVERPRESSURE_LEAK' refers to accidental opening of the vents leading to leaks.",
+  "Fluid Flows": [
+      {"Fluid": "Vapor", "secondary_id": "tank_flash", "description": "Tank condensate/water flash to flares"},
+	  {"Fluid": "Vapor",      "secondary_id": "tank_gas_outlet", "description": "Vapor from upstream (usually from sep) goes to upstream equipment (usually flares)"},
+	  {"Fluid": "Vapor",      "secondary_id": "tank_flash_emitted_gas", "description": "Condensate/water flash goes to prvs, overpressure large emitter. Only used for testing/analysis"},
+	  {"Fluid": "Vapor",      "secondary_id": "emitted_gas", "description": "Vapor from upstream (usually from sep) goes to prv after the threshold, overpressure. Only used for testing/analysis"}
+  ],
+  "States": [
+	{"stateName": "OPERATING", "description": "Tank battery operating normally"},
+	{"stateName": "OVERPRESSURE_LEAK", "description": "Leaks on vents"},
+	{"stateName": "OVERPRESSURE_VENT", "description": "Emissions due to overpressure"}
+  ],
+  "StateMachineDiagram": "graphics/TankBattSM.png",
+  
+  "Reference": [
+  "reference/TankBattRef.rst",
+  "reference/TankBatteryOverpressureImage.rst"
+  ],
+  "Model Parameters": [
+	{		"Python Parameter": "modelCategory",    "Parameter Type": "Constant", "Value":"Tank"},
+	{"Model Parameter": "Battery Type",    "Python Parameter": "modelSubcategory", "Parameter Type": "Sheet"},
+    {"Model Parameter": "Facility ID",     "Python Parameter": "facilityID",       "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",         "Python Parameter": "unitID",           "Parameter Type": "Sheet"},
+	{"Model Parameter": "Component Count", "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+	{"Model Parameter": "Fluid",           "Python Parameter": "fluid",            "Parameter Type": "Sheet"},
+	
+	{"Model Parameter": "Mechanistic Thief Hatch pLeak",                 "Python Parameter": "tankOverpressurePLeak",                  "Parameter Type": "Sheet"},
+	{"Model Parameter": "Mechanistic Thief Hatch Leak MTTR min",              "Python Parameter": "tankOverpressureMTTRMinDays",                "Parameter Type": "Sheet"},
+	{"Model Parameter": "Mechanistic Thief Hatch Leak MTTR max",              "Python Parameter": "tankOverpressureMTTRMaxDays",                "Parameter Type": "Sheet"},
+	{"Model Parameter": "PRV Threshold",                                          "Python Parameter": "tankOverpressureThresholdScfh",              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Tank Inlet Flow at Max Downstream Equipment Capacity",   "Python Parameter": "inletFlowAtMaxPrimryFlowScfh",              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Max Downstream Equipment Capacity",                      "Python Parameter": "maxPrimaryOutletFlowScfh",              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Mechanistic Emissions Flag",                             "Python Parameter": "tankMode",                             "Parameter Type": "Sheet"},
+	{"Model Parameter": "Tank Controlled",                             			  "Python Parameter": "tankControlled",                       "Parameter Type": "Sheet"}
+	],
+	
+  "Emitters": [
+       {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents Large Emitter", "Category": "OVERPRESSURE EMITTER", "Emission Category": "FUGITIVE",
+	  "Model Parameters": [
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "MECHANISTIC_THIEF_HATCH,PRV"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_overpressure_{serialNo}"},
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"}
+	  ]
+	},
+	
+	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Uncontrolled Tank Emissions", "Category": "TANK VENT", "Emission Category": "FUGITIVE",
+	  "Model Parameters": [
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING,MECHANISTIC_THIEF_HATCH,PRV"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_overpressure_{serialNo}"},
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "tank_gas_outlet,tank_flash"},
+	  {"Model Parameter": "Tank Controlled",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+	  ]
+	},
+	
+	{"Python Category": "Emitter", "Python Class": "LeakProduction", "Readable Name": "Tank Battery Component Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            {									   "Python Parameter": "modelSubcategory", "Parameter Type": "Constant", "Value": "Generic Component"},
+			{"Model Parameter": "Component Leak Survey Frequency", "Python Parameter": "surveyFrequency", "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component Count", "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component pLeak", "Python Parameter": "pLeak",            "Parameter Type": "Sheet"},
+			{"Model Parameter": "Leak GC Name", "Python Parameter": "gasComposition",   "Parameter Type": "Sheet"}, 
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",              "Parameter Type": "Constant", "Value": "Tank_component_leak"},
+            {                                      "Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"}
+		  ]
+	},
+	   
+      {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Tank Thief Hatch Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            {		"Python Parameter": "modelSubcategory", "Parameter Type": "Constant", "Value": "Tank Specific Leak"},
+			{"Model Parameter": "Number of Thief Hatches", "Python Parameter": "activityDistribution",  "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Thief Hatch pLeak",		   "Python Parameter": "pLeak",            "Parameter Type": "Sheet"},
+            {"Model Parameter": "Tank Thief Hatch MTTR min",		"Python Parameter": "MTTRMinDays",           "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Thief Hatch MTTR max",		"Python Parameter": "MTTRMaxDays",           "Parameter Type": "Sheet"},
+            {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",              "Parameter Type": "Constant", "Value": "Tank_thief_hatch_leak"},
+            {"Model Parameter": "Leak GC Name",      "Python Parameter": "gasComposition",   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Mechanistic Emissions Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+		  ]
+		},
+		
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Tank Battery Vent Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            {		"Python Parameter": "modelSubcategory", "Parameter Type": "Constant", "Value": "Tank Specific Leak"},
+			{"Model Parameter": "Number of Vents", "Python Parameter": "activityDistribution",  "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Battery Vent pLeak",		   "Python Parameter": "pLeak",            "Parameter Type": "Sheet"},
+            {"Model Parameter": "Tank Battery Vent MTTR min",		"Python Parameter": "MTTRMinDays",           "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Battery Vent MTTR max",		"Python Parameter": "MTTRMaxDays",           "Parameter Type": "Sheet"},
+            {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",              "Parameter Type": "Constant", "Value": "Tank_battery_vent_leak"},
+            {"Model Parameter": "Leak GC Name",       "Python Parameter": "gasComposition",   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Mechanistic Emissions Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+		  ]
+		},
+		
+	{"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Tank Battery Vent Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            {		"Python Parameter": "modelSubcategory", "Parameter Type": "Constant", "Value": "Tank Specific Leak"},
+			{"Model Parameter": "Number of Vents", "Python Parameter": "activityDistribution",  "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Battery Vent Large Emitter pLeak",		   "Python Parameter": "pLeak",            "Parameter Type": "Sheet"},
+            {"Model Parameter": "Tank Battery Vent Large Emitter MTTR min",		"Python Parameter": "MTTRMinDays",           "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Battery Vent Large Emitter MTTR max",		"Python Parameter": "MTTRMaxDays",           "Parameter Type": "Sheet"},
+            {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",              "Parameter Type": "Constant", "Value": "Tank_battery_vent_large"},
+            {"Model Parameter": "Leak GC Name",       "Python Parameter": "gasComposition",   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Mechanistic Emissions Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+		  ]
+		},
+		
+	{"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Tank Thief Hatch Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            {		"Python Parameter": "modelSubcategory", "Parameter Type": "Constant", "Value": "Tank Specific Leak"},
+			{"Model Parameter": "Number of Vents", "Python Parameter": "activityDistribution",  "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Thief Hatch Large Emitter pLeak",		   "Python Parameter": "pLeak",            "Parameter Type": "Sheet"},
+            {"Model Parameter": "Tank Thief Hatch Large Emitter MTTR min",		"Python Parameter": "MTTRMinDays",           "Parameter Type": "Sheet"},
+			{"Model Parameter": "Tank Thief Hatch Large Emitter MTTR max",		"Python Parameter": "MTTRMaxDays",           "Parameter Type": "Sheet"},
+            {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",              "Parameter Type": "Constant", "Value": "Tank_thief_hatch_large"},
+            {"Model Parameter": "Leak GC Name",       "Python Parameter": "gasComposition",   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Mechanistic Emissions Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+		  ]
+		},
+
+      {"Python Category": "Emitter", "Python Class": "PneumaticEmitterProduction", "Readable Name": "Tank Pneumatic Emissions", "Category": "PNEUMATIC EMISSION", "Emission Category": "VENTED",
+		  "Model Parameters": [
+            {                                                 "Python Parameter": "modelSubcategory",    "Parameter Type": "Constant", "Value": "Generic Pneumatic"},
+		    {"Model Parameter": "Leak GC Name",         "Python Parameter": "gasComposition",  "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",              "Parameter Type": "Constant", "Value": "Tank_pneumatic"},
+			{                                                 "Python Parameter": "instanceFormat",      "Parameter Type": "Constant", "Value": "{unitID}_{serialNo}"},
+			{                                                 "Python Parameter": "statesActive",        "Parameter Type": "Constant", "Value": "FILLING"},
+			{"Model Parameter": "Actuator Type",     		  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "Gas"}
+			]
+		},
+		{"Python Category": "Emitter", "Python Class": "CombustedEmitterFF", "Readable Name": "Fluid flow based emitter", "Category": "TANK VENT", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+		    {"Python Parameter": "fluid",                  "Parameter Type": "Constant", "Value": "Flash"},
+			{"Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "PRV_flow"},
+			{"Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING-PRVFLASH"},
+			
+			{"Python Parameter": "emitterID",              "Parameter Type": "Constant", "Value": "prv"}
+			]
+		}
+  ]
+}

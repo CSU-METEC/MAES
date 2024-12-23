@@ -1,0 +1,98 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETWellCycledProduction",
+  "Readable Name":   "Wellhead with cycled production",
+  
+  "Description": "Well that cycles between PRODUCTION and SHUT-IN",
+  "Fluid Flows": [
+      {"Fluid": "Condensate", "secondary_id": "", "description": "Primary Condensate flow"},
+	  {"Fluid": "Water",      "secondary_id": "", "description": "Primary Water flow"}
+  ],
+  "States": [
+	{"stateName": "PRODUCTION", "description": "Well is in steady production"},
+	{"stateName": "SHUT_IN", "description": "Well is shut down"},
+	{"stateName": "PLANNED", "description": "Planning stages for wellhead"},
+	{"stateName": "DRILLING", "description": "Drilling specific wellhead"},
+	{"stateName": "COMPLETION", "description": "Well drilling is completed"},
+	{"stateName": "FLOW_BACK", "description": "Well is in flowback stages"},
+	{"stateName": "MANUAL_UNLOADING", "description": "Manual unloading for wells"},
+	{"stateName": "AUTOMATIC_UNLOADING", "description": "Automatic unloading for wells"},
+	{"stateName": "LU_SHUT_IN", "description": "Shut in for unloading"}
+  ],
+  "StateMachineDiagram": "graphics/FullWell.png",
+  
+  "Reference": "reference/CycledWellRef.rst",
+  
+  "Model Parameters": [
+	{		                                            "Python Parameter": "modelCategory",                         "Parameter Type": "Constant",   "Value":"Wellhead"},
+    {		                                            "Python Parameter": "modelSubcategory",	                     "Parameter Type": "Constant",   "Value":"No Liquid Unloading"},
+    {"Model Parameter": "Facility ID",          	    "Python Parameter": "facilityID",                            "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",              	    "Python Parameter": "unitID",                                "Parameter Type": "Sheet"},
+	{"Model Parameter": "Latitude",                 	"Python Parameter": "latitude",                              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Longitude",                  	"Python Parameter": "longitude",                             "Parameter Type": "Sheet"},
+	{"Model Parameter": "Oil Production",               "Python Parameter": "QiOilBblPerDay",                        "Parameter Type": "Sheet"},
+	{"Model Parameter": "Water Production",           	"Python Parameter": "QiWaterBblPerDay",                      "Parameter Type": "Sheet"},
+	{"Model Parameter": "Total Liquids Produced",       "Python Parameter": "totalLiquidsBblPerDump",                "Parameter Type": "Sheet"},
+	{"Model Parameter": "Mean Production Time",         "Python Parameter": "meanProductionTimeSeconds",             "Parameter Type": "Sheet"},
+	{"Model Parameter": "Production Time Variation",    "Python Parameter": "deltaProductionTimeSeconds",            "Parameter Type": "Sheet"},
+	{"Model Parameter": "Optional Unloading",           "Python Parameter": "optionalUnloading",                     "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Min Time Between Unloadings",  "Python Parameter": "minTimeBetUnloading",                   "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Max Time Between Unloadings",  "Python Parameter": "maxTimeBetUnloading",                   "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Completion Durations Name",  	"Python Parameter": "completionDurationsName",               "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Approx Delay After Completion","Python Parameter": "delayAfterCompletionApprox",            "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Unloading Type",               "Python Parameter": "unloadingType",                         "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Weekdays Only",                "Python Parameter": "weekdaysOnly",                          "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "LU Shut-In Duration Min",      "Python Parameter": "luShutInDurationMin",                   "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "LU Shut-In Duration Max",      "Python Parameter": "luShutInDurationMax",                   "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Unloading Duration Min",       "Python Parameter": "unloadingDurationMin",                  "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Unloading Duration Max",       "Python Parameter": "unloadingDurationMax",                  "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Shut In Time Variation",       "Python Parameter": "variationShutInTime",                   "Parameter Type": "Sheet"},
+	{"Model Parameter": "Destination of Unloading Gas", "Python Parameter": "unloadingGasDestination",               "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Approx Planning Time", 	    "Python Parameter": "planningDurationApprox",                "Parameter Type": "Sheet",   "Optional":"True"},
+    {"Model Parameter": "Approx Delay After Planning", 	"Python Parameter": "delayAfterPlanningApprox",              "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Approx Drilling Time", 	    "Python Parameter": "drillDurationApprox",                   "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Approx Delay After Drilling", 	"Python Parameter": "delayAfterDrillingApprox",              "Parameter Type": "Sheet",   "Optional":"True"},
+    {"Model Parameter": "Approx Flow Back Time", 	    "Python Parameter": "flowbackTimeApprox",                    "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Approx Delay After Flow Back", "Python Parameter": "delayAfterFlowbackApprox",              "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Simulation Start Stage", 		"Python Parameter": "start",                                 "Parameter Type": "Sheet",   "Optional":"True"},
+	{"Model Parameter": "Flow Tag", 				    "Python Parameter": "flowTag",                               "Parameter Type": "Sheet"},
+	{"Model Parameter": "Flow Gas Composition",		    "Python Parameter": "flowGasComposition",                    "Parameter Type": "Sheet"}
+	  ],
+  
+  "Emitters": [
+    {"Python Category": "Emitter", "Python Class": "StateBasedEmitterProduction", "Readable Name": "Completion", "Category": "COMPLETION", "Emission Category": "VENTED",
+	  "Model Parameters": [
+		{		                                      "Python Parameter": "modelSubcategory",      "Parameter Type": "Constant",     "Value": "Completion"},
+		{		                                      "Python Parameter": "emitterID",             "Parameter Type": "Constant",     "Value": "Completion"},
+		{"Model Parameter": "Factor Tag",             "Python Parameter": "factorTag",             "Parameter Type": "Sheet",        "Optional":"True"},
+		{                                             "Python Parameter": "emitterModelFactorTag", "Parameter Type": "Constant",     "Value": "Cyc_Well_state_based_emitter"},
+		{"Model Parameter": "Leak GC Name",     "Python Parameter": "gasComposition",        "Parameter Type": "Sheet"},
+		{		                                      "Python Parameter": "statesActive",          "Parameter Type": "Constant",     "Value": "COMPLETION"}
+		]
+	},
+	{"Python Category": "Emitter", "Python Class": "LeakProduction", "Readable Name": "Wellhead Component Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            {		                                               "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant",     "Value": "Generic Component"},
+		    {"Model Parameter": "Component Leak Survey Frequency", "Python Parameter": "surveyFrequency",        "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component Count",                 "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component pLeak",                 "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",        "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant",     "Value": "Cyc_Well_component_leak"},
+            {"Model Parameter": "Leak GC Name",              "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+			{                                                      "Python Parameter": "statesActive",           "Parameter Type": "Constant",     "Value": "PRODUCTION,LU_PRODUCTION,LU_SHUT_IN,LU_VENT"}
+			]
+		},
+   {"Python Category": "Emitter", "Python Class": "PneumaticEmitterProduction", "Readable Name": "Wellhead Pneumatic Emissions", "Category": "PNEUMATIC EMISSION", "Emission Category": "VENTED",
+		  "Model Parameters": [
+            {                                                 "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant",    "Value": "Generic Pneumatic"},
+		    {"Model Parameter": "Leak GC Name",         "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                 "Python Parameter": "factorTag",              "Parameter Type": "Sheet",       "Optional":"True"},
+			{                                                 "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant",    "Value": "Cyc_Well_pneumatic"},
+			{                                                 "Python Parameter": "instanceFormat",         "Parameter Type": "Constant",    "Value": "{unitID}_pneumatic_{serialNo}"},
+			{                                                 "Python Parameter": "statesActive",           "Parameter Type": "Constant",    "Value": "PRODUCTION"},
+			{"Model Parameter": "Actuator Type",     		  "Python Parameter": "instantiationVal", 	    "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant",    "Value": "Gas"}
+			]
+		}
+	]
+}

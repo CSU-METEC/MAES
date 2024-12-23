@@ -1,0 +1,320 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>MEET Site Definition File &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="MEET Gas Composition File" href="GC.html" />
+    <link rel="prev" title="MEET File Reference" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../ModelReference/index.html">MEET Model Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">MEET File Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#input-files">Input Files</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Site Definition</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#general-form-of-equipment-tabs">General Form of Equipment Tabs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#special-equipment-tabs">Special Equipment Tabs</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="GC.html">Gas Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="factors.html">Factors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="distributionFile.html">Distribution Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#output-files">Output Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#summary-files">Summary Files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">MEET File Reference</a> &raquo;</li>
+        
+      <li>MEET Site Definition File</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/FileReference/siteDefinition.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="meet-site-definition-file">
+<span id="site-definition-label"></span><h1>MEET Site Definition File<a class="headerlink" href="#meet-site-definition-file" title="Permalink to this heading">¶</a></h1>
+<p>The site definition file defines all the parameters necessary to run a single simulation.  It is a Microsoft Excel file, with a variable number of tabs
+per simulation.  Two tabs are required for every site definition file:</p>
+<dl>
+<dt>Global Simulation Parameters</dt><dd><p>The Global Simulation Parameters tab defines parameters controlling the simulation, and are read directly by the MEET simulation software.</p>
+<dl class="simple">
+<dt>Simulation Start Date</dt><dd><p>Defines the start date of the simulation.  Currently not used.</p>
+</dd>
+<dt>Simulation Duration [Days]</dt><dd><p>Length of the simulation.</p>
+</dd>
+<dt>Number of Monte Carlo Iterations</dt><dd><p>Number of MC iterations for the simulation.  Can be overridden via command line arguments (<cite>-mc</cite>).</p>
+</dd>
+<dt>Activity / Emission Factor Name</dt><dd><p>Name of the random factors file.  If not set, will default to <cite>input/CuratedData/FactorsFileReference/Factors.csv</cite></p>
+</dd>
+</dl>
+</dd>
+</dl>
+<figure class="align-default" id="id1">
+<img alt="../_images/GlobalSimulationParameters.png" src="../_images/GlobalSimulationParameters.png" />
+<figcaption>
+<p><span class="caption-text">Global Simulation Parameters Tab</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+<dl>
+<dt>Master Equipment</dt><dd><p>The Master Equipment tab defines the other tabs in the spreadsheet to be read to define equipment used in the model.</p>
+<dl class="simple">
+<dt>Readable Name</dt><dd><p>Friendly name of the tab.</p>
+</dd>
+<dt>Tab</dt><dd><p>Name of the tab to be read.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<figure class="align-default" id="id2">
+<img alt="../_images/MasterEquipment.png" src="../_images/MasterEquipment.png" />
+<figcaption>
+<p><span class="caption-text">Master Equipment Tab</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+<section id="general-form-of-equipment-tabs">
+<h2>General Form of Equipment Tabs<a class="headerlink" href="#general-form-of-equipment-tabs" title="Permalink to this heading">¶</a></h2>
+<p>Equipment tabs contain columns that fall into the following groups:</p>
+<dl>
+<dt>Identification Columns</dt><dd><p>Identification columns define each individual piece of major equipment.  They name the equipment, define how to model the
+behavior of the equipment, and define its location.</p>
+<dl class="simple">
+<dt>Facility ID</dt><dd><p>Facility on which the equipment is located.</p>
+</dd>
+<dt>Unit ID</dt><dd><p>Name of the equipment.  The combination of Facility ID and Unit ID must be unique.</p>
+</dd>
+<dt>Model ID</dt><dd><p>How the equipment is modelled.  The value is the name of the file defining the model, see <a class="reference internal" href="../ModelReference/index.html#model-reference-label"><span class="std std-ref">MEET Model Reference</span></a></p>
+</dd>
+<dt>Latitiude, Longitude</dt><dd><p>Physical location of the equipment, if different than the facility definition.  If not specified, use the latitude, longitude defined for the facility.</p>
+</dd>
+</dl>
+</dd>
+<dt>Flow &amp; Factor Columns</dt><dd><p>The Flow &amp; Factor columns define how the equipment interacts with the Gas Composition files and the factor files.</p>
+<dl class="simple">
+<dt>Flow Tag</dt><dd><p>Identifies which Gas Composition tag to use for emitters off of the equipment.</p>
+</dd>
+<dt>Leak GC Name</dt><dd><p>Identifies which Gas Composition tag to use for leaks off of the equipment.</p>
+</dd>
+<dt>Factor Tag</dt><dd><p>Index into Activity / Emission factor file for this equipment.</p>
+</dd>
+</dl>
+</dd>
+<dt>Model Definition Fields</dt><dd><p>The remaining fields in the model definition tab are specific to the particular type of equipment.  See the model definition documentation for the information on these columns.</p>
+</dd>
+</dl>
+</section>
+<section id="special-equipment-tabs">
+<h2>Special Equipment Tabs<a class="headerlink" href="#special-equipment-tabs" title="Permalink to this heading">¶</a></h2>
+<p>Certain equipment tabs have variations on the general form.</p>
+<dl>
+<dt>Facility tabs</dt><dd><p>The facility tab defines general parameters for how the site behaves.</p>
+<dl class="simple">
+<dt>Unit ID</dt><dd><p>There is no Unit ID column for the facility tab.</p>
+</dd>
+<dt>Latitude, Longitude</dt><dd><p>The Latitude &amp; Longitude tabs define default locations for equipment defined for the facility.  These values can be overridden as required for sepecific equipment.</p>
+</dd>
+<dt>Leak Gas Composition</dt><dd><p>Default value for gas compositions for leaks for equipment defined on the facility.</p>
+</dd>
+</dl>
+</dd>
+<dt>Wells tabs</dt><dd><p>Well model definitions (CycledWell, ContinuousWell) define a gas composition for all gas produced by the well.  This gas composition is carried in the Fluid Flows eminating from the well and
+are used for the processes defined in downstream equipment.</p>
+</dd>
+<dt>FFLinks tabs</dt><dd><p>The FFLinks tabs define fluid flow relationships between equipment.</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="GC.html" class="btn btn-neutral float-right" title="MEET Gas Composition File" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral float-left" title="MEET File Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

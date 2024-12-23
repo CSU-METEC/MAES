@@ -1,0 +1,15 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Dehydrator Pneumatic Low Bleed
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,31
+UnitsSimmed,0
+Mean,0.58065
+Source,GEF Study SI Table D12
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0.580645161290323
+1,0.290322580645161
+2,0.0967741935483871
+3,0.032258064516129

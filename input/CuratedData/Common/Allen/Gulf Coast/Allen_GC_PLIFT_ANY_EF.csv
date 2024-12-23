@@ -1,0 +1,12 @@
+Distribution Type,Histogram
+Use,EMISSIONS
+Units,scf_wholegas
+Gas Type,whole_gas
+Emission Unit,scf
+Source,"Allen 2015, Derived from data in SI Table S4-1 and S6-1 (GC Region)."
+Time Basis,s
+%%%ENDOFMETADATA%%%,
+Emissions,Probability
+0.0,0.7142857142857143
+0.00016100103534188122,0.14285714285714285
+0.01408726723064198,0.14285714285714285

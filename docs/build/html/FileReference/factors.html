@@ -1,0 +1,258 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>MEET Factors.csv File &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="MEET Distribution File Format" href="distributionFile.html" />
+    <link rel="prev" title="MEET Gas Composition File" href="GC.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../ModelReference/index.html">MEET Model Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">MEET File Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#input-files">Input Files</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="siteDefinition.html">Site Definition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="GC.html">Gas Composition</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Factors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="distributionFile.html">Distribution Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#output-files">Output Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#summary-files">Summary Files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">MEET File Reference</a> &raquo;</li>
+        
+      <li>MEET Factors.csv File</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/FileReference/factors.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="meet-factors-csv-file">
+<h1>MEET Factors.csv File<a class="headerlink" href="#meet-factors-csv-file" title="Permalink to this heading">¶</a></h1>
+<p>All Activity &amp; Emissions Factors are stored in individual distribution files.  To ease management of these files, and to allow for parameterization
+of simulations, references to all of these individual factor distribution files are collected into a single file, <cite>input/CuratedData/FactorsFileReference/factors.csv</cite>.
+MEET uses the factors.csv file to find the Activity &amp; Emissions factors for any equipment.</p>
+<p>Columns in the factors.csv file are:</p>
+<dl>
+<dt>emitterModelFactorTag</dt><dd><p>Defined in the model formulation file to identify the category of major equipment for lookup.</p>
+</dd>
+<dt>factorTag</dt><dd><p>Defined in the site definition file for every piece of major equipment (a generel version is in CuratedData folder). This field can be set by the analyst, and can define a set of distributions to be used for classes
+of equipment.  For example, there are three factor tags defined for wellpad compressors – wellpad_compressor_0to200HP, wellpad_compressor_200to500HP, and wellpad_compressor_above500HP.
+These different tags refer to different Emission Factor files corresponding to the size of the compressor.</p>
+</dd>
+<dt>activityDistribution</dt><dd><p>Distribution file for Activity Factors.</p>
+</dd>
+<dt>emissionDriver</dt><dd><p>Distribution file for Emission Factors.</p>
+</dd>
+<dt>notes</dt><dd><p>Relevant notes for the row.</p>
+</dd>
+<dt>correctFactors</dt><dd><blockquote>
+<div><p>Indication whether the factors are measured or estimated.</p>
+</div></blockquote>
+<p>Setting up Factors.csv file:</p>
+</dd>
+</dl>
+<div class="line-block">
+<div class="line"><strong>Step1</strong>: Chose an equipment (one row) for which the activity and emission factors have to be defined.</div>
+<div class="line"><strong>Step2</strong>: Make up a factor tag (ex: separator200LitreVolume) for use in site specific Factors.csv file and the study sheet.</div>
+<div class="line"><strong>Step3</strong>: Copy the general list of equipment specific emitter rows from the general Factors.csv file to site specific Factors.csv file to make sure we do not miss an emitter.
+Make sure to put Factor Tag in both the equipment row and specific emitters in site specific factors file</div>
+<div class="line"><strong>Step4</strong>: Put in activity and emitter factor distributions in CuratedData and copy the file paths in Factors.csv (use the general Factors.csv as a reference). Activity factors can also be numbers.</div>
+<div class="line"><strong>Step5</strong>: One set of emitters have now been set up. We can use the same factor tag for same type of equipment (different unit IDs, same factor tag).</div>
+<div class="line"><strong>Step6</strong>: Continue setting up factor tags for any equipment required. If we do not set up a factor tag, default tags will be selected. The default list is in the general Factors.csv file.</div>
+</div>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="distributionFile.html" class="btn btn-neutral float-right" title="MEET Distribution File Format" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="GC.html" class="btn btn-neutral float-left" title="MEET Gas Composition File" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

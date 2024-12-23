@@ -1,0 +1,11 @@
+Field,Value
+File Type,EmissionDriver
+Units,scf_wholegas
+Time Basis,SECONDS
+Distribution Type,Normal
+Author,Arthur Santos
+Data Origin 1,"Allen 2015, Derived from data in SI Table S4-1 and S6-1 (MC Region). "
+Notes,
+%%%ENDOFMETADATA%%%,
+mu,sigma
+8.91E-10,2.95E-09

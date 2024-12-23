@@ -1,0 +1,17 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETProbe",
+  "Readable Name":   "Fluid Flow probe",
+  
+  "Description": "Provide time series values for a specific Fluid Flow.",
+  
+  "Model Parameters": [
+	{		"Python Parameter": "modelCategory",    "Parameter Type": "Constant", "Value":"Probe"},
+    {"Model Parameter": "Facility ID",     "Python Parameter": "facilityID",       "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",         "Python Parameter": "unitID",           "Parameter Type": "Sheet"},
+	{"Model Parameter": "Graph Group",     "Python Parameter": "mdGroup",          "Parameter Type": "Sheet", "Optional": "True"}
+	],
+	
+  "Emitters": [
+  ]
+}

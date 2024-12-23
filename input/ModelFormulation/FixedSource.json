@@ -1,0 +1,22 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETFixedSource",
+  "Readable Name":   "Fixed Source",
+  
+  "Model Parameters": [
+ 	{		                                            "Python Parameter": "modelCategory",               "Parameter Type": "Constant", "Value":"Generic Source"},
+    {		                                            "Python Parameter": "modelSubcategory",	           "Parameter Type": "Constant", "Value":""},
+    {"Model Parameter": "Facility ID",          	    "Python Parameter": "facilityID",                  "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",              	    "Python Parameter": "unitID",                      "Parameter Type": "Sheet"},
+	{"Model Parameter": "Latitude",              	    "Python Parameter": "latitude",                    "Parameter Type": "Sheet"},
+	{"Model Parameter": "Longitude",              	    "Python Parameter": "longitude",                   "Parameter Type": "Sheet"},
+	{"Model Parameter": "Oil Production",       	    "Python Parameter": "QiOilBblPerDay",              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Gas Production",       	    "Python Parameter": "QiGasMcfPerDay",              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Water Production",     	    "Python Parameter": "QiWaterBblPerDay",            "Parameter Type": "Sheet"},
+	{"Model Parameter": "Flow Tag", 				    "Python Parameter": "flowTag",                     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Flow Gas Composition",		    "Python Parameter": "flowGasComposition",          "Parameter Type": "Sheet"}
+	  ],
+  
+  "Emitters": [
+	]
+}

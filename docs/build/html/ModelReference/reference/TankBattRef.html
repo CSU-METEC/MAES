@@ -1,0 +1,259 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>&lt;no title&gt; &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">MEET Model Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+      <li>&lt;no title&gt;</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/ModelReference/reference/TankBattRef.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <p>’OVERPRESSURE VENT’ in the state machine include thief hatches,
+vents/prv that pop open when the pressure goes above a certain
+threshold. The over-pressure situation is calculated using a fluid flow
+threshold for gas inlet flows. The pressure is measured as a function of
+change of vapor fluid flows. These emissions are the mechanistically
+modeled large emitters. ’OVERPRESSURE LEAK’ in the state machine implies
+accidental opening of the vents that are responsible for undesired
+emissions. We first initialize the start machine to OPERATING to record
+the proportional flow from separators or a fixed source. The criteria
+for state change is as follows:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}rateTransform=
+\begin{cases}
+    x&amp; sum(flash+sdvGas)&lt;threshold \\
+    \frac{mx}{S}+c&amp; threshold&lt;sum(flash+sdvGas)\leq primaryThreshold\\
+    \frac{x}{S}+c&amp; sum(flash+sdvGas)&gt;primaryThreshold
+\end{cases}\end{split}\]</div>
+<div class="math notranslate nohighlight">
+\[\begin{split}state=
+    \begin{cases}
+        \text{OPERATING}&amp; sum(flash+sdvGas)&lt;threshold \\
+        \text{OVERPRESSURE VENT}&amp; threshold&lt;sum(flash+sdvGas)\leq primaryThreshold\\
+        \text{OVERPRESSURE VENT}&amp; sum(flash+sdvGas)&gt;primaryThreshold
+    \end{cases}\end{split}\]</div>
+<div class="line-block">
+<div class="line">Where,</div>
+<div class="line">x = inlet flow,</div>
+<div class="line">m = slope of the primary equipment flow
+(<span class="math notranslate nohighlight">\(\frac{\text{outletFlow from tanks}}{\text{sdvInletFlow into tanks}}\)</span>),</div>
+<div class="line">S = Sum of the gas from sdv + tank flashes,</div>
+<div class="line">c = y intercept of the flare flow. All the remaining flow goes to the
+tank vents by subtracting the rateTransform equations by x,</div>
+<div class="line">flash = tank flash,</div>
+<div class="line">threshold = PRV threshold (column “Overpressure Vents Large Emitter
+Threshold”),</div>
+<div class="line">primaryThreshold = value in the column ‘Max Primary Outlet Flow’.</div>
+</div>
+<p>The parameter rateTransform refers to the transformation of fluid flows
+from inlet flow to outlet flow. The outlet flows from the above
+rateTransform calculations go to the primary downstream equipment
+(flares), which can be combusted later. Vents have another parameter
+called prvSwitch that turns on the prv flow when the prvs start to open
+after the gas flows reach the threshold. The amount of gas going to the
+prv is given by <span class="math notranslate nohighlight">\(rateTransform - x\)</span>, which is the source of large
+emissions.</p>
+<p>Tanks are in the OPERATING state until the prv threshold is reached,
+implying prv opens and we get emissions out of the prv. Since
+<span class="math notranslate nohighlight">\(prvFlow=flareFlow-x\)</span>, the total volume of gas is conserved.</p>
+<p>From the equations, we can see two ’OVERPRESSURE VENT’ behaviors which
+are illustrated in the diagram below. One example of over-pressure in
+tanks is due to stuck dump valve in upstream separator/s.</p>
+<p>Note that we’re adding gas flows with different gas compositions as a
+weighted sum of the gas densities without considering the gas
+compositions themselves. This is an approximate and actual mixing
+routine is yet to be implemented.</p>
+<p>The remaining state from the above equations is the OVERPRESSURE LEAK.
+This state occurs randomly depending on the pLeak. It must be noted that
+OVERPRESSURE VENT triggers when there is an overpressure situation and
+OVERPRESSURE LEAK triggers randomly depending on pLeak.</p>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

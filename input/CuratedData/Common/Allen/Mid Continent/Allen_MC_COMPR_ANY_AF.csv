@@ -1,0 +1,12 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Process Heater Pneumatic Controller (Any)
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,7
+UnitsSimmed,0
+Source,"Allen 2015, Derived from data in SI Table S4-1 and S6-1 (MC Region)"
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0.967213
+3,0.032787

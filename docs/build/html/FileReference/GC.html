@@ -1,0 +1,274 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>MEET Gas Composition File &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="MEET Factors.csv File" href="factors.html" />
+    <link rel="prev" title="MEET Site Definition File" href="siteDefinition.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../ModelReference/index.html">MEET Model Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">MEET File Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html#input-files">Input Files</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="siteDefinition.html">Site Definition</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Gas Composition</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#gas-composition-file-fields">Gas Composition File Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="factors.html">Factors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="distributionFile.html">Distribution Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#output-files">Output Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#summary-files">Summary Files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">MEET File Reference</a> &raquo;</li>
+        
+      <li>MEET Gas Composition File</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/FileReference/GC.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="meet-gas-composition-file">
+<span id="gc-label"></span><h1>MEET Gas Composition File<a class="headerlink" href="#meet-gas-composition-file" title="Permalink to this heading">¶</a></h1>
+<p>Gas Compositions are conversion factors from a fluid flow rate to speciated components.  Each element in the process flow that transforms the fluid (separators, tanks, flares, etc.) has a separate Gas Composition representing the result of the transformation.  Gas Compositions have a name, created by appending the Flow Tag (defined in the site definition sheet, <a class="reference internal" href="siteDefinition.html#site-definition-label"><span class="std std-ref">MEET Site Definition File</span></a>) and the name of the fluid (Condensate, Water, or Flash) to the end of the Gas Composition the new GC is defined from.  This provides a unique signature of all gas compositions created in the system.</p>
+<figure class="align-default" id="id1">
+<img alt="../_images/GCNaming.png" src="../_images/GCNaming.png" />
+<figcaption>
+<p><span class="caption-text">Gas Composition Naming</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>For example, the above figure defines the following Gas Compositions:</p>
+<dl class="simple">
+<dt>Well-Condensate</dt><dd><p>Name of the Gas Composition of the Condensate emerging from the Well.</p>
+</dd>
+<dt>Well-Water</dt><dd><p>Name of the Gas Composition of the Water emerging from the Well.</p>
+</dd>
+<dt>Well-Condensate.Stage1-Flash</dt><dd><p>Name of the Gas Composition of the Vapor flashed in Stage1 of the incoming Well-Condensate Gas Composition.</p>
+</dd>
+<dt>Well-Water-Stage1-Flash</dt><dd><p>Name of the Gas Composition of the Vapor flashed in Stage1 of the incoming Well-Water Gas Composition.</p>
+</dd>
+<dt>Well-Condensate.Stage1-Condensate</dt><dd><p>Name of the Gas Composition of the Condensate passed through Stage1 of the incoming Well-Condensate Gas Composition.</p>
+</dd>
+<dt>Well-Water.Stage1-Water</dt><dd><p>Name of the Gas Composition of the Water passed through Stage1 of the incoming Well-Water Gas Composition.</p>
+</dd>
+</dl>
+<section id="gas-composition-file-fields">
+<h2>Gas Composition File Fields<a class="headerlink" href="#gas-composition-file-fields" title="Permalink to this heading">¶</a></h2>
+<p>The Gas Composition file is defined in two blocks – the metadata section and the GC section.  These blocks are separated by the tag %%%ENDOFMETADATA%%%.  The metadata section contains
+fields relevant to the derivation of the values in the GC section, and is used mostly for tracability of results.  None of these values are used directly by the MEET software.</p>
+<p>The GC section has the following fields:</p>
+<dl class="simple">
+<dt>MajorEquipment</dt><dd><p>The Flow Tag used to define the GC Name for that row.</p>
+</dd>
+<dt>Name</dt><dd><p>The name of the Gas Composition (see above)</p>
+</dd>
+<dt>FluidFlow</dt><dd><p>The type of the Fluid Flow this Gas Composition refers to.  Will always be Vapor.</p>
+</dd>
+<dt>DriveFactorUnits</dt><dd><p>Volumetric conversion from fluid flows.  Defined in as a ratio of outbound volume to inbound volume, for example scf/bbl, which is used for converting the Fluid Flow volume
+(defined in bbl) to a vapor volume (defined in scf).</p>
+</dd>
+<dt>DriveFactor</dt><dd><p>Numeric conversion parameter for Drive Factor volumetric conversion.</p>
+</dd>
+<dt>GCUnits</dt><dd><p>Mass conversion from fluid flows.  Defined as a ratio of outbound mass to inbound volume.</p>
+</dd>
+<dt>Species Columns (Methane, Ethane, etc.)</dt><dd><p>Numeric conversion factor for specific species defined by GCUnits.</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="factors.html" class="btn btn-neutral float-right" title="MEET Factors.csv File" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="siteDefinition.html" class="btn btn-neutral float-left" title="MEET Site Definition File" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+Comment,Test destruction efficiency that adds a species
+Source,Test Data
+%%%ENDOFMETADATA%%%,
+Species,Destruction Efficiency
+METHANE,0.5
+PEANUT-BUTTER,0.0001

@@ -1,0 +1,13 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,YardPiping Pneumatic High Bleed
+ActivityBasis,Station
+WasSimulated,No
+UnitsCounted,17
+UnitsSimmed,0
+Mean,0.11765
+Source,GEF Study SI Table D12
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0.882352941176471
+1,0.117647058823529

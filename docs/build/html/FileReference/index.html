@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>MEET File Reference &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="MEET Site Definition File" href="siteDefinition.html" />
+    <link rel="prev" title="Wellhead with cycled production" href="../ModelReference/CycledWell.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../ModelReference/index.html">MEET Model Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">MEET File Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#input-files">Input Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="siteDefinition.html">Site Definition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="GC.html">Gas Composition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="factors.html">Factors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="distributionFile.html">Distribution Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#output-files">Output Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="instantaneousEvents.html">instantaneousEvents.csv -- Event Log</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metadata.html">metadata.csv -- Standard metadata for each element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="equipment.html">equipment.json -- Element instantiation parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="secondaryEventInfo.html">secondaryEventInfo.csv -- Additional data for specific events</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gasCompositions.html">gasCompositions.csv -- Long-format gas composition values referenced in simulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fluidFlows.html">fluidFlows.csv -- Fluid Flow definitions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="emissionTimeseries.html">emissionTimeseries.csv -- Fluid Flow rates</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#summary-files">Summary Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="summaryEmission.html">summaryEmission.csv -- Emission summary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="summaryFluidFlow.html">summaryFluidFlow.csv -- Fluid Flow summary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="summaryState.html">summaryState.csv -- State timing summary</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>MEET File Reference</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/FileReference/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="meet-file-reference">
+<span id="file-format-label"></span><h1>MEET File Reference<a class="headerlink" href="#meet-file-reference" title="Permalink to this heading">¶</a></h1>
+<figure class="align-default">
+<img alt="../_images/MEETFlow.png" src="../_images/MEETFlow.png" />
+</figure>
+<section id="input-files">
+<h2>Input Files<a class="headerlink" href="#input-files" title="Permalink to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="siteDefinition.html">Site Definition</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="siteDefinition.html#general-form-of-equipment-tabs">General Form of Equipment Tabs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="siteDefinition.html#special-equipment-tabs">Special Equipment Tabs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="GC.html">Gas Composition</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="GC.html#gas-composition-file-fields">Gas Composition File Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="factors.html">Factors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distributionFile.html">Distribution Files</a></li>
+</ul>
+</div>
+</section>
+<section id="output-files">
+<h2>Output Files<a class="headerlink" href="#output-files" title="Permalink to this heading">¶</a></h2>
+<p>All simulation output files get written to a directory of the form {outputRoot}/{studyName}/MC_{scenarioTimestamp}/{MCScenario}, where:</p>
+<dl class="simple">
+<dt>outputRoot</dt><dd><p>Defines the root of the output directory to redirect simulation output to a different location for large simulation runs.  Default is “./”.  Can be set on the
+command line using the ‘-or’ parameter.</p>
+</dd>
+<dt>studyName</dt><dd><p>Name of the scenario definition file (without the .xlsx extension).</p>
+</dd>
+<dt>scenarioTimestamp</dt><dd><p>Timestamp of the form YYYYMMDD_hhmmss to easily separate scenario runs.</p>
+</dd>
+<dt>MCScenario</dt><dd><p>Monte Carlo scenario number.</p>
+</dd>
+</dl>
+<figure class="align-default" id="id1">
+<img alt="../_images/ResultsFiles.png" src="../_images/ResultsFiles.png" />
+<figcaption>
+<p><span class="caption-text">Output File Relationships</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="instantaneousEvents.html">instantaneousEvents.csv -- Event Log</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="instantaneousEvents.html#fields">Fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="instantaneousEvents.html#implementation-considerations">Implementation Considerations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="instantaneousEvents.html#state-transition-events">STATE_TRANSITION Events</a></li>
+<li class="toctree-l3"><a class="reference internal" href="instantaneousEvents.html#emission-events">EMISSION Events</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="metadata.html">metadata.csv -- Standard metadata for each element</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="equipment.html">equipment.json -- Element instantiation parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="secondaryEventInfo.html">secondaryEventInfo.csv -- Additional data for specific events</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="secondaryEventInfo.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gasCompositions.html">gasCompositions.csv -- Long-format gas composition values referenced in simulation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gasCompositions.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fluidFlows.html">fluidFlows.csv -- Fluid Flow definitions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fluidFlows.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="emissionTimeseries.html">emissionTimeseries.csv -- Fluid Flow rates</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="emissionTimeseries.html#fields">Fields</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="summary-files">
+<h2>Summary Files<a class="headerlink" href="#summary-files" title="Permalink to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="summaryEmission.html">summaryEmission.csv -- Emission summary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="summaryEmission.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="summaryFluidFlow.html">summaryFluidFlow.csv -- Fluid Flow summary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="summaryFluidFlow.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="summaryState.html">summaryState.csv -- State timing summary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="summaryState.html#fields">Fields</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="siteDefinition.html" class="btn btn-neutral float-right" title="MEET Site Definition File" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../ModelReference/CycledWell.html" class="btn btn-neutral float-left" title="Wellhead with cycled production" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

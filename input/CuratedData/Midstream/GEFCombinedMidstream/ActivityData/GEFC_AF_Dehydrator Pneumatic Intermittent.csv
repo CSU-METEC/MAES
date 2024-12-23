@@ -1,0 +1,18 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Dehydrator Pneumatic Intermittent
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,31
+UnitsSimmed,0
+Mean,2.5806
+Source,GEF Study SI Table D12
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0.0967741935483871
+1,0.193548387096774
+2,0.290322580645161
+3,0.161290322580645
+4,0.0967741935483871
+5,0.129032258064516
+9,0.032258064516129

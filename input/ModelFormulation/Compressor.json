@@ -1,0 +1,313 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETCompressor",
+  "Readable Name":   "Compressor",
+  
+  "Description": "Compressors and VRUS",
+  "States": [
+    {"stateName": "OPERATING",                   "description": "Compressor is operating."},
+	{"stateName": "NOT_OPERATING_PRESSURIZED",   "description": "Compressor is not operating, but system is still pressurized."},
+    {"stateName": "NOT_OPERATING_DEPRESSURIZED", "description": "Compressor is not operating, system is depressurized."},
+    {"stateName": "STARTING",                    "description": "Compressor is starting."},
+    {"stateName": "BLOWDOWN",                    "description": "Compressor is depressurizing."}
+  ],
+  
+  "Fluid Flows": [
+    {"Fluid": "Vapor", "secondary_id": "normal_flow", "description": "Output gas from compressor in OPERATING state that goes into production lines."},
+	{"Fluid": "Vapor", "secondary_id": "flare_flow",  "description": "Output gas from compressor in NOT_OPERATING_DEPRESSURIZED state intended to be combusted by flare."}
+  ],
+  
+  "StateMachineDiagram": "graphics/CompressorStateMachine.png",
+  
+  "Reference": [
+  "reference/CompressorReference.rst", 
+  "reference/CompressorEngineLoad.rst",
+  "reference/CompressorReferenceEpilog.rst"
+  ],
+  
+  "Model Parameters": [
+	{		                                               "Python Parameter": "modelCategory",            "Parameter Type": "Constant",  "Value":"Compressor"},
+    {		                                               "Python Parameter": "modelSubcategory",         "Parameter Type": "Constant",  "Value":"Centrifugal"},
+    {"Model Parameter": "Facility ID",                     "Python Parameter": "facilityID",               "Parameter Type": "Sheet"},
+    {"Model Parameter": "Unit ID",                         "Python Parameter": "unitID",                   "Parameter Type": "Sheet"},
+    {"Model Parameter": "Compressor Type",                 "Python Parameter": "compressorType",           "Parameter Type": "Sheet"},
+    {"Model Parameter": "Compressor Power",                "Python Parameter": "compressorkW",             "Parameter Type": "Sheet"},
+    {"Model Parameter": "Component Count",                 "Python Parameter": "activityDistribution",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Average Loading",                 "Python Parameter": "averageLoading",       "Parameter Type": "Sheet"},
+    {"Model Parameter": "Std Loading",                     "Python Parameter": "stdLoading",           "Parameter Type": "Sheet"},
+	{"Model Parameter": "Driver Type",                     "Python Parameter": "driverType",           "Parameter Type": "Sheet"},
+    {"Model Parameter": "Starter Event Emission Duration", "Python Parameter": "startVentDurationSecs",    "Parameter Type": "Sheet"},
+    {"Model Parameter": "Blowdown Event Duration",         "Python Parameter": "blowdownVentDurationSecs", "Parameter Type": "Sheet"},
+    {"Model Parameter": "Operating Fraction",              "Python Parameter": "operatingFraction",        "Parameter Type": "Sheet"},
+    {"Model Parameter": "NOP Fraction of NOP/NOD",         "Python Parameter": "nopFraction",              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Load Condition File",             "Python Parameter": "loadCondition",         "Parameter Type": "Sheet",        "Optional":"True"},
+	{"Model Parameter": "Compressor Efficiency",           "Python Parameter": "compressorEfficiency",              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Total Duration Lower Limit",      "Python Parameter": "lowerLimit",               "Parameter Type": "Sheet"},
+	{"Model Parameter": "Total Duration Upper Limit",      "Python Parameter": "upperLimit",               "Parameter Type": "Sheet"}
+    ],
+  "Emitters": [
+
+    {"Python Category": "Emitter", "Python Class": "EmpiricalFlowImmediateProduction", "Readable Name": "Blowdown Event", "Category": "TRANSIENT EVENT", "Emission Category": "VENTED",
+      "Model Parameters": [
+        {														"Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Compressor Blowdown"},
+        {"Model Parameter": "Blowdown Event Emission Volume",   "Python Parameter": "emissionVolume",         "Parameter Type": "Sheet"},
+        {"Model Parameter": "Blowdown Event Duration",          "Python Parameter": "emissionDuration",       "Parameter Type": "Sheet"},
+		{"Model Parameter": "Factor Tag",                       "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
+		{                                                       "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Blowdown_event"},
+		{                                                       "Python Parameter": "emissionDriverUnits",    "Parameter Type": "Constant", "Value": "scf"},
+        {"Model Parameter": "Leak GC Name",               "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+        {                                                       "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "BLOWDOWN"},
+		{                                                       "Python Parameter": "emitterID",              "Parameter Type": "Constant", "Value": "blowdown_event_1"},
+		{                                                       "Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "comp_blowdown"}
+      ]
+    },
+	
+	{"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Blowdown Vent Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+	  "Model Parameters": [
+	  	{"Model Parameter": "Blowdown Vent Component Count",  "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+		{"Model Parameter": "Blowdown Vent pLeak",            "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
+		{"Model Parameter":"Blowdown Vent MTTRMin",           "Python Parameter": "MTTRMinDays",            "Parameter Type": "Sheet"},
+		{"Model Parameter":"Blowdown Vent MTTRMax",           "Python Parameter": "MTTRMaxDays",            "Parameter Type": "Sheet"},
+		{"Model Parameter": "Leak GC Name",             "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+		{												      "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Compressor Specific Leak"},
+		{"Model Parameter": "Factor Tag",                     "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
+		{                                                     "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Comp_blowdown"},
+		{												      "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,STARTING"}
+		]
+	},
+
+    {"Python Category": "Emitter", "Python Class": "LeakProduction", "Readable Name": "Compressor Component Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+            {		                                               "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Generic Component"},
+            {"Model Parameter": "Component Leak Survey Frequency", "Python Parameter": "surveyFrequency",        "Parameter Type": "Sheet"},
+            {"Model Parameter": "Component Count",                 "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+            {"Model Parameter": "Component pLeak",                 "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
+            {"Model Parameter": "Leak GC Name",              "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"}, 
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Comp_component_leak"},
+            {                                                      "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,STARTING"}
+            ]
+        },
+		
+   {"Python Category": "Emitter", "Python Class": "PneumaticEmitterProduction", "Readable Name": "Compressor Pneumatic Emissions", "Category": "PNEUMATIC EMISSION", "Emission Category": "VENTED",
+		  "Model Parameters": [
+            {                                                 "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Generic Pneumatic"},
+		    {"Model Parameter": "Leak GC Name",         "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                 "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
+			{                                                 "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Comp_pneumatic"},
+			{                                                 "Python Parameter": "instanceFormat",         "Parameter Type": "Constant", "Value": "{unitID}_ccomp_{serialNo}"},
+			{                                                 "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Actuator Type",     		  "Python Parameter": "instantiationVal",       "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Gas"}
+			]
+		},
+
+    {"Python Category": "Emitter", "Python Class": "MEETCombustionEmitter", "Readable Name": "Driver Exhaust", "Category": "EXHAUST", "Emission Category": "COMBUSTION",
+      "Model Parameters": [
+        {"Model Parameter": "Driver Type", 				       "Python Parameter": "modelSubcategory",     "Parameter Type": "Sheet"},
+        {"Model Parameter": "Compressor Power",                "Python Parameter": "driverSizekW",         "Parameter Type": "Sheet"},
+        {"Model Parameter": "Driver Type",                     "Python Parameter": "driverType",           "Parameter Type": "Sheet"},
+        {"Model Parameter": "Average Loading",                 "Python Parameter": "averageLoading",       "Parameter Type": "Sheet"},
+        {"Model Parameter": "Std Loading",                     "Python Parameter": "stdLoading",           "Parameter Type": "Sheet"},
+        {"Model Parameter": "Combustion GC Name",              "Python Parameter": "combustionGCName",     "Parameter Type": "Sheet"},
+		{"Model Parameter": "Compressor Efficiency",           "Python Parameter": "compressorEfficiency",              "Parameter Type": "Sheet"},
+		{"Model Parameter": "Driver Type",     			       "Python Parameter": "instantiationVal",     "Parameter Type": "Sheet"},
+		{                                                      "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "2SLB, 4SLB, 4SRB, Turbine"},
+		{                                                      "Python Parameter": "statesActive",         "Parameter Type": "Constant", "Value": "OPERATING,OVERLOAD"},
+		{"Model Parameter": "Engine Efficiency",               "Python Parameter": "engineEfficiency",     "Parameter Type": "Sheet"},
+		{"Model Parameter": "Exhaust Factors",                 "Python Parameter": "exhaustFactors",       "Parameter Type": "Sheet"}
+        ]
+    },
+
+      {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Dry Seal Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+            {												                "Python Parameter": "modelSubcategory",        "Parameter Type": "Constant", "Value": "Compressor Large Emitter"},
+			{"Model Parameter": "Seal Vent(Large Emitter) Component Count", "Python Parameter": "activityDistribution",    "Parameter Type": "Sheet"},
+            {"Model Parameter": "Seal Vent(Large Emitter) pLeak",           "Python Parameter": "pLeak",                   "Parameter Type": "Sheet"},
+            {"Model Parameter":"Seal Vent(Large Emitter) MTTR Min",         "Python Parameter": "MTTRMinDays",             "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Seal Vent(Large Emitter) MTTR Max",         "Python Parameter": "MTTRMaxDays",             "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                               "Python Parameter": "factorTag",               "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                               "Python Parameter": "emitterModelFactorTag",   "Parameter Type": "Constant", "Value": "Dry_seal_large_emitter"},
+            {"Model Parameter": "Leak GC Name",                       "Python Parameter": "gasComposition",          "Parameter Type": "Sheet"},
+            {												                "Python Parameter": "statesActive",            "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,STARTING"}, 
+			{"Model Parameter": "Seal Type",     		  	                "Python Parameter": "instantiationVal",        "Parameter Type": "Sheet"},
+			{                                                               "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant", "Value": "Dry"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "EmpiricalFlowProduction", "Readable Name": "Compressor Dry Seal Vent (OP)", "Category": "VENT", "Emission Category": "VENTED",
+          "Model Parameters": [
+            {"Model Parameter": "Leak GC Name",               "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+            {														"Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Compressor Specific Vent"},
+			{"Model Parameter": "Factor Tag",                       "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
+			{                                                       "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Comp_emp_dry_seal_vent"},
+			{														"Python Parameter": "emitterID",      	      "Parameter Type": "Constant", "Value":        "dry_seal_vent_1"},
+            {														"Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Seal Type",     					"Python Parameter": "instantiationVal",       "Parameter Type": "Sheet"},
+			{                                               		"Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Dry"},
+			{                                                       "Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "comp_dry_seal_vent"},
+			{                                                       "Python Parameter": "emissionDriverUnits",    "Parameter Type": "Constant", "Value": "scf"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Rod Packing Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+            {		                                                        "Python Parameter": "modelSubcategory",      "Parameter Type": "Constant", "Value": "Compressor Large Emitter"},
+			{"Model Parameter": "Seal Vent(Large Emitter) Component Count", "Python Parameter": "activityDistribution",  "Parameter Type": "Sheet"},
+            {"Model Parameter": "Seal Vent(Large Emitter) pLeak",           "Python Parameter": "pLeak",                 "Parameter Type": "Sheet"},
+            {"Model Parameter":"Seal Vent(Large Emitter) MTTR Min",         "Python Parameter": "MTTRMinDays",           "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Seal Vent(Large Emitter) MTTR Max",         "Python Parameter": "MTTRMaxDays",           "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                               "Python Parameter": "factorTag",             "Parameter Type": "Sheet",    "Optional":"True"},
+			{                                                               "Python Parameter": "emitterModelFactorTag", "Parameter Type": "Constant", "Value": "Rod_packing_large_emitter"},
+            {"Model Parameter": "Leak GC Name",                       "Python Parameter": "gasComposition",        "Parameter Type": "Sheet"},
+            {                                                               "Python Parameter": "statesActive",          "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,STARTING"},
+			{"Model Parameter": "Seal Type",     							"Python Parameter": "instantiationVal",      "Parameter Type": "Sheet"},
+			{                                                               "Python Parameter": "valsForInstantiation",  "Parameter Type": "Constant", "Value": "Rod Packing"}
+            ]
+        },
+
+
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Rod Packing Vent (NOD)", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+		  	{"Model Parameter": "Seal Vent Component Count", "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+            {"Model Parameter": "Seal Vent pLeak",           "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
+            {"Model Parameter":"Seal Vent MTTR Min",         "Python Parameter": "MTTRMinDays",            "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Seal Vent MTTR Max",         "Python Parameter": "MTTRMaxDays",            "Parameter Type": "Sheet"},
+            {"Model Parameter": "Leak GC Name",        "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+            {                                                "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Compressor Specific Leak"},
+			{"Model Parameter": "Factor Tag",                "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
+			{                                                "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Rod_packing_vent_nod"},
+            {                                                "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "NOT_OPERATING_DEPRESSURIZED"},
+			{"Model Parameter": "Seal Type",     			 "Python Parameter": "instantiationVal",       "Parameter Type": "Sheet"},
+			{                                                "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Rod Packing"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Rod Packing Vent (NOP)", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+		    {"Model Parameter": "Seal Vent Component Count", "Python Parameter": "activityDistribution",     "Parameter Type": "Sheet"},
+            {"Model Parameter": "Seal Vent pLeak",           "Python Parameter": "pLeak",                    "Parameter Type": "Sheet"},
+            {"Model Parameter":"Seal Vent MTTR Min",         "Python Parameter": "MTTRMinDays",              "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Seal Vent MTTR Max",         "Python Parameter": "MTTRMaxDays",              "Parameter Type": "Sheet"},
+            {"Model Parameter": "Leak GC Name",        "Python Parameter": "gasComposition",           "Parameter Type": "Sheet"},
+            {                                                "Python Parameter": "modelSubcategory",         "Parameter Type": "Constant", "Value": "Compressor Specific Leak"},
+			{"Model Parameter": "Factor Tag",                "Python Parameter": "factorTag",                "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                "Python Parameter": "emitterModelFactorTag",    "Parameter Type": "Constant", "Value": "Rod_packing_vent_nop"},
+            {                                                "Python Parameter": "statesActive",             "Parameter Type": "Constant", "Value": "NOT_OPERATING_PRESSURIZED"},
+			{"Model Parameter": "Seal Type",     			 "Python Parameter": "instantiationVal",         "Parameter Type": "Sheet"},
+			{                                                "Python Parameter": "valsForInstantiation",     "Parameter Type": "Constant", "Value": "Rod Packing"}
+            ]
+        },
+		
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Rod Packing Vent (OP)", "Category": "VENT", "Emission Category": "VENTED",
+          "Model Parameters": [
+		    {"Model Parameter": "Seal Vent Component Count", "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+            {"Model Parameter": "Seal Vent pLeak",           "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
+            {"Model Parameter":"Seal Vent MTTR Min",         "Python Parameter": "MTTRMinDays",            "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Seal Vent MTTR Max",         "Python Parameter": "MTTRMaxDays",            "Parameter Type": "Sheet"},
+            {"Model Parameter": "Leak GC Name",        "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+            {												 "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Compressor Specific Vent"},
+			{"Model Parameter": "Factor Tag",                "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
+			{                                                "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Rod_packing_vent_op"},
+            {												 "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Seal Type",     			 "Python Parameter": "instantiationVal",       "Parameter Type": "Sheet"},
+			{                                                "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Rod Packing"}
+            ]
+        },
+
+      {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Wet Seal Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+            {												                 "Python Parameter": "modelSubcategory",         "Parameter Type": "Constant", "Value": "Compressor Large Emitter"},
+			{"Model Parameter": "Seal Vent(Large Emitter) Component Count",  "Python Parameter": "activityDistribution",     "Parameter Type": "Sheet"},
+            {"Model Parameter": "Seal Vent(Large Emitter) pLeak",            "Python Parameter": "pLeak",                    "Parameter Type": "Sheet"},
+            {"Model Parameter":"Seal Vent(Large Emitter) MTTR Min",          "Python Parameter": "MTTRMinDays",              "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Seal Vent(Large Emitter) MTTR Max",          "Python Parameter": "MTTRMaxDays",              "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                                "Python Parameter": "factorTag",                "Parameter Type": "Sheet",    "Optional":"True"},
+			{                                                                "Python Parameter": "emitterModelFactorTag",    "Parameter Type": "Constant", "Value": "Comp_wet_seal_large_emitter"},
+            {"Model Parameter": "Leak GC Name",                        "Python Parameter": "gasComposition",           "Parameter Type": "Sheet"},
+            {												                 "Python Parameter": "statesActive",             "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,STARTING"}, 
+			{"Model Parameter": "Seal Type",     		          	         "Python Parameter": "instantiationVal",         "Parameter Type": "Sheet"},
+			{                                                                "Python Parameter": "valsForInstantiation",     "Parameter Type": "Constant", "Value": "Wet"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "EmpiricalFlowProduction", "Readable Name": "Compressor Wet Seal Vent (OP)", "Category": "VENT", "Emission Category": "VENTED",
+          "Model Parameters": [
+            {"Model Parameter": "Leak GC Name",              "Python Parameter": "gasComposition",        "Parameter Type": "Sheet"},
+            {												       "Python Parameter": "modelSubcategory",      "Parameter Type": "Constant", "Value": "Compressor Specific Vent"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",             "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag", "Parameter Type": "Constant", "Value": "Comp_emp_wet_seal_vent"},
+			{												       "Python Parameter": "emitterID",      	    "Parameter Type": "Constant", "Value":        "wet_seal_vent_1"},
+            {												       "Python Parameter": "statesActive",          "Parameter Type": "Constant", "Value": "OPERATING"},
+			{"Model Parameter": "Seal Type",     		 	       "Python Parameter": "instantiationVal",      "Parameter Type": "Sheet"},
+			{                                                      "Python Parameter": "valsForInstantiation",  "Parameter Type": "Constant", "Value": "Wet"},
+			{                                                      "Python Parameter": "secondaryID",           "Parameter Type": "Constant", "Value": "comp_wet_seal_vent"},
+			{                                                      "Python Parameter": "emissionDriverUnits",   "Parameter Type": "Constant", "Value": "scf"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compresor Single-Unit Vent Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+            {                                                                             "Python Parameter": "modelSubcategory",         "Parameter Type": "Constant", "Value": "Compressor Large Emitter"},
+			{"Model Parameter": "Common Single-unit Vent(Large Emitter) Component Count", "Python Parameter": "activityDistribution",     "Parameter Type": "Sheet"},
+            {"Model Parameter": "Common Single-unit Vent(Large Emitter) pLeak",           "Python Parameter": "pLeak",                    "Parameter Type": "Sheet"},
+            {"Model Parameter":"Common Single-unit Vent(Large Emitter) MTTR Min",         "Python Parameter": "MTTRMinDays",              "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Common Single-unit Vent(Large Emitter) MTTR Max",         "Python Parameter": "MTTRMaxDays",              "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                                             "Python Parameter": "factorTag",                "Parameter Type": "Sheet",    "Optional":"True"},
+			{                                                                             "Python Parameter": "emitterModelFactorTag",    "Parameter Type": "Constant", "Value": "Comp_single_unit_vent_large_emitter"},
+            {"Model Parameter": "Leak GC Name",                                     "Python Parameter": "gasComposition",           "Parameter Type": "Sheet"},
+            {												                              "Python Parameter": "statesActive",             "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,STARTING"},
+			{"Model Parameter": "Single Unit Vents",     	                              "Python Parameter": "instantiationVal",         "Parameter Type": "Sheet"},
+			{                                                                             "Python Parameter": "valsForInstantiation",     "Parameter Type": "Constant", "Value": "TRUE"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Single-Unit Vent Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+		    {"Model Parameter": "Common Single-Unit Vent Component Count",       "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+            {"Model Parameter": "Common Single-Unit Vent pLeak",                 "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
+            {"Model Parameter": "Common Single-unit Vent(Large Emitter) pLeak",  "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
+            {"Model Parameter":"Common Single-Unit Vent MTTR Min",               "Python Parameter": "MTTRMinDays",            "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Common Single-Unit Vent MTTR Max",               "Python Parameter": "MTTRMaxDays",            "Parameter Type": "Sheet"},
+            {"Model Parameter": "Leak GC Name",                            "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
+            {													 	             "Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Compressor Specific Leak"},
+			{"Model Parameter": "Factor Tag",                                    "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                                    "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Comp_single_unit_vent_leak"},
+            {														             "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,STARTING"},
+			{"Model Parameter": "Single Unit Vents",     			             "Python Parameter": "instantiationVal",       "Parameter Type": "Sheet"},
+			{                                                                    "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "TRUE"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Leak On Compressor Starter Vent", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+          "Model Parameters": [
+            {                                                              "Python Parameter": "modelSubcategory",         "Parameter Type": "Constant", "Value": "Compressor Specific Leak"},
+			{"Model Parameter": "Compressor Starter Vent Component Count", "Python Parameter": "activityDistribution",     "Parameter Type": "Sheet"},
+            {"Model Parameter": "Compressor Starter Vent pLeak",           "Python Parameter": "pLeak",                    "Parameter Type": "Sheet"},
+            {"Model Parameter":"Compressor Starter Vent MTTR Min",         "Python Parameter": "MTTRMinDays",              "Parameter Type": "Sheet"},
+		    {"Model Parameter":"Compressor Starter Vent MTTR Max",         "Python Parameter": "MTTRMaxDays",              "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                              "Python Parameter": "factorTag",                "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                              "Python Parameter": "emitterModelFactorTag",    "Parameter Type": "Constant", "Value": "Comp_starter_vent_leak"},
+            {"Model Parameter": "Leak GC Name",                      "Python Parameter": "gasComposition",           "Parameter Type": "Sheet"},
+            {												               "Python Parameter": "statesActive",             "Parameter Type": "Constant", "Value": "OPERATING,NOT_OPERATING_PRESSURIZED,NOT_OPERATING_DEPRESSURIZED,BLOWDOWN"},
+			{"Model Parameter": "Starter Type",     		 	           "Python Parameter": "instantiationVal",         "Parameter Type": "Sheet"},
+			{                                                              "Python Parameter": "valsForInstantiation",     "Parameter Type": "Constant", "Value": "Gas"}
+            ]
+        },
+
+    {"Python Category": "Emitter", "Python Class": "ImmediateStateBasedEmitterProduction", "Readable Name": "Start Event", "Category": "TRANSIENT EVENT", "Emission Category": "VENTED",
+      "Model Parameters": [
+        {                                                         "Python Parameter": "modelSubcategory",     "Parameter Type": "Constant", "Value": "Compressor Gas Start"},
+        {"Model Parameter": "Starter Event Emission Volume",      "Python Parameter": "emissionVolume",       "Parameter Type": "Sheet"},
+        {"Model Parameter": "Starter Event Emission Duration",    "Python Parameter": "emissionDuration",     "Parameter Type": "Sheet"},
+        {"Model Parameter": "Leak GC Name",                 "Python Parameter": "gasComposition",       "Parameter Type": "Sheet"},
+        {                                                         "Python Parameter": "statesActive",         "Parameter Type": "Constant", "Value": "STARTING"},
+        {                                                         "Python Parameter": "emissionDriverUnits",  "Parameter Type": "Constant", "Value": "scf"},
+		{"Model Parameter": "Starter Type",     				  "Python Parameter": "instantiationVal",     "Parameter Type": "Sheet"},
+		{                                                         "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "Gas"},
+			{                                                 "Python Parameter": "instanceFormat",         "Parameter Type": "Constant", "Value": "{unitID}_startEmission_{serialNo}"}
+      ]
+    }
+	
+  ]
+}

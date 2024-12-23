@@ -1,0 +1,19 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Separator Pneumatic Controller
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,80
+UnitsSimmed,0
+Lower,1
+Mean,1.925
+Upper,5
+Source,GEF Study SI Table D12
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+1,0.5375
+2,0.2375
+3,0.125
+4,0.0625
+5,0.025
+13,0.0125

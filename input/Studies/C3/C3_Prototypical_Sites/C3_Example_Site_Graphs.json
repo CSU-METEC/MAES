@@ -1,0 +1,22 @@
+[
+	{
+		"outputFilename": "{MCScenarioDir}/graphs/C3_Example_Site.html",
+		"graphSpecs": [
+			{
+				"title": "State Transitions (123_37331)",
+				"cols": [
+					"state"
+				],
+				"categorical": "True",
+				"yLabelFormat": "State",
+				"filter": "True",
+				"filterSpec": {
+					"facilityID": "123-9E26",
+					"unitID": "123_37331",
+					"command": "STATE_TRANSITION",
+					"event": "START"
+				}
+			}
+		]
+	}
+]

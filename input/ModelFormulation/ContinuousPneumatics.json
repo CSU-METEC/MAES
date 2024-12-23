@@ -1,0 +1,57 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETContinuousPneumatics",
+  "Readable Name":   "Pneumatic Controller",
+  
+  "Description": "Pneumatic Controller",
+  "Fluid Flows": [
+      {"Fluid": "", "secondary_id": "", "description": ""},
+	  {"Fluid": "", "secondary_id": "", "description": ""}
+  ],
+  "States": [
+	{"stateName": "OPERATING", "description": "PC operating normally within expected emission limits (low bleed, high bleed and intermittent), must have emission events after all state changes"},
+	{"stateName": "INTERMITTENT_EMISSION", "description": "Emissions during actuation of an intermittent PC, must have emission events"},
+	{"stateName": "EMITTING",  "description": "PC operating abnormally (abnormal emissions in all three types), must also have emission events at state changes"}
+  ],
+  "StateMachineDiagram": "",
+  
+  "Reference": "Multiday Measurements of Pneumatic Controller Emissions Reveal the Frequency of Abnormal Emissions Behavior at Natural Gas Gathering Stations - Ben Luck et. al.",
+  
+  "Model Parameters": [
+	{		                                                  "Python Parameter": "modelCategory",                         "Parameter Type": "Constant",   "Value":"Pneumatic Controller"},
+    {		                                                  "Python Parameter": "modelSubcategory",	                     "Parameter Type": "Constant",   "Value":"Pneumatic Controller"},
+	{                                                         "Python Parameter": "multipleInstances",                     "Parameter Type": "Constant",   "Value": "True"},
+	{                                                         "Python Parameter": "instanceFormat",                        "Parameter Type": "Constant",   "Value": "{unitID}_inst_{eqCount}"},
+    {"Model Parameter": "Facility ID",          	          "Python Parameter": "facilityID",                            "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",              	          "Python Parameter": "unitID",                                "Parameter Type": "Sheet"},
+	{"Model Parameter": "Number of Pneumatics",               "Python Parameter": "eqComponentCount",                      "Parameter Type": "Sheet"},
+	{"Model Parameter": "Abnormal Emissions pLeak",              "Python Parameter": "pLeakAbnormal",                "Parameter Type": "Sheet"},
+	{"Model Parameter": "Abnormal Emissions MTTR Min",           "Python Parameter": "abnormalMTTRMindays",          "Parameter Type": "Sheet"},
+	{"Model Parameter": "Abnormal Emissions MTTR Max",           "Python Parameter": "abnormalMTTRMaxdays",          "Parameter Type": "Sheet"}
+	  ],
+  
+  "Emitters": [
+    {"Python Category": "Emitter", "Python Class": "StateBasedEmitterProduction", "Readable Name": "Continuous Pneumatic Emissions", "Category": "EMISSION", "Emission Category": "VENTED",
+	  "Model Parameters": [
+		{		                                      "Python Parameter": "modelSubcategory",      "Parameter Type": "Constant",     "Value": "Pneumatic Emission"},
+		{		                                      "Python Parameter": "emitterID",             "Parameter Type": "Constant",     "Value": "pmeumatic_emission_continuous"},
+		{"Model Parameter": "Factor Tag",             "Python Parameter": "factorTag",             "Parameter Type": "Sheet",        "Optional":"True"},
+		{                                             "Python Parameter": "emitterModelFactorTag", "Parameter Type": "Constant",     "Value": "pc_emissions_cont"},
+		{"Model Parameter": "Leak GC Name",     "Python Parameter": "gasComposition",        "Parameter Type": "Sheet"},
+		{		                                      "Python Parameter": "statesActive",          "Parameter Type": "Constant",     "Value": "CONTINUOUS_VENT"}
+		]
+	},
+	
+	{"Python Category": "Emitter", "Python Class": "StateBasedEmitterProduction", "Readable Name": "Continuous Abnormal Pneumatic Emissions", "Category": "EMISSION", "Emission Category": "VENTED",
+	  "Model Parameters": [
+		{		                                      "Python Parameter": "modelSubcategory",      "Parameter Type": "Constant",     "Value": "Pneumatic Emission"},
+		{		                                      "Python Parameter": "emitterID",             "Parameter Type": "Constant",     "Value": "pneumatic_emission_continuous_ab"},
+		{"Model Parameter": "Factor Tag",             "Python Parameter": "factorTag",             "Parameter Type": "Sheet",        "Optional":"True"},
+		{                                             "Python Parameter": "emitterModelFactorTag", "Parameter Type": "Constant",     "Value": "pc_emissions_abnormal"},
+		{"Model Parameter": "Leak GC Name",     "Python Parameter": "gasComposition",        "Parameter Type": "Sheet"},
+		{		                                      "Python Parameter": "statesActive",          "Parameter Type": "Constant",     "Value": "CONTINUOUS_VENT_ABNORMAL"}
+		]
+	}
+	
+	]
+}

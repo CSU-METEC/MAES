@@ -1,0 +1,7 @@
+Data Type,Test Destruction Efficiencies
+Use,Destruction efficiencies for compressors and flares
+Units,NA
+Source,Test Data
+%%%ENDOFMETADATA%%%,
+Species,Destruction Efficiency
+ALL,0.25

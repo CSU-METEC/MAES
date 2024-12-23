@@ -1,0 +1,17 @@
+Distribution Type,Normal
+Use,EMISSIONS
+Units,scf_wholegas
+Emission Factor Type,Vented
+Gas Type,whole_gas
+Emission Unit,scf
+Time Basis,s
+Activity Basis,Component
+User Units,scfs (wholegas)
+Source,doi: 10.1021/acs.est.0c00516
+Component,Pneumatic High Bleed
+Notes,Assumed normal distribution with 90% CI of 0.20
+Mean of Leaking,0.010361
+Leak Probability,1
+%%%ENDOFMETADATA%%%,
+mu,sigma
+0.0103611111111111,0.00105725623582766

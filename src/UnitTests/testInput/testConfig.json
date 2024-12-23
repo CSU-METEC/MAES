@@ -1,0 +1,70 @@
+{
+  "intakeSpreadsheetConfigParams": {
+    "Simulation Start Date":            {"configVar": "simulationStartDate"},
+    "Simulation Duration [Days]":       {"configVar": "testIntervalDays"},
+    "Number of Monte Carlo Iterations": {"configVar": "monteCarloIterations"},
+    "Output Directory Template":        {"configVar": "simulationRoot"},
+    "Simulation Fixed Directory Name":  {"configVar": "outputSymlink"},
+    "Activity / Emission Factor Name":  {"configVar": "factorName"},
+    "Graph Specification File":         {"configVar": "graphSpec"}
+  },
+
+  "phaseValues": {
+
+    "defaultValues": {
+      "inputRoot": "input",
+      "outputRoot": "output",
+      "scenarioTimestampFormat": "%Y%m%d_%H%M%S",
+      "scenarioTimestampFormat": "20230101_000000",
+      "disableSimulation": false,
+      "disableGraph": false,
+      "disableSummary": false
+
+    },
+
+    "arguments": {
+      "studyFilename": "{inputRoot}/Studies/{studyDefinitionFile}"
+    },
+
+    "siteDefinitionParams": {
+      "factorName": "{inputRoot}/CuratedData/FactorsFileReference/Factors.csv"
+    },
+
+    "start": {
+      "emitterProfileDir": "{inputRoot}/CuratedData",
+      "studyRoot": "{outputRoot}/{studyName}",
+      "site": ""
+    },
+
+    "simulation": {
+      "simulationRoot": "{outputRoot}/{studyName}/MC_{scenarioTimestamp}",
+      "templateDir": "{simulationRoot}/template",
+      "metadataFile": "{templateDir}/metadata.csv",
+      "equipmentFile": "{templateDir}/equipment.json",
+      "mdIndexFile": "{templateDir}/mdIndex.csv",
+
+      "site": ""
+    },
+
+    "MCIteration": {
+      "resultsRoot": "{simulationRoot}/{site}/{MCIteration}",
+      "gcFilename": "{resultsRoot}/gasCompositions.csv",
+      "tsFilename": "{resultsRoot}/emissionTimeseries.csv",
+      "ffFilename": "{resultsRoot}/fluidFlows.csv",
+      "eventFilename": "{resultsRoot}/instantaneousEvents.csv",
+      "GasComposition": "{resultsRoot}/gasCompositions.csv",
+      "emissionDriverFilename": "{resultsRoot}/emissionDrivers.json",
+      "mdScenarioFilename": "{resultsRoot}/metadata.csv",
+      "equipmentFilename": "{resultsRoot}/equipment.json",
+      "stateSummaryFilename": "{resultsRoot}/summaryState.csv",
+      "ffSummaryFilename": "{resultsRoot}/summaryFluidFlow.csv",
+      "ffRollupFilename": "{resultsRoot}/summaryFluidFlowRollup.csv",
+      "emitterSummaryFilename": "{resultsRoot}/summaryEmission.csv",
+      "emissionSummaryFilename": "{resultsRoot}/summaryEmissionCategory.csv"
+    }
+  },
+  "dynamicTemplates": {
+    "modelFilename": "{inputRoot}/ModelFormulation/{modelID}",
+    "graphFilename": "{resultsRoot}/graphs/{graphName}.html"
+  }
+}

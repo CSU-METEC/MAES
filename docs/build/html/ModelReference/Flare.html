@@ -1,0 +1,353 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Flare &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Fluid Flow Dump" href="FFDumpService.html" />
+    <link rel="prev" title="Fixed Source" href="FixedSource.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">MEET Model Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="Compressor.html">Compressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ContinuousSeparator.html">Continuous Separator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="DumpingSeparator.html">Dumping Separator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Facility.html">Facility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FixedSource.html">Fixed Source</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Flare</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#emitters">Emitters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#flare-reference">Flare Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="FFDumpService.html">Fluid Flow Dump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FFLink.html">Fluid Flow links</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Probe.html">Fluid Flow probe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Dehydrator.html">Glycol Dehydrator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MiscCompressorStati.html">Misc Equipment On Compressor Station</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MiscWellpad.html">Misc Equipment On Wellpad</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TankBattery.html">Tank Battery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Well.html">Wellhead with constant production</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CycledWell.html">Wellhead with cycled production</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">MEET Model Reference</a> &raquo;</li>
+        
+      <li>Flare</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/ModelReference/Flare.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="flare">
+<h1>Flare<a class="headerlink" href="#flare" title="Permalink to this heading">¶</a></h1>
+<p>Model Filename: Flare.json</p>
+<p>Equipment that burns waste gas.</p>
+<section id="states">
+<h2>States<a class="headerlink" href="#states" title="Permalink to this heading">¶</a></h2>
+<dl class="simple">
+<dt>OPERATING</dt><dd><p>Flare is operating normally, gas is combusted at maximum efficiency.</p>
+</dd>
+<dt>MALFUNCTIONING</dt><dd><p>Flare is malfunctioning, gas is still combusted at less than maximum efficiency.</p>
+</dd>
+<dt>UNLIT</dt><dd><p>Flare is not lit, gas is vented directly to atmosphere with no combustion.</p>
+</dd>
+</dl>
+<img alt="../_images/FlareStateMachine.png" src="../_images/FlareStateMachine.png" />
+</section>
+<section id="fluid-flows">
+<h2>Fluid Flows<a class="headerlink" href="#fluid-flows" title="Permalink to this heading">¶</a></h2>
+<dl>
+<dt>Vapor</dt><dd><p>Fluid Flow for vapor emitted in OPERATING state.  Uses ‘Operating Destruction Efficiency’ for combustion.</p>
+<p><em>Secondary ID: Flare-OPERATING</em></p>
+</dd>
+<dt>Vapor</dt><dd><p>Fluid Flow for vapor emitted in UNLIT state.  Uses ‘Unlit Destruction Efficiency’ for combustion.</p>
+<p><em>Secondary ID: Flare-UNLIT</em></p>
+</dd>
+<dt>Vapor</dt><dd><p>Fluid Flow for vapor emitted in MALFUNCTIONING state.  Uses ‘Malfunction Destruction Efficiency’ for combustion.</p>
+<p><em>Secondary ID: Flare-MALFUNCTIONING</em></p>
+</dd>
+</dl>
+</section>
+<section id="site-definition-columns">
+<h2>Site Definition Columns<a class="headerlink" href="#site-definition-columns" title="Permalink to this heading">¶</a></h2>
+<dl>
+<dt><strong>Facility ID</strong></dt><dd><p>Facility of the equipment</p>
+</dd>
+<dt><strong>Unit ID</strong></dt><dd><p>Identity of the equipment</p>
+</dd>
+<dt><strong>pMalfunction</strong></dt><dd><p>Probability of malfunction of a flare</p>
+</dd>
+<dt><strong>Malfunction Duration min</strong></dt><dd><p>Minimum malfunction duration in days</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Malfunction Duration max</strong></dt><dd><p>Maximum malfunction duration in days</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Malfunction Destruction Efficiency</strong></dt><dd><p>Fraction of entered gas that gets destroyed during a malfunction</p>
+</dd>
+<dt><strong>pUnlit</strong></dt><dd><p>Probability of the flare being unlit</p>
+</dd>
+<dt><strong>Unlit Duration min</strong></dt><dd><p>Minimum duration of days the flare is unlit</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Unlit Duration max</strong></dt><dd><p>Maximum duration of days the flare is unlit</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Unlit Destruction Efficiency</strong></dt><dd><p>Fraction of entered gas that gets destroyed when the flare is unlit</p>
+</dd>
+<dt><strong>Operating Duration min</strong></dt><dd><p>Minimum days the flares is operating normally</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Operating Duration max</strong></dt><dd><p>Maximum days the flares is operating normally</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Operating Destruction Efficiency</strong></dt><dd><p>Fraction of the entered gas that gets destroyed when the flares are operating normally</p>
+</dd>
+</dl>
+</section>
+<section id="emitters">
+<h2>Emitters<a class="headerlink" href="#emitters" title="Permalink to this heading">¶</a></h2>
+<dl>
+<dt><strong>Flare Component Leak</strong></dt><dd><p>Emitter Category: COMPONENT LEAK</p>
+<p>Emission Category: FUGITIVE</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Component Leak Survey Frequency</strong></dt><dd><p>Frequency of leak surveys (ex. LDAR)</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Component Count</strong></dt><dd><p>Component counts of all the equipment that can leak</p>
+</dd>
+<dt><strong>Component pLeak</strong></dt><dd><p>Probability of leak of the number of components leaking at any time</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt><strong>Flared Gas Operating</strong></dt><dd><p>Emitter Category: FLARED VENT</p>
+<p>Emission Category: COMBUSTION</p>
+<p>Model Parameters:</p>
+</dd>
+<dt><strong>Flared Gas Malfunction</strong></dt><dd><p>Emitter Category: FLARED VENT</p>
+<p>Emission Category: COMBUSTION</p>
+<p>Model Parameters:</p>
+</dd>
+<dt><strong>Unflared Gas from Flare</strong></dt><dd><p>Emitter Category: FLARED VENT</p>
+<p>Emission Category: COMBUSTION</p>
+<p>Model Parameters:</p>
+</dd>
+</dl>
+</section>
+<section id="flare-reference">
+<h2>Flare Reference<a class="headerlink" href="#flare-reference" title="Permalink to this heading">¶</a></h2>
+<p><a class="reference internal" href="../PhysicalProcesses/Combustion.html#combustion-calculations-label"><span class="std std-ref">Combustion Process</span></a> describes the combustion process, where an incoming Vapor Fluid Flow is converted into Carbon Dioxide and some remaining fraction of the combustible gas species for each individual species.  A key parameter to this calculation is the destruction efficiency, <span class="math notranslate nohighlight">\(d_{s}\)</span>.  The site definition sheet defines separate values of this parameter for each of the operating states of the flare:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>OPERATING</strong> – <em>Operating Destruction Efficiency</em></p></li>
+<li><p><strong>MALFUNCTIONING</strong> – <em>Malfunctioning Destruction Efficiency</em></p></li>
+<li><p><strong>UNLIT</strong> – <em>Unlit Destruction Efficiency</em></p></li>
+</ul>
+</div></blockquote>
+<p>In each case, the parameter can either be a numeric value between 0 - 1, or a file name.  For the first case, the same numeric value will be applied to all the gas species defined in the incoming gas composition.  In the second case, the file name points to a file under <em>input/CuratedData/CompressorDestructionEfficiencies</em>.  The contents of this file are in the standard MEET distribution file format (see <a class="reference internal" href="../FileReference/distributionFile.html#distribution-file-label"><span class="std std-ref">MEET Distribution File Format</span></a>).  In this file, the value of the Destruction Efficiency column is applied to the correspoinding Species.  MEET recognizes a special Species tag, ALL, which means the same Destruction Efficiency value will be applied to all species of the incoming gas composition.</p>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="FFDumpService.html" class="btn btn-neutral float-right" title="Fluid Flow Dump" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="FixedSource.html" class="btn btn-neutral float-left" title="Fixed Source" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

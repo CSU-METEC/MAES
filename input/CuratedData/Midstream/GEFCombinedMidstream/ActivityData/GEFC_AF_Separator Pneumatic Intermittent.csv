@@ -1,0 +1,17 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Separator Pneumatic Intermittent
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,80
+UnitsSimmed,0
+Mean,1.5375
+Source,GEF Study SI Table D12
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0.1
+1,0.525
+2,0.225
+3,0.125
+4,0.0125
+11,0.0125

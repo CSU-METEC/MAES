@@ -1,0 +1,48 @@
+Distribution Type,Histogram
+Distribution Type,Histogram
+Use,EMISSIONS
+Units,kg_methane
+Emission Factor Type,Leaker
+Gas Type,methane
+Emission Unit,kg
+Time Basis,s
+Activity Basis,One per Dehydrator
+User Units,scfs (methane)
+Source,https://enviro.epa.gov/enviro/GHG_NAV_TOOL_V2.get_step3?table_name=EF_W_DEHYDRATORS_LARGE 
+Component,Dehydrator Still Vent
+Note1,GHGRP Reporting year 2019
+Note2,Includes only reports with no vapor recovery and vent and/or combustion emissions
+Note3,Includes only reports with wet gas CO2 content of >=0.30 molar fraction
+Data Subset,Gathering Sector with Throughput > 25.0 MMscfdú Sector with Throughput > 
+Mean Emission Rate,
+Median Emission Rate,
+Report Count,43
+Leak Probability,1
+%%%ENDOFMETADATA%%%,
+EmissionRate,Probability
+0.0001,0.153846153846154
+0.0003,0.0769230769230769
+0.0009,0.0512820512820513
+0.0017,0.0512820512820513
+0.0027,0.0512820512820513
+0.0029,0.0512820512820513
+0.0031,0.0256410256410256
+0.0037,0.0256410256410256
+0.0039,0.0256410256410256
+0.0059,0.0512820512820513
+0.0071,0.0256410256410256
+0.0073,0.0256410256410256
+0.0095,0.0256410256410256
+0.0109,0.0256410256410256
+0.0125,0.0512820512820513
+0.0137,0.0256410256410256
+0.0141,0.0256410256410256
+0.0179,0.0256410256410256
+0.0217,0.0256410256410256
+0.0267,0.0256410256410256
+0.0295,0.0256410256410256
+0.0319,0.0256410256410256
+0.0355,0.0256410256410256
+0.0483,0.0256410256410256
+0.1269,0.0256410256410256
+0.3907,0.0256410256410256

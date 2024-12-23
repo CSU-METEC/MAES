@@ -1,0 +1,17 @@
+Distribution Type,Normal
+Use,EMISSIONS
+Units,scf_wholegas
+Emission Factor Type,Leaker
+Gas Type,whole_gas
+Emission Unit,scf
+Time Basis,s
+Activity Basis,One per Compressor
+User Units,scfs (wholegas)
+Source,
+Component,
+Notes,
+Leak Probability,0.0026738
+Survey Frequency,Annual (estimated)
+%%%ENDOFMETADATA%%%,
+mu,sigma
+0,0

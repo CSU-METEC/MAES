@@ -1,0 +1,17 @@
+Distribution Type,Normal
+Use,EMISSIONS
+Units,scf_wholegas
+Emission Factor Type,Vented
+Gas Type,whole_gas
+Emission Unit,scf
+Time Basis,s
+Activity Basis,Component
+User Units,scfs (wholegas)
+Source,doi: 10.1021/acs.est.0c00516
+Component,Pneumatic Intermittent
+Notes,Assumed normal distribution with 90% CI of 0.20
+Mean of Leaking,0.003750
+Leak Probability,1
+%%%ENDOFMETADATA%%%,
+mu,sigma
+0.00375,0.00038265306122449

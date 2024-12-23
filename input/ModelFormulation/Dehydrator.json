@@ -1,0 +1,58 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETDehydrator",
+  "Readable Name":   "Glycol Dehydrator",
+
+  "Description": "Dehydrator model with flash tank and still vent column",
+  "Fluid Flows": [
+      {"Fluid": "Contactor_Flow", "secondary_id": "", "description": "Output flow from dehydrator (dry gas) to gas sales"},
+      {"Fluid": "Flash_Tank_Flow", "secondary_id": "", "description": "Output flow from dehydrator to flash tank separators"},
+      {"Fluid": "Still_Vent_Flow", "secondary_id": "", "description": "Output flow from dehydrator to still column vent (reboiler)"}
+  ],
+  "States": [
+	{"stateName": "OPERATING", "description": "Dehydrator operating normally"}
+  ],
+  "StateMachineDiagram": "graphics/OneStateSM.png",
+
+  "Reference": "reference/DehyRef.rst",
+
+  "Model Parameters": [
+	{		                                				"Python Parameter": "modelCategory",              "Parameter Type": "Constant", "Value":"Dehydrator"},
+    {		                                				"Python Parameter": "modelSubcategory",           "Parameter Type": "Constant", "Value":"Glycol"},
+    {"Model Parameter": "Facility ID",      				"Python Parameter": "facilityID",                 "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",          				"Python Parameter": "unitID",                     "Parameter Type": "Sheet"},
+    {"Model Parameter": "Glycol Type",      				"Python Parameter": "glycolType",                 "Parameter Type": "Sheet"},
+    {"Model Parameter": "Glycol Pump", 				        "Python Parameter": "glycolPump",                 "Parameter Type": "Sheet"},
+    {"Model Parameter": "Flash Tank",      	 				"Python Parameter": "flashTank",                  "Parameter Type": "Sheet"},
+    {"Model Parameter": "Operating Hours",          		"Python Parameter": "operatingHours",             "Parameter Type": "Sheet"},
+    {"Model Parameter": "Lean Glycol Circulation Ratio",    "Python Parameter": "leanGlycolCirculationRatio", "Parameter Type": "Sheet"},
+    {"Model Parameter": "Wet Gas Flow Rate",          		"Python Parameter": "wetGasFlowRate",             "Parameter Type": "Sheet"},
+    {"Model Parameter": "Wet Gas Temperature",          	"Python Parameter": "wetGasTemperature",          "Parameter Type": "Sheet"},
+    {"Model Parameter": "Wet Gas Pressure",          		"Python Parameter": "wetGasPressure",             "Parameter Type": "Sheet"},
+    {"Model Parameter": "Lean Glycol Circulation Rate",     "Python Parameter": "leanGlycolCirculationRate",  "Parameter Type": "Sheet"},
+    {"Model Parameter": "Tank Flash Controlled Flag",       "Python Parameter": "tankFlashControlledFlag",    "Parameter Type": "Sheet"},
+    {"Model Parameter": "Still Vent Controlled Flag",       "Python Parameter": "stillVentControlledFlag",    "Parameter Type": "Sheet"}
+  ],
+
+  "Emitters": [
+    {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Flash Tank Emissions", "Category": "FLASH TANK EMITTER", "Emission Category": "VENTED",
+		 "Model Parameters": [
+           {"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+           {"Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_dehy_flash_tank_{serialNo}"},
+           {"Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "flash_tank_flashes"},
+           {"Model Parameter": "Tank Flash Controlled Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+           {                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+         ]
+    },
+    {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Still Vent Emissions", "Category": "STILL VENT EMITTER", "Emission Category": "VENTED",
+		 "Model Parameters": [
+           {"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+           {"Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_dehy_still_vent_{serialNo}"},
+           {"Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "still_vent_emissions"},
+           {"Model Parameter": "Still Vent Controlled Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+           {                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+         ]
+    }
+	]
+
+}

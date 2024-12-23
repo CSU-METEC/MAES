@@ -1,0 +1,19 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETGenericStateMachine",
+  "Readable Name":   "Fixed Source",
+  
+  "Model Parameters": [
+ 	{		                                            "Python Parameter": "modelCategory",    "Parameter Type": "Constant", "Value":"Generic Source"},
+    {		                                            "Python Parameter": "modelSubcategory", "Parameter Type": "Constant", "Value":""},
+    {"Model Parameter": "Facility ID",          	    "Python Parameter": "facilityID",       "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",              	    "Python Parameter": "unitID",           "Parameter Type": "Sheet"},
+	{"Model Parameter": "Latitude",              	    "Python Parameter": "latitude",         "Parameter Type": "Sheet"},
+	{"Model Parameter": "Longitude",              	    "Python Parameter": "longitude",        "Parameter Type": "Sheet"},
+	{"Model Parameter": "State Machine File",       	"Python Parameter": "stateMachineFile", "Parameter Type": "Sheet"},
+	{"Model Parameter": "Factor Tag",                   "Python Parameter": "factorTag",        "Parameter Type": "Sheet",    "Optional":"True"}
+	  ],
+  
+  "Emitters": [
+	]
+}

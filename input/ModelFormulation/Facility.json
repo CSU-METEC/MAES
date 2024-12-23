@@ -1,0 +1,15 @@
+{
+  "Python Category": "Facility",
+  "Python Class":    "MEETFacility",
+  "Readable Name":   "Facility",
+  
+  "Model Parameters": [
+    {"Model Parameter": "Facility ID",           "Python Parameter": "facilityID",          "Parameter Type": "Sheet"},
+	{"Model Parameter": "Latitude",              "Python Parameter": "latitude",            "Parameter Type": "Sheet"},
+	{"Model Parameter": "Longitude",             "Python Parameter": "longitude",           "Parameter Type": "Sheet"},
+	
+	{"Model Parameter": "Leak Gas Composition", "Python Parameter": "productionGCFilename", "Parameter Type": "Sheet"}
+	
+	
+	]
+}

@@ -1,0 +1,19 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Wellhead Pneumatic Controller (Total)
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,125
+UnitsSimmed,0
+Source,"Allen 2015, Derived from data in SI Table S4-1 and S6-1 (RM Region)"
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0
+1,0
+2,0.378378378
+3,0.27027027
+4,0
+5,0.216216216
+6,0.027027027
+7,0.027027027
+8,0.081081081

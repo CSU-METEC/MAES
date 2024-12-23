@@ -1,0 +1,53 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETHeater",
+  "Readable Name":   "Heaters",
+  
+  "Description": "Separator with volume dependent dump valve",
+  "Fluid Flows": [
+  ],
+  "States": [
+  ],
+  "StateMachineDiagram": "",
+  
+  "Reference": "",
+  
+  "Model Parameters": [
+	{		                                                     "Python Parameter": "modelCategory",             "Parameter Type": "Constant", "Value":"Heater"},
+    {		                                                     "Python Parameter": "modelSubcategory",          "Parameter Type": "Constant", "Value":"Heater"},
+    {"Model Parameter": "Facility ID",                           "Python Parameter": "facilityID",                "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",                               "Python Parameter": "unitID",                    "Parameter Type": "Sheet"},
+	{"Model Parameter": "Heater Power",                          "Python Parameter": "heaterPowerKW",             "Parameter Type": "Sheet"},
+	{"Model Parameter": "Operating Destruction Efficiency",      "Python Parameter": "opDE",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Operating Duration min",                "Python Parameter": "opMinDays",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Operating Duration max",                "Python Parameter": "opMaxDays",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "pMalfunction",                          "Python Parameter": "pMalf",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Malfunction Duration min",              "Python Parameter": "malfMinDays",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Malfunction Duration max",              "Python Parameter": "malfMaxDays",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Malfunction Destruction Efficiency",    "Python Parameter": "malfDE",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "pShutIn",                               "Python Parameter": "pShutIn",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Shut In Duration min",                  "Python Parameter": "shutInMinDays",     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Shut In Duration max",                  "Python Parameter": "shutInMaxDays",     "Parameter Type": "Sheet"}
+	],
+  "Emitters": [
+  {"Python Category": "Emitter", "Python Class": "CombustedEmitterFF", "Readable Name": "Heater operating", "Category": "FLARED VENT", "Emission Category": "COMBUSTION",
+		  "Model Parameters": [
+		    {"Python Parameter": "fluid",                  "Parameter Type": "Constant", "Value": "Vapor"},
+			{"Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "HEATER-OPERATING"},
+			{"Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING"},
+			
+			{"Python Parameter": "emitterID",              "Parameter Type": "Constant", "Value": "OPERATING"}
+			]
+		},
+  {"Python Category": "Emitter", "Python Class": "CombustedEmitterFF", "Readable Name": "Heater malfunctioning", "Category": "FLARED VENT", "Emission Category": "COMBUSTION",
+		  "Model Parameters": [
+		    {"Python Parameter": "fluid",                  "Parameter Type": "Constant", "Value": "Vapor"},
+			{"Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "HEATER-MALFUNCTIONING"},
+			{"Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "MALFUNCTIONING"},
+			
+			{"Python Parameter": "emitterID",              "Parameter Type": "Constant", "Value": "MALFUNCTIONING"}
+			]
+		}
+  	
+	]
+}

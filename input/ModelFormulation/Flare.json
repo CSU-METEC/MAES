@@ -1,0 +1,84 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETFlare",
+  "Readable Name":   "Flare",
+  
+  "Description": "Equipment that burns waste gas.",
+  "States": [
+    {"stateName": "OPERATING", "description": "Flare is operating normally, gas is combusted at maximum efficiency."},
+	{"stateName": "MALFUNCTIONING", "description": "Flare is malfunctioning, gas is still combusted at less than maximum efficiency."},
+    {"stateName": "UNLIT", "description": "Flare is not lit, gas is vented directly to atmosphere with no combustion."}
+  ],
+  
+  "Fluid Flows": [
+    {"Fluid": "Vapor", "secondary_id": "Flare-OPERATING", "description": "Fluid Flow for vapor emitted in OPERATING state.  Uses 'Operating Destruction Efficiency' for combustion."},
+	{"Fluid": "Vapor", "secondary_id": "Flare-UNLIT", "description": "Fluid Flow for vapor emitted in UNLIT state.  Uses 'Unlit Destruction Efficiency' for combustion."},
+	{"Fluid": "Vapor", "secondary_id": "Flare-MALFUNCTIONING", "description": "Fluid Flow for vapor emitted in MALFUNCTIONING state.  Uses 'Malfunction Destruction Efficiency' for combustion."}
+  ],
+  
+  "StateMachineDiagram": "graphics/FlareStateMachine.png",
+  
+  "Reference": "reference/FlareReference.rst",
+  
+  "Model Parameters": [
+	{		"Python Parameter": "modelCategory",              "Parameter Type": "Constant", "Value":"Flare"},
+    {		"Python Parameter": "modelSubcategory",           "Parameter Type": "Constant", "Value":"State Based"},
+    {"Model Parameter": "Facility ID",                        "Python Parameter": "facilityID",         "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",                            "Python Parameter": "unitID",             "Parameter Type": "Sheet"},
+	{"Model Parameter": "pMalfunction",                       "Python Parameter": "pMalfunction",       "Parameter Type": "Sheet"},
+	{"Model Parameter": "Malfunction Duration min",           "Python Parameter": "malfDurMin",         "Parameter Type": "Sheet"},
+	{"Model Parameter": "Malfunction Duration max",           "Python Parameter": "malfDurMax",         "Parameter Type": "Sheet"},
+	{"Model Parameter": "Malfunction Destruction Efficiency", "Python Parameter": "malfDestEff",        "Parameter Type": "Sheet"},
+	{"Model Parameter": "pUnlit",                             "Python Parameter": "pUnlit",             "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unlit Duration min",                 "Python Parameter": "unlitDurMin",        "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unlit Duration max",                 "Python Parameter": "unlitDurMax",        "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unlit Destruction Efficiency",       "Python Parameter": "unlitDestEff",       "Parameter Type": "Sheet"},
+	{"Model Parameter": "Operating Duration min",             "Python Parameter": "opDurMin",           "Parameter Type": "Sheet"},
+	{"Model Parameter": "Operating Duration max",             "Python Parameter": "opDurMax",           "Parameter Type": "Sheet"},
+	{"Model Parameter": "Operating Destruction Efficiency",   "Python Parameter": "opDestEff",          "Parameter Type": "Sheet"}
+	],
+	
+  "Emitters": [
+  	  {"Python Category": "Emitter", "Python Class": "LeakProduction", "Readable Name": "Flare Component Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            {		"Python Parameter": "modelSubcategory", "Parameter Type": "Constant", "Value": "Generic Component"},
+            {"Model Parameter": "Component Leak Survey Frequency", "Python Parameter": "surveyFrequency", "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component Count", "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component pLeak", "Python Parameter": "pLeak",            "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                      "Python Parameter": "factorTag",              "Parameter Type": "Sheet",   "Optional":"True"},
+			{                                                      "Python Parameter": "emitterModelFactorTag",              "Parameter Type": "Constant", "Value": "Flare_component_leak"},
+			{"Model Parameter": "Leak GC Name", "Python Parameter": "gasComposition",   "Parameter Type": "Sheet"},
+			{                                      "Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING,MALFUNCTIONING,UNLIT"}
+			]
+		},
+	  {"Python Category": "Emitter", "Python Class": "CombustedEmitterFF", "Readable Name": "Flared Gas Operating", "Category": "FLARED VENT", "Emission Category": "COMBUSTION",
+		  "Model Parameters": [
+		    {"Python Parameter": "fluid",                  "Parameter Type": "Constant", "Value": "Vapor"},
+			{"Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "Flare-OPERATING"},
+			{"Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING"},
+			
+			{"Python Parameter": "emitterID",              "Parameter Type": "Constant", "Value": "OPERATING"}
+			]
+		},
+	
+	  {"Python Category": "Emitter", "Python Class": "CombustedEmitterFF", "Readable Name": "Flared Gas Malfunction", "Category": "FLARED VENT", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+		    {"Python Parameter": "fluid",                  "Parameter Type": "Constant", "Value": "Vapor"},
+			{"Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "Flare-MALFUNCTIONING"},
+			{"Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "MALFUNCTIONING"},
+			
+			{"Python Parameter": "emitterID",              "Parameter Type": "Constant", "Value": "MALFUNCTIONING"}
+			]
+		},
+	
+	  {"Python Category": "Emitter", "Python Class": "CombustedEmitterFF", "Readable Name": "Unflared Gas from Flare", "Category": "FLARED VENT", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+		    {"Python Parameter": "fluid",                  "Parameter Type": "Constant", "Value": "Vapor"},
+			{"Python Parameter": "secondaryID",            "Parameter Type": "Constant", "Value": "Flare-UNLIT"},
+			{"Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "UNLIT"},
+			
+			{"Python Parameter": "emitterID",              "Parameter Type": "Constant", "Value": "UNLIT"}
+			]
+		} 
+  ]
+}

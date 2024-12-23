@@ -1,0 +1,165 @@
+<mxfile host="Electron" modified="2023-09-20T18:00:35.490Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.3.7 Chrome/112.0.5615.204 Electron/24.5.0 Safari/537.36" etag="CTvwJ-Xh99ZepDCAE-rl" version="21.3.7" type="device">
+  <diagram id="6f7DFWaz7dLbCbldsHjs" name="Page-1">
+    <mxGraphModel dx="4502" dy="1755" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="F-_-tg_iYhEOHtXjkhXV-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;exitPerimeter=0;fillColor=#fff2cc;strokeColor=#FF8000;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;" parent="1" source="dUmoX2ePzVa93eRSoDTz-1" target="dUmoX2ePzVa93eRSoDTz-22" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-2650.2" y="-482" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="-2740" y="-510" />
+              <mxPoint x="-2600" y="-510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-1" value="Water Tank" style="shape=mxgraph.pid.vessels.tank;html=1;pointerEvents=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="-2765" y="-485" width="49" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-3" value="Oil Tank" style="shape=mxgraph.pid.vessels.tank;html=1;pointerEvents=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="-2770" y="-696.75" width="50" height="101.5" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#006600;strokeWidth=2;exitX=1;exitY=0.22;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" source="dUmoX2ePzVa93eRSoDTz-26" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-3080" y="-890" as="sourcePoint" />
+            <mxPoint x="-2909.794119959123" y="-929" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="-2980" y="-808" />
+              <mxPoint x="-2980" y="-929" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-6" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="-3390" y="-560" width="220" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-7" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#000099;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-3380" y="-443" as="sourcePoint" />
+            <mxPoint x="-3320" y="-443" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-8" value="" style="endArrow=classic;html=1;rounded=0;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-3380" y="-528" as="sourcePoint" />
+            <mxPoint x="-3320" y="-528" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="-3350" y="-528" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-9" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#009900;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-3380" y="-498" as="sourcePoint" />
+            <mxPoint x="-3320" y="-498" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-10" value="Water" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3310" y="-457" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-11" value="Gas to pipeline&amp;nbsp;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3310" y="-513" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-12" value="Oil" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3310" y="-543" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-13" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#660000;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-3380" y="-418" as="sourcePoint" />
+            <mxPoint x="-3320" y="-418" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-14" value="Oil, gas and water" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3310" y="-430" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-18" value="Well Plunger Lift&lt;br&gt;1 bbl/lift&lt;br&gt;39.3 MSCF/bbl&lt;br&gt;57.6 API" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="-3380" y="-828" width="120" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#990000;strokeWidth=2;startArrow=none;entryX=0;entryY=0.78;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="dUmoX2ePzVa93eRSoDTz-18" target="dUmoX2ePzVa93eRSoDTz-26" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-3170" y="-808" as="targetPoint" />
+            <mxPoint x="-3210" y="-808" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-22" value="Flare" style="verticalLabelPosition=bottom;outlineConnect=0;align=left;dashed=0;html=1;verticalAlign=top;shape=mxgraph.pid.misc.gas_flare;" parent="1" vertex="1">
+          <mxGeometry x="-2630" y="-850" width="60" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-43" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" parent="1" source="dUmoX2ePzVa93eRSoDTz-26" target="dUmoX2ePzVa93eRSoDTz-40" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-3110" y="-646" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-26" value="" style="verticalLabelPosition=bottom;outlineConnect=0;align=center;dashed=0;html=1;verticalAlign=top;shape=mxgraph.pid.misc.air_separator;" parent="1" vertex="1">
+          <mxGeometry x="-3160" y="-838" width="100" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-27" value="HP &lt;br&gt;150 psi&lt;br&gt;2 phase" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3140" y="-788" width="60" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-31" value="&lt;b&gt;Failure modes:&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left&quot;&gt;&lt;ul&gt;&lt;li&gt;&lt;span style=&quot;font-size: 11px&quot;&gt;Tank may over-pressure due stuck dump valve in separator&lt;/span&gt;&lt;/li&gt;&lt;li&gt;Flare may fail or reduce combustion efficiency&lt;/li&gt;&lt;li&gt;VRU may malfunction, go offline&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="-3390" y="-691" width="240" height="111" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-32" value="&lt;font style=&quot;font-size: 30px&quot;&gt;&lt;b&gt;Two Stage Well Pad&lt;/b&gt;&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3360" y="-1040" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-36" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3380" y="-560" width="40" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-47" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.22;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;strokeWidth=2;strokeColor=#000099;" parent="1" source="dUmoX2ePzVa93eRSoDTz-40" target="dUmoX2ePzVa93eRSoDTz-1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-50" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" parent="1" source="dUmoX2ePzVa93eRSoDTz-40" target="dUmoX2ePzVa93eRSoDTz-3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-40" value="" style="verticalLabelPosition=bottom;outlineConnect=0;align=center;dashed=0;html=1;verticalAlign=top;shape=mxgraph.pid.misc.air_separator;rotation=90;" parent="1" vertex="1">
+          <mxGeometry x="-3010" y="-720" width="100" height="148" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-35" value="LP - 30 psi&lt;br&gt;3 phase&lt;br&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3015.37" y="-661" width="110.75" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-44" value="Pipeline-150 psi" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="-2910" y="-940" width="330" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-51" value="Atmos.&lt;br&gt;Tank" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-2765" y="-660" width="40" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-55" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#FF8000;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-3380" y="-470" as="sourcePoint" />
+            <mxPoint x="-3320" y="-470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dUmoX2ePzVa93eRSoDTz-57" value="Gas to flare&amp;nbsp;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="-3310" y="-486" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="AW0oqk5Y8siRd8hsuAUR-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#FF8000;" parent="1" target="AW0oqk5Y8siRd8hsuAUR-1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-3000" y="-782" />
+              <mxPoint x="-2910" y="-782" />
+            </Array>
+            <mxPoint x="-3000" y="-700" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="F-_-tg_iYhEOHtXjkhXV-8" value="Flash: 48 scf/bbl" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;rotation=0;flipH=0;flipV=1;direction=south;" parent="1" vertex="1">
+          <mxGeometry x="-2805" y="-572" width="110" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="F-_-tg_iYhEOHtXjkhXV-9" value="Flash: 68 scf/bbl" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="-2975" y="-710" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="F-_-tg_iYhEOHtXjkhXV-10" value="Flash: 1.6 scf/bbl" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="-2795" y="-370" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="F-_-tg_iYhEOHtXjkhXV-11" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;exitPerimeter=0;fillColor=#fff2cc;strokeColor=#FF8000;strokeWidth=3;edgeStyle=orthogonalEdgeStyle;" parent="1" source="dUmoX2ePzVa93eRSoDTz-3" target="dUmoX2ePzVa93eRSoDTz-22" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-2795" y="-760" as="sourcePoint" />
+            <mxPoint x="-2620" y="-680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="AW0oqk5Y8siRd8hsuAUR-1" value="Flare" style="verticalLabelPosition=bottom;outlineConnect=0;align=left;dashed=0;html=1;verticalAlign=top;shape=mxgraph.pid.misc.gas_flare;" parent="1" vertex="1">
+          <mxGeometry x="-2935" y="-900" width="60" height="100" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

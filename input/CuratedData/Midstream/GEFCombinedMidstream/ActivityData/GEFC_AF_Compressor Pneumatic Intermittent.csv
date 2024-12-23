@@ -1,0 +1,17 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Compressor Pneumatic Intermittent
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,130
+UnitsSimmed,0
+Mean,2.5385
+Source,GEF Study SI Table D12
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0.0384615384615385
+1,0.207692307692308
+2,0.238461538461538
+3,0.261538461538462
+4,0.2
+5,0.0538461538461538

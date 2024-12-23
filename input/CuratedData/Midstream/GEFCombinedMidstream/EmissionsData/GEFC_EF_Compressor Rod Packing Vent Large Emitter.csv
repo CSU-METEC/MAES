@@ -1,0 +1,21 @@
+Distribution Type,Lognormal
+Use,EMISSIONS
+Units,scf_wholegas
+Emission Factor Type,Leaker
+Gas Type,whole_gas
+Emission Unit,scf
+Time Basis,s
+Activity Basis,One per Compressor
+User Units,scfs (wholegas)
+Source,doi: 10.1021/acs.est.0c00516 File: AvgFactor.xlsx Sheet: C Blowdown Vent
+Component,Rod Packing Vent
+Notes,
+Mean of Leaking,0.33208
+Large Emitters Detected,1
+Locations Screened,530
+Activity Count,374
+Leak Probability,0.0026738
+Survey Frequency,Annual (estimated)
+%%%ENDOFMETADATA%%%,
+mu,sigma
+-1.19814704,0.4376449

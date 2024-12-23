@@ -1,0 +1,13 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,Separator Pneumatic Controller (Intermittent)
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,73
+UnitsSimmed,0
+Source,"Allen 2015, Derived from data in SI Table S4-1 and S6-1 (GC Region)"
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,0.125
+1,0.225
+2,0.65

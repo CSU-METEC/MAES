@@ -1,0 +1,70 @@
+{
+  "Python Category": "MajorEquipment",
+  "Python Class":    "MEETDumpingSeparator",
+  "Readable Name":   "Dumping Separator",
+  
+  "Description": "Separator with volume dependent dump valve",
+  "Fluid Flows": [
+      {"Fluid": "Vapor", "secondary_id": "condensate_gas_sales", "description": "Condensate flash released to sales"},
+	  {"Fluid": "Vapor",      "secondary_id": "water_gas_sales", "description": "Water flash released to sales"},
+	  {"Fluid": "Vapor",      "secondary_id": "condensate_flash", "description": "Condensate flash released to downstream when dump valve is stuck. Usually this will be 0 but we need to establish a link to anticipate sdv"},
+	  {"Fluid": "Vapor",      "secondary_id": "water_flash", "description": "Water Flash released to downstream when dump valve is stuck. Usually this will be 0 but we need to establish a link to anticipate sdv"},
+	  {"Fluid": "Water",      "secondary_id": "primary_water", "description": "Primary Water flow to downstream equipment"},
+	  {"Fluid": "Water",      "secondary_id": "secondary_water", "description": "Remaining water to downstream equipment"},
+	  {"Fluid": "Condensate",      "secondary_id": "condensate_flow", "description": "Primary Condensate Flow"},
+	  {"Fluid": "Vapor",      "secondary_id": "gas_sales", "description": "All the gas from upstream, goes to gas sales"},
+	  {"Fluid": "Vapor",      "secondary_id": "stuck_dump_valve", "description": "All the gas from upstream if dump valve is stuck, goes to downstream"}
+  ],
+  "States": [
+	{"stateName": "FILLING", "description": "Separator is filling"},
+	{"stateName": "DUMPING", "description": "Separator is dumping after reaching a user defined dump volume"},
+	{"stateName": "STUCK_DUMP_VALVE", "description": "Separator has a stuck dump valve"}
+  ],
+  "StateMachineDiagram": "graphics/DumpSepSM.png",
+  
+  "Reference": "reference/DumpSepRef.rst",
+  
+  "Model Parameters": [
+	{		                                           "Python Parameter": "modelCategory",             "Parameter Type": "Constant", "Value":"Separator"},
+    {		                                           "Python Parameter": "modelSubcategory",          "Parameter Type": "Constant", "Value":"Dumping"},
+    {"Model Parameter": "Facility ID",                 "Python Parameter": "facilityID",                "Parameter Type": "Sheet"},
+	{"Model Parameter": "Unit ID",                     "Python Parameter": "unitID",                    "Parameter Type": "Sheet"},
+	{"Model Parameter": "Component Count",             "Python Parameter": "activityDistribution",      "Parameter Type": "Sheet"},
+	{"Model Parameter": "Dump Volume",                 "Python Parameter": "dumpVolume",                "Parameter Type": "Sheet"},
+    {"Model Parameter": "Dump Time",                   "Python Parameter": "dumpTime",                  "Parameter Type": "Sheet"},
+	{"Model Parameter": "Primary Water Takeoff Ratio", "Python Parameter": "primaryWaterRatio",         "Parameter Type": "Sheet"},
+	{"Model Parameter": "Flow GC Tag",                 "Python Parameter": "flowGCTag",                 "Parameter Type": "Sheet"},
+	{"Model Parameter": "Stuck Dump Valve Component Count",           "Python Parameter": "stuckDumpValveCC",                         "Parameter Type": "Sheet"},
+	{"Model Parameter": "Stuck Dump Valve pLeak",                     "Python Parameter": "stuckDumpValvepLeak",                      "Parameter Type": "Sheet"},
+	{"Model Parameter": "Stuck Dump Valve Failure Duration Min",      "Python Parameter": "stuckDumpValveDurMinDays",                     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Stuck Dump Valve Failure Duration Max",      "Python Parameter": "stuckDumpValveDurMaxDays",                     "Parameter Type": "Sheet"},
+	{"Model Parameter": "Fraction of Flash Released",                 "Python Parameter": "gasFractionDistFileName",                              "Parameter Type": "Sheet"},
+	{"Model Parameter": "Leak GC Name",                         "Python Parameter": "productionGC",                             "Parameter Type": "Sheet"}
+	],
+  "Emitters": [
+  	{"Python Category": "Emitter", "Python Class": "LeakProduction", "Readable Name": "Separator Component Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+		  "Model Parameters": [
+            { 									                          "Python Parameter": "modelSubcategory",        "Parameter Type": "Constant",   "Value": "Generic Component"},
+			{"Model Parameter": "Component Leak Survey Frequency",        "Python Parameter": "surveyFrequency",         "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component Count",                        "Python Parameter": "activityDistribution",    "Parameter Type": "Sheet"},
+			{"Model Parameter": "Component pLeak",                        "Python Parameter": "pLeak",                   "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                             "Python Parameter": "factorTag",               "Parameter Type": "Sheet",      "Optional":"True"},
+			{                                                             "Python Parameter": "emitterModelFactorTag",   "Parameter Type": "Constant",   "Value": "Dump_Sep_component_leak"},
+            {"Model Parameter": "Leak GC Name",                     "Python Parameter": "gasComposition",          "Parameter Type": "Sheet"},
+			{                                                             "Python Parameter": "statesActive",            "Parameter Type": "Constant",   "Value": "OPERATING,STUCK_DUMP_VALVE"}
+			]
+		},
+   {"Python Category": "Emitter", "Python Class": "PneumaticEmitterProduction", "Readable Name": "Separator Pneumatic Emissions", "Category": "PNEUMATIC EMISSION", "Emission Category": "VENTED",
+		  "Model Parameters": [
+            {                                                 "Python Parameter": "modelSubcategory",        "Parameter Type": "Constant",   "Value": "Generic Pneumatic"},
+		    {"Model Parameter": "Leak GC Name",         "Python Parameter": "gasComposition",          "Parameter Type": "Sheet"},
+			{"Model Parameter": "Factor Tag",                 "Python Parameter": "factorTag",               "Parameter Type": "Sheet",      "Optional":"True"},
+			{                                                 "Python Parameter": "emitterModelFactorTag",   "Parameter Type": "Constant",   "Value": "Dump_Sep_pneumatic"},
+			{                                                 "Python Parameter": "instanceFormat",          "Parameter Type": "Constant",   "Value": "{unitID}_{serialNo}"},
+			{                                                 "Python Parameter": "statesActive",            "Parameter Type": "Constant",   "Value": "OPERATING,STUCK_DUMP_VALVE"},
+			{"Model Parameter": "Actuator Type",     		  "Python Parameter": "instantiationVal", 	     "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant",   "Value": "Gas"}
+			]
+		}
+	]
+}

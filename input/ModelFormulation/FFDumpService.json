@@ -1,0 +1,13 @@
+{
+  "Python Category": "MEETService",
+  "Python Class":    "MEETFFDumpService",
+  "Readable Name":   "Fluid Flow Dump",
+  
+  "Description": "Dump all Fluid Flow rates at a specific time, useful for debugging.  For a timeseries of specific fluid flows, use a Probe.",
+  
+    
+  "Model Parameters": [
+    {"Model Parameter": "DumpID",    "Python Parameter": "facilityID",       "Parameter Type": "Sheet"},
+    {"Model Parameter": "Dump Time", "Python Parameter": "oneShotStartTime", "Parameter Type": "Sheet"}
+  ]
+}

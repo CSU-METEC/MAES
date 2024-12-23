@@ -1,0 +1,420 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Wellhead with cycled production &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="MEET File Reference" href="../FileReference/index.html" />
+    <link rel="prev" title="Wellhead with constant production" href="Well.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">MEET Model Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="Compressor.html">Compressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ContinuousSeparator.html">Continuous Separator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="DumpingSeparator.html">Dumping Separator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Facility.html">Facility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FixedSource.html">Fixed Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Flare.html">Flare</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FFDumpService.html">Fluid Flow Dump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FFLink.html">Fluid Flow links</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Probe.html">Fluid Flow probe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Dehydrator.html">Glycol Dehydrator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MiscCompressorStati.html">Misc Equipment On Compressor Station</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MiscWellpad.html">Misc Equipment On Wellpad</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TankBattery.html">Tank Battery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Well.html">Wellhead with constant production</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Wellhead with cycled production</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#emitters">Emitters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#cycled-production-wells-reference">Cycled Production Wells Reference</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">MEET Model Reference</a> &raquo;</li>
+        
+      <li>Wellhead with cycled production</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/ModelReference/CycledWell.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="wellhead-with-cycled-production">
+<h1>Wellhead with cycled production<a class="headerlink" href="#wellhead-with-cycled-production" title="Permalink to this heading">¶</a></h1>
+<p>Model Filename: CycledWell.json</p>
+<p>Well that cycles between PRODUCTION and SHUT-IN</p>
+<section id="states">
+<h2>States<a class="headerlink" href="#states" title="Permalink to this heading">¶</a></h2>
+<dl class="simple">
+<dt>PRODUCTION</dt><dd><p>Well is in steady production</p>
+</dd>
+<dt>SHUT_IN</dt><dd><p>Well is shut down</p>
+</dd>
+<dt>PLANNED</dt><dd><p>Planning stages for wellhead</p>
+</dd>
+<dt>DRILLING</dt><dd><p>Drilling specific wellhead</p>
+</dd>
+<dt>COMPLETION</dt><dd><p>Well drilling is completed</p>
+</dd>
+<dt>FLOW_BACK</dt><dd><p>Well is in flowback stages</p>
+</dd>
+<dt>MANUAL_UNLOADING</dt><dd><p>Manual unloading for wells</p>
+</dd>
+<dt>AUTOMATIC_UNLOADING</dt><dd><p>Automatic unloading for wells</p>
+</dd>
+<dt>LU_SHUT_IN</dt><dd><p>Shut in for unloading</p>
+</dd>
+</dl>
+<img alt="../_images/FullWell.png" src="../_images/FullWell.png" />
+</section>
+<section id="fluid-flows">
+<h2>Fluid Flows<a class="headerlink" href="#fluid-flows" title="Permalink to this heading">¶</a></h2>
+<dl class="simple">
+<dt>Condensate</dt><dd><p>Primary Condensate flow</p>
+</dd>
+<dt>Water</dt><dd><p>Primary Water flow</p>
+</dd>
+</dl>
+</section>
+<section id="site-definition-columns">
+<h2>Site Definition Columns<a class="headerlink" href="#site-definition-columns" title="Permalink to this heading">¶</a></h2>
+<dl>
+<dt><strong>Facility ID</strong></dt><dd><p>Facility of the equipment</p>
+</dd>
+<dt><strong>Unit ID</strong></dt><dd><p>Identity of the equipment</p>
+</dd>
+<dt><strong>Latitude</strong></dt><dd><p>Latitude of the physical location of the facility / wellpad</p>
+</dd>
+<dt><strong>Longitude</strong></dt><dd><p>Longitide of the physical location of the facility / wellpad</p>
+</dd>
+<dt><strong>Oil Production</strong></dt><dd><p>Rate of oil production per day from a well</p>
+<p><em>Units:</em> bbl/day</p>
+</dd>
+<dt><strong>Water Production</strong></dt><dd><p>Rate of water produced per day from a well</p>
+</dd>
+<dt><strong>Total Liquids Produced</strong></dt><dd><p>Specifies the total amount of liquids that are dumped in cycled production wells. Skip this parameter in case of continuous production</p>
+<p><em>Units:</em> bbl/dump</p>
+</dd>
+<dt><strong>Mean Production Time</strong></dt><dd><p>The duration a cycled well is dumping before it shuts in. Skip this parameter for continuous production</p>
+<p><em>Units:</em> s</p>
+</dd>
+<dt><strong>Production Time Variation</strong></dt><dd><p>Specifies the uncertainty in time around ‘Mean Production Time [s]’. Skip this parameter for continuous production</p>
+<p><em>Units:</em> s</p>
+</dd>
+<dt><strong>Optional Unloading</strong></dt><dd><p>A Boolean variable [True/False] that specifies if we want to simulate well-unloading. Defaulted to False. Setting this parameter to False will nullify all the unloading parameters, i.e. ‘Min Time Between Unloadings’, ‘Max Time Between Unloadings’, ‘Unloading Type’, ‘Weekdays Only’, ‘LU Shut-In Duration Mim’, ‘LU Shut-In Duration Max’, ‘Unloading Duration Min’, ‘Unloading Duration Max’ and ‘Destination of Unloading Gas’.</p>
+<p><em>Units:</em> True/False</p>
+</dd>
+<dt><strong>Min Time Between Unloadings</strong></dt><dd><p>Minimum time in days between unloadings.</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Max Time Between Unloadings</strong></dt><dd><p>Maximum time in days between unloadings. The simulation will pick a uniformly distributed random value between min and max.</p>
+</dd>
+<dt><strong>Completion Durations Name</strong></dt><dd><p>A curated data file that specifies the distribution of well completion durations</p>
+</dd>
+<dt><strong>Approx Delay After Completion</strong></dt><dd><p>Approximated buffer time after well completion in days. The simulation will pick a random value uniformly distributed within a 20% window around the time specified.</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Unloading Type</strong></dt><dd><p>Specifies whether the unloadings are automatic or manual. This parameter should only be specified if ‘Optional Unloading’ is ‘True’. The parameter is defaulted to ‘Manual’ when we chose not to specify.</p>
+<p><em>Units:</em> Automatic/Manual</p>
+</dd>
+<dt><strong>Weekdays Only</strong></dt><dd><p>Specifies whether the unloadings are happening on weekends or weekdays. True for weekdays only, False for weekends</p>
+<p><em>Units:</em> True/False</p>
+</dd>
+<dt><strong>LU Shut-In Duration Min</strong></dt><dd><p>Minimum liquid-unloading shut in duration in hours</p>
+<p><em>Units:</em> hours</p>
+</dd>
+<dt><strong>LU Shut-In Duration Max</strong></dt><dd><p>Maximum liquid-unloading shut in duration in hours</p>
+<p><em>Units:</em> hours</p>
+</dd>
+<dt><strong>Unloading Duration Min</strong></dt><dd><p>Minimum unloading duration in hours</p>
+<p><em>Units:</em> hours</p>
+</dd>
+<dt><strong>Unloading Duration Max</strong></dt><dd><p>Maximum unloading duration in hours</p>
+<p><em>Units:</em> hours</p>
+</dd>
+<dt><strong>Shut In Time Variation</strong></dt><dd><p>Percentage of uncertainty in time around the Shut-In duration. The shut-in duration is not specified but calculated as a function of total liquids produced per dump, total liquids produced per day and the mean production time. Skip this parameter for continuous production</p>
+<p><em>Units:</em> percent</p>
+</dd>
+<dt><strong>Destination of Unloading Gas</strong></dt><dd><p>Destination (unitID) of gas that is released during unloading (not implemented)</p>
+</dd>
+<dt><strong>Approx Planning Time</strong></dt><dd><p>Approximate duration for planning</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Approx Delay After Planning</strong></dt><dd><p>Approximate duration of the buffer time after planning and before drilling</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Approx Drilling Time</strong></dt><dd><p>Approximate duration for drilling</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Approx Delay After Drilling</strong></dt><dd><p>Approximate duration of the buffer between drilling and flow-back stage</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Approx Flow Back Time</strong></dt><dd><p>Approximate Flow back duration</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Approx Delay After Flow Back</strong></dt><dd><p>Approximate buffer time after flowback and before production starts.</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Simulation Start Stage</strong></dt><dd><p>Specifies the initial state of the simulation. Default value is Production. Setting this parameter to Production will keep the simulation in the production stage for all of simulation duration. We do not need to specify the preproduction columns (‘Completion Durations Name’, ‘Approx Delay After Completion [days]’, ‘Approx Planning Time [days]’, ‘Approx Delay After Planning [days]’, ‘Approx Delay After Planning [days]’, ‘Approx Delay After Planning [days]’, ‘Approx Delay After Drilling [days]’, ‘Approx Flow Back Time [days]’, ‘Approx Delay After Flow Back [days]’) in this case. Setting it to PreProduction, the simulation will start at Planning state and follow from there. All the approx. values are uniform random variables with a +- 20% window from the specified time</p>
+<p><em>Units:</em> PreProduction, Production</p>
+</dd>
+<dt><strong>Flow Tag</strong></dt><dd><p>Specifies an identity to match it with the correct gas composition in the gas composition file</p>
+</dd>
+<dt><strong>Flow Gas Composition</strong></dt><dd><p>The gas compositions file associated with the well</p>
+</dd>
+</dl>
+</section>
+<section id="emitters">
+<h2>Emitters<a class="headerlink" href="#emitters" title="Permalink to this heading">¶</a></h2>
+<dl>
+<dt><strong>Completion</strong></dt><dd><p>Emitter Category: COMPLETION</p>
+<p>Emission Category: VENTED</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl class="simple">
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt><strong>Wellhead Component Leak</strong></dt><dd><p>Emitter Category: COMPONENT LEAK</p>
+<p>Emission Category: FUGITIVE</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Component Leak Survey Frequency</strong></dt><dd><p>Frequency of leak surveys (ex. LDAR)</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Component Count</strong></dt><dd><p>Component counts of all the equipment that can leak</p>
+</dd>
+<dt><strong>Component pLeak</strong></dt><dd><p>Probability of leak of the number of components leaking at any time</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt><strong>Wellhead Pneumatic Emissions</strong></dt><dd><p>Emitter Category: PNEUMATIC EMISSION</p>
+<p>Emission Category: VENTED</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Actuator Type</strong></dt><dd><p>Actuator type of pneumatics on the facility</p>
+<p><em>Units:</em> Gas, Air, Electric</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+</dl>
+<section id="cycled-production-wells-reference">
+<h3>Cycled Production Wells Reference<a class="headerlink" href="#cycled-production-wells-reference" title="Permalink to this heading">¶</a></h3>
+<p>Cycled Production wells cycle between production and shut in
+see <a class="reference internal" href="../PhysicalProcesses/WellsReference.html#full-well-label"><span class="std std-ref">Consolidated well model</span></a></p>
+</section>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../FileReference/index.html" class="btn btn-neutral float-right" title="MEET File Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Well.html" class="btn btn-neutral float-left" title="Wellhead with constant production" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

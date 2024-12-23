@@ -1,0 +1,10 @@
+Field,Value
+Distribution Type,GasComposition
+Use,EMISSIONS
+Gas Type,whole_gas
+TimeBasis,s
+Source,REFPROP - density in kg/ft3 for pure methane at 70F and 1atm
+Notes,Assumes whole gas is 100% methane
+%%%ENDOFMETADATA%%%,
+Species,kg/kg_methane
+METHANE,1

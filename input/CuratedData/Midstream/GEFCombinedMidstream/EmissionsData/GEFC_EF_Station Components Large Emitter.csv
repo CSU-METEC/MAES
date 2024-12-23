@@ -1,0 +1,21 @@
+Distribution Type,Triangular
+Use,EMISSIONS
+Units,scf_wholegas
+Emission Factor Type,Leaker
+Gas Type,whole_gas
+Emission Unit,scf
+Time Basis,s
+Activity Basis,One per Station
+User Units,scfs (wholegas)
+Source,doi: 10.1021/acs.est.0c00516 File: AvgFactor.xlsx Sheet: C Blowdown Vent
+Component,Components
+Notes,
+Mean of Leaking,600
+Large Emitters Detected,2
+Locations Screened,135
+Activity Count,176
+Leak Probability,0.011364
+Survey Frequency,Annual (estimated)
+%%%ENDOFMETADATA%%%,
+A,B,C
+480,600,720

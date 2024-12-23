@@ -1,0 +1,15 @@
+{
+  "inputDir":      "input",
+  "modelTemplate": "{inputDir}/ModelFormulation/{modelID}",
+
+  "docDir":        "Documentation/06Reference/",
+  "ddRootTmpl":    "{docDir}/DataDictionary.tex",
+  "modelTmpl":     "{docDir}/Generated/{modelName}_DD.tex",
+  "importTmpl":    "{modelName}.tex",
+
+  "dynGenDir":     "DynamicClasses/ClassDocs",
+  "dynGenTmpl":    "{dynGenDir}/{className}.md",
+
+  "sphynxDir":     ".",
+  "sphinxModelTmpl": "{sphynxDir}/docs/source/ModelReference/{baseFile}.rst"
+}

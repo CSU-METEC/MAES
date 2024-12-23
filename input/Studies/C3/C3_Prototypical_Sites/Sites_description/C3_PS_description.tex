@@ -1,0 +1,109 @@
+\documentclass[11pt]{article}
+\usepackage{graphicx} 
+\usepackage[export]{adjustbox}
+\usepackage{float}
+\usepackage{amsmath,tabu}
+\graphicspath{{Images/}} 
+\input {WMAcronym.tex}
+
+\title{C3 prototypical Sites description}
+\author{}
+\date{}
+ 
+\begin{document}
+\maketitle
+\section{P1\_1stage\_noflare}
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=1\textwidth, frame]{P1_1stage_noflare.png}
+		\caption{Prototypical Site 1 diagram}
+		\label{fig:ps1}
+	\end{figure}
+	
+A wellpad with a single stage of separation. 
+Mixture from the wells go to the first stage of separation where it is separated into gas, oil and water. 
+Gas goes to the pipeline, water and oil is drained to the water and oil storage tank respectively. 
+The storage tanks are uncontrolled (no flare).
+
+The site has 3 cycling wells, 1 separator, 1 water storage tank and 2 oil storage tanks.
+
+\section{P2\_2stage\_flare}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth, frame]{P2_2stage_flare.png}
+	\caption{Prototypical Site 2 diagram}
+	\label{fig:ps2}
+\end{figure}
+A wellpad with two stages of separation.
+Mixture from the well go to the first stage of separation where it is separated into gas, water and oil.
+The gas goes to the gas pipeline, some water and oil are drained to the next stage of separation and some water is drained to the water storage tank.
+In the second stage of separation, the mixture in the separator is separated into gas, oil, and water, the gas goes to the storage tanks, water and oil are drained to the water and oil storage tanks respectively.
+The oil tank is controlled by  flare.
+
+The site has 1 cycling well, 1 \ac{hp} separator, 1\ac{lp} separator, 1 water storage tank, 1 oil storage tank and 1 flare.
+
+\section{P3\_2stage\_VRU}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth, frame]{P3_2stage_VRU.png}
+	\caption{Prototypical Site 3 diagram}
+	\label{fig:ps3}
+\end{figure}
+A wellpad with two stages of separation.
+Mixture from the well go to the first stage of separation where it is separated into gas, water and oil.
+The gas goes to the gas pipeline, some water and oil are drained to the next stage of separation and some water is drained to the water storage tank.
+In the second stage of separation, the mixture in the separator is separated into gas, oil, and water, the gas goes to the is compressed to gas pipeline pressure by a \ac{vru} and is sent to the gas pipeline while the water and oil are drained to the water and oil storage tanks respectively.
+Both oil and water storage tanks are controlled by  flare.
+
+This site has 8 cycling wells, 8 \ac{hp} separator, 8\ac{lp} separators, 2 water storage tanks, 17 oil storage tanks, 8 \acp{vru} and 2 flares.
+
+\section{P4\_2stage\_Water}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth, frame]{P4_2stage_Water.png}
+	\caption{Prototypical Site 4 diagram}
+	\label{fig:ps4}
+\end{figure}
+A wellpad with two stages of separation.
+Mixture from the well go to the first stage of separation where it is separated into gas, water and oil.
+The gas goes to the gas pipeline, some water and oil are drained to the next stage of separation and some water is drained to the water storage tank.
+In the second stage of separation, the mixture in the separator is separated into gas, oil, and water, the gas goes to the tanks while the water is drained to the  water storage tanks and the oil goes to the oil pipeline.
+The water storage tank is controlled by  flare.
+
+The site has 21 continuous wells, 21 \ac{hp} separators, 5 \ac{lp} separators, 9 water storage tanks and 1 flare.
+
+\section{P5\_3stage\_nogaslift}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth, frame]{P5_3stage_nogaslift.png}
+	\caption{Prototypical Site 5 diagram}
+	\label{fig:ps5}
+\end{figure}
+
+A wellpad with three stages of separation.
+Mixture from the well go to the first stage of separation where it is separated into gas, water and oil.
+The gas goes to the gas pipeline, some water and oil are drained to the next stage of separation and some water is drained to the water storage tank.
+In the second stage of separation, the mixture in the separator is separated into gas, oil, and water, the gas goes to the gas pipeline while the water is drained to the  water storage tanks and the oil goes to the \ac{vrt}.
+In the \ac{vrt} the oil is separated into gas and oil, the gas goes to a \ac{vru} where is compressed to gas pipeline pressure and sent to the pipeline and oil goes to oil storage tank.
+Both the water and  oil storage tanks are controlled by a flare.
+
+The site has 29 continuous wells, 29 \ac{hp}separators, 29 ac{lp} separators, 4 \acp{vrt}, 2 \acp{vru}, 8 water storage tanks, 9 oil storage tanks and 2 flares.
+
+\section{P6\_3stage\_gaslift}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth, frame]{P6_3stage_gaslift.png}
+	\caption{Prototypical Site 6 diagram}
+	\label{fig:ps6}
+\end{figure}
+
+A wellpad with three stages of separation.
+Mixture from the well go to the first stage of separation where it is separated into gas, water and oil.
+The gas goes to the gas pipeline, some water and oil are drained to the next stage of separation and some water is drained to the water storage tank.
+In the second stage of separation, the mixture in the separator is separated into gas, oil, and water, the gas goes to the gas pipeline while the water is drained to the  water storage tanks and the oil goes to the \ac{vrt}.
+In the \ac{vrt} the oil is separated into gas and oil, the gas goes to a \ac{vru} where is compressed to gas pipeline pressure and sent to the pipeline and oil goes to oil storage tank.
+Both the water and  oil storage tanks are controlled by a flare.
+
+The site has 23 continuous wells, 23 \ac{hp}separators, 23 ac{lp} separators, 2 \acp{vrt}, 2 \acp{vru}, 5 water storage tanks, 8 oil storage, 2 flares, 1 gas lift compressor.
+
+\end{document}

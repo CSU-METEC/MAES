@@ -1,0 +1,377 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Misc Equipment On Compressor Station &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Misc Equipment On Wellpad" href="MiscWellpad.html" />
+    <link rel="prev" title="Glycol Dehydrator" href="Dehydrator.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">MEET Model Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="Compressor.html">Compressor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ContinuousSeparator.html">Continuous Separator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="DumpingSeparator.html">Dumping Separator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Facility.html">Facility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FixedSource.html">Fixed Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Flare.html">Flare</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FFDumpService.html">Fluid Flow Dump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FFLink.html">Fluid Flow links</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Probe.html">Fluid Flow probe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Dehydrator.html">Glycol Dehydrator</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Misc Equipment On Compressor Station</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#emitters">Emitters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#misc-compressor-station-reference">Misc Compressor Station Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="MiscWellpad.html">Misc Equipment On Wellpad</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TankBattery.html">Tank Battery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Well.html">Wellhead with constant production</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CycledWell.html">Wellhead with cycled production</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">MEET Model Reference</a> &raquo;</li>
+        
+      <li>Misc Equipment On Compressor Station</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/ModelReference/MiscCompressorStati.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="misc-equipment-on-compressor-station">
+<h1>Misc Equipment On Compressor Station<a class="headerlink" href="#misc-equipment-on-compressor-station" title="Permalink to this heading">¶</a></h1>
+<p>Model Filename: MiscCompressorStation.json</p>
+<p>Misc equipment on a compressor stations</p>
+<section id="states">
+<h2>States<a class="headerlink" href="#states" title="Permalink to this heading">¶</a></h2>
+<dl class="simple">
+<dt>OPERATING</dt><dd><p>Misc equipment are operating based on input parameters</p>
+</dd>
+</dl>
+<img alt="../_images/OneStateSM.png" src="../_images/OneStateSM.png" />
+</section>
+<section id="fluid-flows">
+<h2>Fluid Flows<a class="headerlink" href="#fluid-flows" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="site-definition-columns">
+<h2>Site Definition Columns<a class="headerlink" href="#site-definition-columns" title="Permalink to this heading">¶</a></h2>
+<dl class="simple">
+<dt><strong>Facility ID</strong></dt><dd><p>Facility of the equipment</p>
+</dd>
+<dt><strong>Unit ID</strong></dt><dd><p>Identity of the equipment</p>
+</dd>
+<dt><strong>Component Count</strong></dt><dd><p>Component counts of all the equipment that can leak</p>
+</dd>
+</dl>
+</section>
+<section id="emitters">
+<h2>Emitters<a class="headerlink" href="#emitters" title="Permalink to this heading">¶</a></h2>
+<dl>
+<dt><strong>Leaks On Other Equipment On Compressor Station</strong></dt><dd><p>Emitter Category: COMPONENT LEAK</p>
+<p>Emission Category: FUGITIVE</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Component Count</strong></dt><dd><p>Component counts of all the equipment that can leak</p>
+</dd>
+<dt><strong>Component pLeak</strong></dt><dd><p>Probability of leak of the number of components leaking at any time</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Component Leak Survey Frequency</strong></dt><dd><p>Frequency of leak surveys (ex. LDAR)</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt><strong>Misc Pneumatic Emissions On Compressor Station</strong></dt><dd><p>Emitter Category: PNEUMATIC EMISSION</p>
+<p>Emission Category: VENTED</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Actuator Type</strong></dt><dd><p>Actuator type of pneumatics on the facility</p>
+<p><em>Units:</em> Gas, Air, Electric</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt><strong>Compressor Station Common Vent Leak</strong></dt><dd><p>Emitter Category: COMPONENT LEAK</p>
+<p>Emission Category: FUGITIVE</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Common Facility Vent Component Count</strong></dt><dd><p>Number of common vents</p>
+</dd>
+<dt><strong>Common Facility Vent pLeak</strong></dt><dd><p>Probability of leak on common facility vents</p>
+</dd>
+<dt><strong>Common Facility Vent MTTR Min</strong></dt><dd><p>Minimum days of MTTR on a common vent</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Common Facility Vent MTTR Max</strong></dt><dd><p>Maximum days of MTTR on a common vent</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+<dt><strong>Facility Common Vent</strong></dt><dd><p>A switch to turn on/off common vent emitters on misc equipment</p>
+<p><em>Units:</em> TRUE/FALSE</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt><strong>Compressor Station Common Vent Large Emitter</strong></dt><dd><p>Emitter Category: COMPONENT LEAK</p>
+<p>Emission Category: FUGITIVE</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Facility Vent (Large Emitter) pLeak</strong></dt><dd><p>Probability of leak of large emitters on common vents. Facility Common Vent must be TRUE</p>
+</dd>
+<dt><strong>Facility Vent (Large Emitter) MTTR Min</strong></dt><dd><p>Minimum time to repair a common vent large emitter. Facility Common Vent must be TRUE</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Facility Vent (Large Emitter) MTTR Max</strong></dt><dd><p>Maximum time to repair a common vent large emitter. Facility Common Vent must be TRUE</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+<dt><strong>Facility Common Vent</strong></dt><dd><p>A switch to turn on/off common vent emitters on misc equipment</p>
+<p><em>Units:</em> TRUE/FALSE</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt><strong>Compressor Station Components Large Emitter</strong></dt><dd><p>Emitter Category: COMPONENT LEAK</p>
+<p>Emission Category: FUGITIVE</p>
+<p>Model Parameters:</p>
+<blockquote>
+<div><dl>
+<dt><strong>Facility Components (Large Emitter) pLeak</strong></dt><dd><p>Probability of leak of large emitters on facility components</p>
+</dd>
+<dt><strong>Facility Components (Large Emitter) MTTR Min</strong></dt><dd><p>Minimum days of MTTR of facility components emitters</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Facility Components (Large Emitter) MTTR Max</strong></dt><dd><p>Maximum days of MTTR of facility components emitters</p>
+<p><em>Units:</em> days</p>
+</dd>
+<dt><strong>Factor Tag</strong></dt><dd><p>A parameter to identify a set of activity and emission factors in Factors.csv file</p>
+</dd>
+<dt><strong>Leak GC Name</strong></dt><dd><p>Gas composition pointer for leaks based on pLeak, MTTR, MTBF</p>
+</dd>
+<dt><strong>Facility Components Large Emitter</strong></dt><dd><p>A switch to turn on/off large emitters on misc equipment</p>
+<p><em>Units:</em> TRUE/FALSE</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+</dl>
+</section>
+<section id="misc-compressor-station-reference">
+<h2>Misc Compressor Station Reference<a class="headerlink" href="#misc-compressor-station-reference" title="Permalink to this heading">¶</a></h2>
+<p>Misc Compressor Station contains emissions from misc equipment at Compressor stations</p>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="MiscWellpad.html" class="btn btn-neutral float-right" title="Misc Equipment On Wellpad" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Dehydrator.html" class="btn btn-neutral float-left" title="Glycol Dehydrator" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

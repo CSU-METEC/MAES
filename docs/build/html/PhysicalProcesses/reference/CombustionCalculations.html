@@ -1,0 +1,255 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Inputs &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../ModelReference/index.html">MEET Model Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+      <li>Inputs</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/PhysicalProcesses/reference/CombustionCalculations.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="inputs">
+<h1>Inputs<a class="headerlink" href="#inputs" title="Permalink to this heading">¶</a></h1>
+<p><span class="math notranslate nohighlight">\(N\)</span> - Number of gas species.</p>
+<p><span class="math notranslate nohighlight">\(g_{s}\)</span> - Fuel gas mass fraction for species <span class="math notranslate nohighlight">\(s\)</span>, as a mass
+ratio, <span class="math notranslate nohighlight">\(\frac{kg}{kg}\)</span></p>
+<p><span class="math notranslate nohighlight">\(\gamma_{s}\)</span> - Fuel gas mass fraction for species <span class="math notranslate nohighlight">\(s\)</span>, in
+driver units, <span class="math notranslate nohighlight">\(\frac{kg}{&lt; driver &gt;}\)</span></p>
+<p><span class="math notranslate nohighlight">\(d_{s}\)</span> - Destruction efficiency for gas species <span class="math notranslate nohighlight">\(s\)</span> during
+the combustion process, <span class="math notranslate nohighlight">\(\frac{kg}{kg}\)</span></p>
+<p><span class="math notranslate nohighlight">\(c_{s}\)</span> - Mass of CO<sub>2</sub> emitted for complete combustion of
+gas species <span class="math notranslate nohighlight">\(s\)</span> during the combustion process,
+<span class="math notranslate nohighlight">\(\frac{kg}{kg}\)</span></p>
+<p><span class="math notranslate nohighlight">\(\dot{B}\)</span> - Driver value, in driver units of
+<span class="math notranslate nohighlight">\(\frac{&lt; driver &gt;}{s}\)</span>, such as <span class="math notranslate nohighlight">\(\frac{bbl}{s}\)</span> or
+<span class="math notranslate nohighlight">\(kW\)</span> which is <span class="math notranslate nohighlight">\(\frac{kJ}{s}\)</span></p>
+<p>Note that</p>
+<div class="math notranslate nohighlight">
+\[\sum_{s = 1}^{N}g_{s} = 1\]</div>
+</section>
+<section id="gas-combustion-calculations">
+<h1>Gas Combustion Calculations<a class="headerlink" href="#gas-combustion-calculations" title="Permalink to this heading">¶</a></h1>
+<p>Gas sent to combustion is given by a driver value, <span class="math notranslate nohighlight">\(\dot{B}\)</span>, in
+driver units (e.g. <span class="math notranslate nohighlight">\(\frac{bbl}{s}\)</span>). The gas composition file
+translates this driver into the mass flow of the gas stream:</p>
+<div class="math notranslate nohighlight">
+\[{\dot{m}}_{s} = \gamma_{s}\dot{B}\]</div>
+<p>with units of <span class="math notranslate nohighlight">\(\frac{kg}{s}\)</span>.</p>
+<p>In this gas flow the fraction <span class="math notranslate nohighlight">\(d_{s}\)</span>, the species-specific
+destruction efficiency, is converted to <em>CO2</em> and <span class="math notranslate nohighlight">\((1 - d_{s})\)</span>
+is released in the exhaust of the combustion process, commonly known as
+<em>combustion slip</em>. The emission rate by gas species is:</p>
+<div class="math notranslate nohighlight">
+\[E_{s} = \left( 1 - d_{s} \right){\dot{m}}_{s}\ \ \ \ \ \ \ \ s = 1\ldots N,\ s \neq CO_{2}\]</div>
+<div class="math notranslate nohighlight">
+\[E_{CO_{2}} = {\dot{m}}_{CO_{2}} + \sum_{s = 1}^{N}{\dot{m}}_{s}c_{s}d_{s}\ \ \ \ \ \ \ \ s = 1\ldots N,\ s \neq CO_{2}\]</div>
+<p>with units of <span class="math notranslate nohighlight">\(\frac{kg}{s}\)</span>. The above calculation must be
+converted back to a new gas composition line for output by MEET,
+<span class="math notranslate nohighlight">\(\gamma_{s}^{*}\)</span>, with a driver of <span class="math notranslate nohighlight">\(\dot{B}\)</span>. Substituting
+the earlier equation for <span class="math notranslate nohighlight">\({\dot{m}}_{s}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[E_{s} = \left( 1 - d_{s} \right)\gamma_{s}\dot{B}\ \ \ \ \ \ \ s = 1\ldots N,\ s \neq CO_{2}\]</div>
+<div class="math notranslate nohighlight">
+\[E_{CO_{2}} = \left\lbrack \gamma_{CO_{2}} + \sum_{s = 1}^{N}\gamma_{s}c_{s}d_{s} \right\rbrack\dot{B}\ \ \ \ \ \ \ \ s = 1\ldots N,\ s \neq CO_{2}\]</div>
+<p>This produces a new mass emission unit <span class="math notranslate nohighlight">\(E_{s}\)</span> for all species. To
+compute a new gas composition, this needs to be normalized by dividing
+through by <span class="math notranslate nohighlight">\(B\ \dot{}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\gamma_{s}^{*} = \frac{E_{s}}{\dot{B}}\]</div>
+<p>The new gas composition is:</p>
+<div class="math notranslate nohighlight">
+\[\gamma_{s}^{*} = \left( 1 - d_{s} \right)\gamma_{s}\ \ \ \ \ \ \ \ s = 1\ldots N,\ s \neq CO_{2}\]</div>
+<div class="math notranslate nohighlight">
+\[\gamma_{CO_{2}}^{*} = \gamma_{CO_{2}} + \sum_{s = 1}^{N}\gamma_{s}c_{s}d_{s}\ \ \ \ \ \ \ \ s = 1\ldots N,\ s \neq CO_{2}\]</div>
+<p>with units of <span class="math notranslate nohighlight">\(\frac{kg}{&lt; driver &gt;}\)</span></p>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

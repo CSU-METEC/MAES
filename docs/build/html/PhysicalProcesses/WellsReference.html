@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Consolidated well model &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Combustion Process" href="Combustion.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../ModelReference/index.html">MEET Model Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Physical Process Models in MEET</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="Leaks.html">Leaks Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Combustion.html">Combustion</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Full Well Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#preproduction">PreProduction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#production">Production</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setups-for-well-model">Setups for Well Model</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Physical Process Models in MEET</a> &raquo;</li>
+        
+      <li>Consolidated well model</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/PhysicalProcesses/WellsReference.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="consolidated-well-model">
+<span id="full-well-label"></span><h1>Consolidated well model<a class="headerlink" href="#consolidated-well-model" title="Permalink to this heading">¶</a></h1>
+<img alt="../_images/WellStateMachine.png" src="../_images/WellStateMachine.png" />
+<p>It is possible to start with one of the two starting points:
+PreProduction and Production.</p>
+<section id="preproduction">
+<h2>PreProduction<a class="headerlink" href="#preproduction" title="Permalink to this heading">¶</a></h2>
+<p>The preproduction states are set to arbitrary time frames that indicate
+the wells going to preproduction stages. Each well-head has independent
+state times rather than clustering them into a single well pad. The user
+has the option to chose if they want to start a well sim with
+preproduction stage and put in approximate amount of times in the
+respective columns. The code picks a random time, uniformly distributed,
+within a 20 percent window from that approximate time. Each stage
+happens over a defined duration, followed by a delay – days to weeks –
+before the next stage happens.</p>
+<p>Each well head in a well pad goes through the same operation (state) in
+a quick succession. This kind of clustering behavior is not modeled now
+and we only need to put in state times and delays in the study sheet for
+each well. This way, the analyst can cluster activities in a
+representative fashion.</p>
+</section>
+<section id="production">
+<h2>Production<a class="headerlink" href="#production" title="Permalink to this heading">¶</a></h2>
+<p>Production can be either Continuous production or Cycled production
+depending on the model ID. We specify the unloading and unloading
+shut-in time in the input sheets so the code knows when to change
+states. Continuous production wells are always in the production state
+before going to shut-in for unloading and unloading itself. They start
+producing again after unloading and continue the cycle.</p>
+<p>Cycled production wells cycle between production and shut-in for some
+time and then go to shut-in for unloading and unloading. We approximate
+the shut-in time in cycling wells using total liquids produced per dump
+and mean production time. The user can specify variations in the
+production time and shut-in time. We approximate the shut in time for
+cycled wells as follows:</p>
+<ol class="arabic simple">
+<li><p><span class="math notranslate nohighlight">\(W_d=\)</span> Water Production rate, bbl/day</p></li>
+<li><p><span class="math notranslate nohighlight">\(O_d=\)</span> Oil Production Rate, bbl/day</p></li>
+<li><p><span class="math notranslate nohighlight">\(T_x=\)</span> Total Liquids Produced per dump, bbl/dump</p></li>
+<li><p><span class="math notranslate nohighlight">\(P_x=\)</span> Mean production time, s</p></li>
+<li><p><span class="math notranslate nohighlight">\(\Delta P_x=\)</span> Assumed variation in production time, s</p></li>
+<li><p><span class="math notranslate nohighlight">\(f_s=\)</span> assumed fractional variation in the shut-in time,
+fraction on [0 1)</p></li>
+</ol>
+<div class="line-block">
+<div class="line">From field observations, we assume the analyst can estimate the total
+liquids that are lifted per cycle, <span class="math notranslate nohighlight">\(T_x\)</span>, in bbl/dump or lift.
+From conversation with partners, <span class="math notranslate nohighlight">\(T_x\approx 1\)</span> bbl/dump.</div>
+<div class="line">The production model is that the well is cycles over a mean period of
+<span class="math notranslate nohighlight">\(C_x\)</span>, part of which is the shut-in time, <span class="math notranslate nohighlight">\(S_x\)</span>, part of
+which is the production time, <span class="math notranslate nohighlight">\(P_x\)</span>, which is defined as the
+time it takes for the liquids to enter the separator and flash gas.
+This may be longer than the actual flow time, to account for the gas
+evolution that occurs in the seconds after the liquids enter the
+separator. Little data exists for variability on the shut-in or
+production time, as this depends upon the control model in the field
+(pressure or time). Production time range, <span class="math notranslate nohighlight">\(P_r\)</span>, should be
+estimated along with the production time:</div>
+<div class="line"><span class="math notranslate nohighlight">\(P_r=P_x\pm \Delta P_x\)</span></div>
+<div class="line">Good assumption is <span class="math notranslate nohighlight">\(P_x=30s\)</span>, <span class="math notranslate nohighlight">\(\Delta P_x=10s\)</span></div>
+<div class="line">Shut-in time may be highly variable (pressure control) or highly
+consistent (timer control). We estimate this as a percentage
+variability, typically <span class="math notranslate nohighlight">\(f_s&lt;10\%\)</span>.</div>
+<div class="line">Number of cycles per day:</div>
+</div>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[N=\frac{W_d+O_d}{T_x}\]</div>
+<p>Therefore, the total cycle time in seconds:</p>
+<div class="math notranslate nohighlight">
+\[C_x=\frac{24*3600}{N}\]</div>
+<p>Since we’ve assumed the production time, <span class="math notranslate nohighlight">\(P_x\)</span>, i.e. the amount
+of time liquids are produced within the cycle time:</p>
+<div class="math notranslate nohighlight">
+\[S_x=C_x-P_x\]</div>
+<p>Variability in the shut-in time is set by the assumed fractional
+variation of the shut-in time, <span class="math notranslate nohighlight">\(f_s\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[S_r=S_x\pm \Delta S_x\]</div>
+<div class="math notranslate nohighlight">
+\[\frac{\Delta S_x}{S_x}=f_s\]</div>
+<p>Automated unloadings do not apply; that’s essentially what cycled
+production achieves. The manual unloadings follow the same model as
+defined in Continuous Production section. Do not confuse the shut-in
+for the well cycling with a (typically longer) shut-in for the manual
+unloading.</p>
+</div></blockquote>
+<p>The criteria for state change is the state duration we specify in the
+input sheet. Oil produced at the end is the column Oil Production in the
+study sheet. Water produced at the end is the column in the study sheet.
+Given the density (scf/bbl) of the flash produced in the
+condensate(oil), we generate the gas produced from the oil production
+value. Some gas is also produced from the water production. Cycled wells
+do not have an Automatic Unloading state.</p>
+<p>It must be noted that Pre-production and Unloading states are not fully
+implemented. They’ll be a part of the future releases.</p>
+<p>Wells are the starting point of the Fluid Flows.</p>
+</section>
+<section id="setups-for-well-model">
+<h2>Setups for Well Model<a class="headerlink" href="#setups-for-well-model" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Specifying ’Simulation Start Point’ as ’PreProduction’, starts the
+simulation in PreProduction stage. This means all the columns
+specifying PreProduction behavior should be specified. Specifying
+’Simulation Start Point’ as ’Production’, starts the simulation in
+Production stages and we can delete the PreProduction columns. The
+simulation chooses ’Production’ as default if ’Simulation Start
+Point’ column is not present.</p></li>
+<li><p>Specifying ’Optional Unloading’ as True, means we simulate unloading
+stages. All the Unloading columns must be specified in this case.
+Default unloading type is Manual Unloading. We can specify Manual or
+Automatic Unloading in the study sheet. Specifying ’Optional
+Unloading’ as False, means we do not simulate any unloadings and the
+wells always stay in the Production stages. So we can delete all the
+columns that specify unloading behavior. Default value for ’Optional
+Unloading’ is False.</p></li>
+<li><p>We can have any combination of the above setups along with cycling
+production or continuous production.</p></li>
+<li><p>The most basic setup is to have only Production columns and the wells
+will always stay in the production stage.</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="Combustion.html" class="btn btn-neutral float-left" title="Combustion Process" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

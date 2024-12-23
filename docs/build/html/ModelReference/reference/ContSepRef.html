@@ -1,0 +1,249 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Continuous Separator Reference &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../example.html">MEET Simulation Example</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">MEET Model Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+      <li>Continuous Separator Reference</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/ModelReference/reference/ContSepRef.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="continuous-separator-reference">
+<h1>Continuous Separator Reference<a class="headerlink" href="#continuous-separator-reference" title="Permalink to this heading">¶</a></h1>
+<p>The initial state always starts at OPERATING. This is to ensure we have
+the correct proportions of incoming fluid flows from wells or separators
+or fixed source. The incoming flows are either coming from continuous
+wells, cycling wells or a fixed source. Oil and water flows are used to
+generate flashes from the separator which constitutes the produced gas.
+The failure mode where the dump valve of a separator gets stuck is
+modeled in both the separator models. The user has to provide stuck dump
+valve duration (MTTR) and its pLeak. The code calculates the MTBF. The
+durations for MTTR and MTBF are used as the criteria for state change.</p>
+<ul class="simple">
+<li><p>Fluid Flows when separator is Operating: Flows enter into separators
+are coming from wells (oil and water). Flows going to the next
+equipment are Water and Oil. Water flow is divided into two fractions
+to divert the primary water flow to one equipment and secondary water
+flow to another equipment. The flashed gas is released to pipeline
+for gas sales. We do not need to specify the released gas in Fluid
+Flows since it is assumed that all flashed goes to gas sales unless
+we want to be specific on where the gas goes (ex: compressors).</p></li>
+<li><p>Fluid Flows when dump valve is stuck: Flows going to next equipment
+are water, oil, a random <span class="math notranslate nohighlight">\(x\%\)</span> gas flashed. This is to simulate
+that some fraction of this gas is going to the next stage / equipment
+when the dump valve gets stuck. Hence, the flows going to gas sales
+are <span class="math notranslate nohighlight">\((1-x)\%\)</span> of the gas flashed. This ensures the flows are
+conserved and no gas is lost or generated. We do not have data on the
+amount of gas released so the user can specify any distribution as
+required.</p></li>
+</ul>
+<p>When we generate Flash from condensate and water, we multiply the liquid
+with the specific row in the Gas Composition file to convert the flashes
+from bbl to scf. Hence, all the gas going to next equipment and gas
+sales will always be in scf.</p>
+</section>
+<section id="validating-model-behavior">
+<h1>Validating Model Behavior<a class="headerlink" href="#validating-model-behavior" title="Permalink to this heading">¶</a></h1>
+<ol class="arabic simple">
+<li><p>Like in wells, we note down the input data (pLeak, MTTR and MTBF) and
+run the simulation for a long time, multi-mc runs.</p></li>
+<li><p>Calculate the average of each state time one mc at a time and/or all
+mcs together and observe if the states match the input columns.
+Average state time for Stuck Dump Valve state must be in the range of
+the MTTR values. We also calculate Operating state average time, this
+value is the MTBF. Once we have average MTTR and MTBF, we can
+calculate the average pLeak. Compare this value to the pLeak in the
+input sheet. The average pLeak from the outputs must tend towards
+pLeak in the input sheet as simtime and/or mcRuns tend to infinity.</p></li>
+</ol>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

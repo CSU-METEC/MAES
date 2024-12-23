@@ -1,0 +1,17 @@
+Field,Value
+Gerry,Roop
+File Type,Emissions
+Name,G_C_Connector_Threaded
+Sector,Gathering
+Major Equipment,Compressor
+Emitter,Connector_Threaded
+Active Mode,OP
+Distribution Type,LogNormal
+Gas Type,WholeGas
+Screened Components,30956.3638
+Emitting Components,778.46
+Data Origin,"GEF Study, AvgFactor.xlsx, Sheet 'C Connector Flanged'"
+Notes,
+%%%ENDOFMETADATA%%%,
+Mu, Sigma
+0.5,1.2

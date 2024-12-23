@@ -1,0 +1,34 @@
+Distribution Type,Histogram
+Use,EMISSIONS
+Units,scf_wholegas
+Gas Type,whole_gas
+Emission Unit,scf
+Time Basis,s
+Activity Basis,Station
+User Units,scfs (wholegas)
+Source,doi: 10.1021/acs.est.5b01669 File: CDFMaster.xlsx Sheet: LongTail
+Component,Station Superemitter
+Emission Factor Type:,Leaker
+Number Tracer,20
+%%%ENDOFMETADATA%%%,
+EmissionRate,Probability
+0.5981497,0.05
+0.6431497,0.05
+1.04648303333333,0.05
+1.2381497,0.05
+2.63814966666667,0.05
+2.876483,0.05
+3.69814966666667,0.05
+3.876483,0.05
+4.31481633333333,0.05
+5.191483,0.05
+7.42081316666667,0.05
+8.7823105,0.05
+9.88481633333333,0.05
+11.5109336666667,0.05
+11.6153395,0.05
+12.4279321666667,0.05
+14.9590003333333,0.05
+20.187735,0.05
+20.4809733333333,0.05
+21.83642,0.05

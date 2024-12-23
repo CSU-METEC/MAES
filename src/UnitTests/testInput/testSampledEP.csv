@@ -1,0 +1,27 @@
+Field,Value,Type of Entry,Notes,,
+  Gerry,Roop
+Profile Type,Emitter,Either Activity or Emitter,,,Identifies what is in this sheet or file
+Name,G_C_Connector_Threaded,"Free form, but referenced in the Model Formulation",,,
+Sector,Gathering,Free Form,Industry segment (free form field),,
+Major Equipment,Compressor,Pick List,"Major equipment type, used for QC checks",,
+Emitter,Connector_Threaded,Free Form,Name of the emitter,,
+Active Mode,OP,"Pick List, dependent on major euqipment type","Mode when this is active, may be list of multiple mode IDs.",,
+Distribution Type,Sampled,Pick List,Histogram or Analytic,,
+Gas Type,WholeGas,Pick List,What is being emitted,,
+Screened Components,30956.3638,FP Number,,,
+Emitting Components,778.46,FP Number,Emitting components must be <= screened components,,
+Sample Size,10,,,,
+Data Origin,"GEF Study, AvgFactor.xlsx, Sheet 'C Connector Flanged'",Free form,Anything you want,,
+Notes,,,,,
+%%%ENDOFMETADATA%%%,,,,,
+Samples
+1.33
+1.55
+-0.38
+1.7
+-0.11
+-0.14
+1.1
+-0.34
+-1.64
+1.03

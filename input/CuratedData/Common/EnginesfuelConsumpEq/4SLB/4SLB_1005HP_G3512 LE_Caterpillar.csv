@@ -1,0 +1,11 @@
+Data Type,NG Consumption for 4SLB engine
+Engine Manufacturer,Caterpillar
+Engine Model,G3512 LE
+Rated Power (HP),1005
+Use,Equation for NG Consumption in relation to engine load
+Input Units,Fractional Load on the engine 
+Output Units,kJ/s (KW)
+Description,"Using a polynomial equation for engine fuel consumption, the polynomial function is in the form f(x) = a1x + a0. X represents the fractinal load on the engine andd varies between 0 and 1"
+%%%ENDOFMETADATA%%%
+a1,a0
+1959.6690468914294,209.45237011523807

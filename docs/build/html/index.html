@@ -1,0 +1,475 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Mechanistic Emission Emulation Tool (MEET) &mdash; MEET 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="CAMS Methane Emissions Estimation Tool" href="gettingStarted.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="#" class="icon icon-home"> MEET
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="gettingStarted.html">CAMS Methane Emissions Estimation Tool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">MEETMain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">MEET Simulation Example</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ModelReference/index.html">MEET Model Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FileReference/index.html">MEET File Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PhysicalProcesses/index.html">Physical Process Models in MEET</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">MEET</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>Mechanistic Emission Emulation Tool (MEET)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="mechanistic-emission-emulation-tool-meet">
+<h1>Mechanistic Emission Emulation Tool (MEET)<a class="headerlink" href="#mechanistic-emission-emulation-tool-meet" title="Permalink to this heading">¶</a></h1>
+<p>The Methane Emissions Estimation Tool (MEET) is a computer model built to simulate methane and other hydrocarbon emissions from the onshore natural gas industry over a specific period of time.  The model can estimate emissions from either a single facility or multiple facilities in a geographic area.  Emissions are estimated using data from published research, or from custom data entered by the user.  Industry segments in the model include onshore natural gas production, gathering and boosting, gas processing, and transmission and storage.</p>
+<p>Emissions from natural gas operations are inherently stochastic and dependent on several unknown variables. For this reason, the MEET model uses Monte Carlo methods to determine a range of possible emissions values over the study period. This means that for a typical use case the model will run a number of iterations (i.e., Monte Carlo runs) to determine the most likely emissions scenarios.</p>
+<p>MEET differs from traditional inventory methods by providing a fine-grained temporal and geographic resolution to its simulation results – emission events are modeled to a one-second granularity, and each emission event is associated with specific geographic coordinates.  This resolution provides much richer comparison of emission detection methods, leak detection and repair programs, and basin-level analysis than previous solutions.</p>
+<section id="temporal-resolution">
+<h2>Temporal Resolution<a class="headerlink" href="#temporal-resolution" title="Permalink to this heading">¶</a></h2>
+<figure class="align-default" id="id1">
+<img alt="_images/TemporalResolution.png" src="_images/TemporalResolution.png" />
+<figcaption>
+<p><span class="caption-text">Tank Flash emission events vs. mean emissions</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>The above figure shows the value of fine-grained temporal resolution.  On the left axis, illustrates typical tank flashing behavior and timing, where methane is released from the fluid in the tank.  The timing is defined by incoming fluid from upstream equipment, presumably a separator.  The left axis shows the mean emissions over a single day.  While a typical tank flash event is in the range of approx. 15 - 30 kg/h, the mean is approx. 1.2 kg/h.  At no time during the day does a tank flash at the mean rate.</p>
+</section>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gettingStarted.html">CAMS Methane Emissions Estimation Tool</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gettingStarted.html#updated-for-meet-2-0-2-7-2022">Updated for MEET 2.0 2/7/2022</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gettingStarted.html#quickstart">Quickstart</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gettingStarted.html#windows">Windows</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">MEETMain</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#options">Options</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">MEET Simulation Example</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="example.html#meet-state-machines">MEET State Machines</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="example.html#coupling-state-machines-with-fluid-flows">Coupling State Machines with Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="example.html#secondary-fluid-flows">Secondary Fluid Flows</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example.html#emissions">Emissions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="example.html#state-dependent-emissions">State Dependent Emissions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="example.html#gas-compositions-converstion-from-emission-factor-and-fluid-flow-units-to-gas-species">Gas Compositions – Converstion from Emission Factor and Fluid Flow Units to Gas Species</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example.html#interpreting-the-results">Interpreting the Results</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ModelReference/index.html">MEET Model Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/Compressor.html">Compressor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Compressor.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Compressor.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Compressor.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Compressor.html#emitters">Emitters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Compressor.html#compressor-reference">Compressor Reference</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/Compressor.html#compressor-timing-models">Compressor Timing Models</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="ModelReference/Compressor.html#calculation-of-uptime-fractions">Calculation of Uptime Fractions</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/Compressor.html#compressor-vents-and-leaks">Compressor Vents and Leaks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/Compressor.html#compressor-power-exhaust-modelling">Compressor Power &amp; Exhaust Modelling</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="ModelReference/Compressor.html#inputs">Inputs</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ModelReference/Compressor.html#compressor-power-model">Compressor Power Model</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/ContinuousSeparator.html">Continuous Separator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/ContinuousSeparator.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/ContinuousSeparator.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/ContinuousSeparator.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/ContinuousSeparator.html#emitters">Emitters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/ContinuousSeparator.html#continuous-separator-reference">Continuous Separator Reference</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/ContinuousSeparator.html#validating-model-behavior">Validating Model Behavior</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/DumpingSeparator.html">Dumping Separator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/DumpingSeparator.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/DumpingSeparator.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/DumpingSeparator.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/DumpingSeparator.html#emitters">Emitters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/DumpingSeparator.html#working-of-dumping-separators-without-the-stuck-dump-valve-failure-mode">Working of Dumping Separators without the stuck dump valve failure mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/DumpingSeparator.html#working-of-dumping-separators-with-the-stuck-dump-valve-failure-mode">Working of dumping separators with the Stuck Dump Valve failure mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/DumpingSeparator.html#volume-integrator-setup-instructions">Volume Integrator setup instructions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/DumpingSeparator.html#validating-model-behavior">Validating Model Behavior</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/Facility.html">Facility</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Facility.html#site-definition-columns">Site Definition Columns</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/FixedSource.html">Fixed Source</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/FixedSource.html#site-definition-columns">Site Definition Columns</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/Flare.html">Flare</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Flare.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Flare.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Flare.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Flare.html#emitters">Emitters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Flare.html#flare-reference">Flare Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/FFDumpService.html">Fluid Flow Dump</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/FFDumpService.html#site-definition-columns">Site Definition Columns</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/FFLink.html">Fluid Flow links</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/FFLink.html#site-definition-columns">Site Definition Columns</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/Probe.html">Fluid Flow probe</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Probe.html#site-definition-columns">Site Definition Columns</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/Dehydrator.html">Glycol Dehydrator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Dehydrator.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Dehydrator.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Dehydrator.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Dehydrator.html#emitters">Emitters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Dehydrator.html#dehydrator-reference">Dehydrator Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/MiscCompressorStati.html">Misc Equipment On Compressor Station</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscCompressorStati.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscCompressorStati.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscCompressorStati.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscCompressorStati.html#emitters">Emitters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscCompressorStati.html#misc-compressor-station-reference">Misc Compressor Station Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/MiscWellpad.html">Misc Equipment On Wellpad</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscWellpad.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscWellpad.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscWellpad.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscWellpad.html#emitters">Emitters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/MiscWellpad.html#misc-wellpad-reference">Misc Wellpad Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/TankBattery.html">Tank Battery</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/TankBattery.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/TankBattery.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/TankBattery.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/TankBattery.html#emitters">Emitters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/Well.html">Wellhead with constant production</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Well.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Well.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Well.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/Well.html#emitters">Emitters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/Well.html#continuous-production-wells-reference">Continuous Production Wells Reference</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ModelReference/CycledWell.html">Wellhead with cycled production</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/CycledWell.html#states">States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/CycledWell.html#fluid-flows">Fluid Flows</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/CycledWell.html#site-definition-columns">Site Definition Columns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ModelReference/CycledWell.html#emitters">Emitters</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ModelReference/CycledWell.html#cycled-production-wells-reference">Cycled Production Wells Reference</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="FileReference/index.html">MEET File Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="FileReference/index.html#input-files">Input Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/siteDefinition.html">Site Definition</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/siteDefinition.html#general-form-of-equipment-tabs">General Form of Equipment Tabs</a></li>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/siteDefinition.html#special-equipment-tabs">Special Equipment Tabs</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/GC.html">Gas Composition</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/GC.html#gas-composition-file-fields">Gas Composition File Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/factors.html">Factors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/distributionFile.html">Distribution Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="FileReference/index.html#output-files">Output Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/instantaneousEvents.html">instantaneousEvents.csv -- Event Log</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/instantaneousEvents.html#fields">Fields</a></li>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/instantaneousEvents.html#implementation-considerations">Implementation Considerations</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="FileReference/instantaneousEvents.html#state-transition-events">STATE_TRANSITION Events</a></li>
+<li class="toctree-l5"><a class="reference internal" href="FileReference/instantaneousEvents.html#emission-events">EMISSION Events</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/metadata.html">metadata.csv -- Standard metadata for each element</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/metadata.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/equipment.html">equipment.json -- Element instantiation parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/secondaryEventInfo.html">secondaryEventInfo.csv -- Additional data for specific events</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/secondaryEventInfo.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/gasCompositions.html">gasCompositions.csv -- Long-format gas composition values referenced in simulation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/gasCompositions.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/fluidFlows.html">fluidFlows.csv -- Fluid Flow definitions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/fluidFlows.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/emissionTimeseries.html">emissionTimeseries.csv -- Fluid Flow rates</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/emissionTimeseries.html#fields">Fields</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="FileReference/index.html#summary-files">Summary Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/summaryEmission.html">summaryEmission.csv -- Emission summary</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/summaryEmission.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/summaryFluidFlow.html">summaryFluidFlow.csv -- Fluid Flow summary</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/summaryFluidFlow.html#fields">Fields</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="FileReference/summaryState.html">summaryState.csv -- State timing summary</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="FileReference/summaryState.html#fields">Fields</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="PhysicalProcesses/index.html">Physical Process Models in MEET</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="PhysicalProcesses/Leaks.html">Leaks Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/Leaks.html#leak-model">Leak Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/Leaks.html#leak-calculations">Leak Calculations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/Leaks.html#calculating-number-of-leaks">Calculating number of leaks:</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="PhysicalProcesses/Combustion.html">Combustion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/Combustion.html#inputs">Inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/Combustion.html#gas-combustion-calculations">Gas Combustion Calculations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="PhysicalProcesses/WellsReference.html">Full Well Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/WellsReference.html#preproduction">PreProduction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/WellsReference.html#production">Production</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PhysicalProcesses/WellsReference.html#setups-for-well-model">Setups for Well Model</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="gettingStarted.html" class="btn btn-neutral float-right" title="CAMS Methane Emissions Estimation Tool" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2022, Colorado State University
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

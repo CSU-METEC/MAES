@@ -1,0 +1,17 @@
+{
+  "Python Category": "MEETService",
+  "Python Class":    "MEETFFLink",
+  "Readable Name":   "Fluid Flow links",
+  
+  "Description": "Define links between major equipment.",
+  
+    
+  "Model Parameters": [
+    {"Model Parameter": "Outlet FacilityID", "Python Parameter": "outletFacilityID", "Parameter Type": "Sheet"},
+	{"Model Parameter": "Outlet UnitID",     "Python Parameter": "outletUnitID",     "Parameter Type": "Sheet"},
+    {"Model Parameter": "Inlet FacilityID",  "Python Parameter": "inletFacilityID",  "Parameter Type": "Sheet"},
+	{"Model Parameter": "Inlet UnitID",      "Python Parameter": "inletUnitID",      "Parameter Type": "Sheet"},
+	{"Model Parameter": "Flow Name",         "Python Parameter": "flowName",         "Parameter Type": "Sheet"},
+	{"Model Parameter": "Flow SecondaryID",  "Python Parameter": "flowSecondaryID",  "Parameter Type": "Sheet",   "Optional":"True"}
+  ]
+}

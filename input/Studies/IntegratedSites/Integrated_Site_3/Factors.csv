@@ -1,0 +1,160 @@
+MajorEquipment,emitterModelFactorTag,factorTag,Emitter,activityDistribution,emissionDriver,notes,correctFactors
+,,,,,,,
+ContinuousWells,Well_state_based_emitter,wellpad,StateBasedEmitterProduction,N/A,WellCompletions/Allen2013/EmissionRates.csv,allen+other studies,yes
+ContinuousWells,Well_component_leak,wellpad,LeakProduction,N/A,Wellhead/ComponentLeaks/EmissionFactor_Wellheads_AllStudies.csv,allen+other studies,yes
+ContinuousWells,Well_pneumatic,wellpad,PneumaticEmitterProduction,Wellhead/Pneumatics/Allen_Wellhead_PC_AF.csv,Wellhead/Pneumatics/Allen_Wellhead_PC_EF.csv,allen+other studies,yes
+,,,,,,,
+CyclingWells,Cyc_Well_state_based_emitter,wellpad,StateBasedEmitterProduction,N/A,WellCompletions/Allen2013/EmissionRates.csv,allen+other studies,yes
+CyclingWells,Cyc_Well_component_leak,wellpad,LeakProduction,N/A,Wellhead/ComponentLeaks/EmissionFactor_Wellheads_AllStudies.csv,allen+other studies,yes
+CyclingWells,Cyc_Well_pneumatic,wellpad,PneumaticEmitterProduction,Wellhead/Pneumatics/Allen_Wellhead_PC_AF.csv,Wellhead/Pneumatics/Allen_Wellhead_PC_EF.csv,allen+other studies,yes
+,,,,,,,
+Separators,Dump_Sep_component_leak,gef_sep,LeakProduction,N/A,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gathering study,yes
+Separators,Dump_Sep_pneumatic,gef_sep,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Separator Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gathering study,yes
+,,,,,,,
+Separators,Sep_component_leak,gef_sep,LeakProduction,N/A,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gathering study,yes
+Separators,Sep_pneumatic,gef_sep,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Separator Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gathering study,yes
+,,,,,,,
+Dehydrators,Dehy_component_leak,gef_dehy,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Dehydrator Component.csv,gef study,yes
+Dehydrators,Dehy_emp_still_vent,gef_dehy,EmpiricalFlowProduction,N/A,GHGRP/EmissionsData/GHGRP_EF_Gathering Dehydrator Still Vent (GT 25 MMscfd).csv,ghgrp,no
+Dehydrators,Dehy_pneumatic,gef_dehy,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Dehydrator Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,yes
+,,,,,,,
+TankBattery,Tank_thief_hatch_leak,gef_tank,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Thief Hatch.csv,gef study,yes
+TankBattery,Tank_component_leak,gef_tank,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,yes
+TankBattery,Tank_thief_hatch_large,gef_tank,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Thief Hatch Large Emitter.csv,gef study,yes
+TankBattery,Tank_battery_vent_leak,gef_tank,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Common Multi-Unit Vent.csv,gef study,yes
+TankBattery,Tank_battery_vent_large,gef_tank,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Multi-Unit Vent Large Emitter.csv,gef study,yes
+TankBattery,Tank_pneumatic,gef_tank,PneumaticEmitterProduction,GEFCombined\ActivityData\GEFC_AF_Tank Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,yes
+,,,,,,,
+YardPiping,YP_component_leak,gef_misc,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_YardPiping Component.csv,gef study,yes
+YardPiping,YP_pneumatic,gef_misc,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_YardPiping Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,yes
+YardPiping,Stn_common_vent_leak,gef_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Common Station Vent.csv,gef study,yes
+YardPiping,Stn_common_vent_large_emitter,gef_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Station Vent Large Emitter.csv,gef study,yes
+YardPiping,Stn_components_large_emitter,gef_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Components Large Emitter.csv,gef study,yes
+,,,,,,,
+Flares,Flare_component_leak,gef_flare,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gef study,yes
+,,,,,,,
+Flares,Flare_component_leak,wellpad_flare,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gef study,no
+,,,,,,,
+Compressors,Blowdown_event,gef_comp,EmpiricalFlowImmediateProduction,N/A,N/A,,yes
+Compressors,Comp_blowdown,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Blowdown Vent.csv,gef study,yes
+Compressors,Comp_component_leak,gef_comp,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,yes
+Compressors,Comp_pneumatic,gef_comp,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,yes
+Compressors,Dry_seal_large_emitter,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,yes
+Compressors,Comp_emp_dry_seal_vent,gef_comp,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal DrySealVent (OP).csv,ts study,no
+Compressors,Rod_packing_large_emitter,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,yes
+Compressors,Rod_packing_vent_nod,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOD).csv,gef study,yes
+Compressors,Rod_packing_vent_nop,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOP).csv,gef study,yes
+Compressors,Rod_packing_vent_op,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (OP).csv,gef study,yes
+Compressors,Comp_wet_seal_large_emitter,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,yes
+Compressors,Comp_emp_wet_seal_vent,gef_comp,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal WetSealVent (OP).csv,ts study,no
+Compressors,Comp_single_unit_vent_large_emitter,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef study,yes
+Compressors,Comp_single_unit_vent_leak,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef study,yes
+Compressors,Comp_starter_vent_leak,gef_comp,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef study,yes
+,,,,,,,
+Separators,Sep_component_leak,wellpad_sep,LeakProduction,N/A,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gathering study,no
+Separators,Sep_pneumatic,wellpad_sep,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Separator Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gathering study,no
+,,,,,,,
+Separators,Dump_Sep_component_leak,wellpad_sep,LeakProduction,N/A,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gathering study,no
+Separators,Dump_Sep_pneumatic,wellpad_sep,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Separator Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gathering study,no
+,,,,,,,
+Compressors,Blowdown_event,wellpad_compressor_0to200HP,EmpiricalFlowImmediateProduction,N/A,N/A,,yes
+Compressors,Comp_blowdown,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Blowdown Vent.csv,gef study,no
+Compressors,Comp_component_leak,wellpad_compressor_0to200HP,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,no
+Compressors,Comp_pneumatic,wellpad_compressor_0to200HP,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,no
+Compressors,Dry_seal_large_emitter,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_dry_seal_vent,wellpad_compressor_0to200HP,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal DrySealVent (OP).csv,ts study,no
+Compressors,Rod_packing_large_emitter,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Rod_packing_vent_nod,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOD).csv,gef study,no
+Compressors,Rod_packing_vent_nop,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOP).csv,gef study,no
+Compressors,Rod_packing_vent_op,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (OP).csv,gef study,no
+Compressors,Comp_wet_seal_large_emitter,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_wet_seal_vent,wellpad_compressor_0to200HP,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal WetSealVent (OP).csv,ts study,no
+Compressors,Comp_single_unit_vent_large_emitter,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef study,no
+Compressors,Comp_single_unit_vent_leak,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef study,no
+Compressors,Comp_starter_vent_leak,wellpad_compressor_0to200HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef study,no
+,,,,,,,
+Compressors,Blowdown_event,wellpad_compressor_200to500HP,EmpiricalFlowImmediateProduction,N/A,N/A,,
+Compressors,Comp_blowdown,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Blowdown Vent.csv,gef study,no
+Compressors,Comp_component_leak,wellpad_compressor_200to500HP,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,no
+Compressors,Comp_pneumatic,wellpad_compressor_200to500HP,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,no
+Compressors,Dry_seal_large_emitter,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_dry_seal_vent,wellpad_compressor_200to500HP,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal DrySealVent (OP).csv,ts study,no
+Compressors,Rod_packing_large_emitter,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Rod_packing_vent_nod,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOD).csv,gef study,no
+Compressors,Rod_packing_vent_nop,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOP).csv,gef study,no
+Compressors,Rod_packing_vent_op,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (OP).csv,gef study,no
+Compressors,Comp_wet_seal_large_emitter,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_wet_seal_vent,wellpad_compressor_200to500HP,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal WetSealVent (OP).csv,ts study,no
+Compressors,Comp_single_unit_vent_large_emitter,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef study,no
+Compressors,Comp_single_unit_vent_leak,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef study,no
+Compressors,Comp_starter_vent_leak,wellpad_compressor_200to500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef study,no
+,,,,,,,
+Compressors,Blowdown_event,wellpad_compressor_above500HP,EmpiricalFlowImmediateProduction,N/A,N/A,,no
+Compressors,Comp_blowdown,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Blowdown Vent.csv,gef study,no
+Compressors,Comp_component_leak,wellpad_compressor_above500HP,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,no
+Compressors,Comp_pneumatic,wellpad_compressor_above500HP,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,no
+Compressors,Dry_seal_large_emitter,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_dry_seal_vent,wellpad_compressor_above500HP,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal DrySealVent (OP).csv,ts study,no
+Compressors,Rod_packing_large_emitter,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Rod_packing_vent_nod,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOD).csv,gef study,no
+Compressors,Rod_packing_vent_nop,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOP).csv,gef study,no
+Compressors,Rod_packing_vent_op,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (OP).csv,gef study,no
+Compressors,Comp_wet_seal_large_emitter,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_wet_seal_vent,wellpad_compressor_above500HP,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal WetSealVent (OP).csv,ts study,no
+Compressors,Comp_single_unit_vent_large_emitter,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef study,no
+Compressors,Comp_single_unit_vent_leak,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef study,no
+Compressors,Comp_starter_vent_leak,wellpad_compressor_above500HP,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef study,no
+,,,,,,,
+YardPiping,YP_component_leak,wellpad_misc,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_YardPiping Component.csv,gef study,no
+YardPiping,YP_pneumatic,wellpad_misc,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_YardPiping Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,no
+YardPiping,Stn_common_vent_leak,wellpad_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Common Station Vent.csv,gef study,no
+YardPiping,Stn_common_vent_large_emitter,wellpad_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Station Vent Large Emitter.csv,gef study,no
+YardPiping,Stn_components_large_emitter,wellpad_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Components Large Emitter.csv,gef study,no
+,,,,,,,
+TankBattery,Tank_thief_hatch_leak,wellpad_tanks,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Thief Hatch.csv,gef study,no
+TankBattery,Tank_component_leak,wellpad_tanks,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,no
+TankBattery,Tank_thief_hatch_large,wellpad_tanks,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Thief Hatch Large Emitter.csv,gef study,no
+TankBattery,Tank_battery_vent_leak,wellpad_tanks,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Common Multi-Unit Vent.csv,gef study,no
+TankBattery,Tank_battery_vent_large,wellpad_tanks,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Multi-Unit Vent Large Emitter.csv,gef study,no
+TankBattery,Tank_pneumatic,wellpad_tanks,PneumaticEmitterProduction,GEFCombined\ActivityData\GEFC_AF_Tank Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,no
+,,,,,,,
+Separators,Sep_component_leak,ts_sep,LeakProduction,N/A,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gef study,no
+Separators,Sep_pneumatic,ts_sep,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Separator Pneumatic Controller.csv,TS/EmissionsData/TS_EF_Pneumatics All.csv,gef study,yes
+,,,,,,,
+Separators,Dump_Sep_component_leak,ts_sep,LeakProduction,N/A,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gef study,no
+Separators,Dump_Sep_pneumatic,ts_sep,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Separator Pneumatic Controller.csv,TS/EmissionsData/TS_EF_Pneumatics All.csv,gef study,yes
+,,,,,,,
+Dehydrators,Dehy_component_leak,ts_dehy,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Dehydrator Component.csv,gef study,no
+Dehydrators,Dehy_emp_still_vent,ts_dehy,EmpiricalFlowProduction,N/A,GHGRP/EmissionsData/GHGRP_EF_Gathering Dehydrator Still Vent (GT 25 MMscfd).csv,ghgrp,no
+Dehydrators,Dehy_pneumatic,ts_dehy,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Dehydrator Pneumatic Controller.csv,GEFCombined/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef study,no
+,,,,,,,
+Compressors,Blowdown_event,ts_compressor,EmpiricalFlowImmediateProduction,N/A,N/A,,yes
+Compressors,Comp_blowdown,ts_compressor,SpecificLeaksProduction,1,TS/EmissionsData/TS_EF_BlowdownVent (OP & NOP).csv,gef study,yes
+Compressors,Comp_component_leak,ts_compressor,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,no
+Compressors,Comp_pneumatic,ts_compressor,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,TS/EmissionsData/TS_EF_Pneumatic Any.csv,gef study,yes
+Compressors,Dry_seal_large_emitter,ts_compressor,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_dry_seal_vent,ts_compressor,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal DrySealVent (OP).csv,ts study,yes
+Compressors,Rod_packing_large_emitter,ts_compressor,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Rod_packing_vent_nod,ts_compressor,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOD).csv,gef study,no
+Compressors,Rod_packing_vent_nop,ts_compressor,SpecificLeaksProduction,1,TS/EmissionsData/TS_EF_Recip RodPacking (NOP).csv,gef study,yes
+Compressors,Rod_packing_vent_op,ts_compressor,SpecificLeaksProduction,1,TS/EmissionsData/TS_EF_Recip RodPacking (OP).csv,gef study,yes
+Compressors,Comp_wet_seal_large_emitter,ts_compressor,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef study,no
+Compressors,Comp_emp_wet_seal_vent,ts_compressor,EmpiricalFlowProduction,N/A,TS/EmissionsData/TS_EF_Centrifugal WetSealVent (OP).csv,ts study,yes
+Compressors,Comp_single_unit_vent_large_emitter,ts_compressor,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef study,no
+Compressors,Comp_single_unit_vent_leak,ts_compressor,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef study,no
+Compressors,Comp_starter_vent_leak,ts_compressor,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef study,no
+,,,,,,,
+YardPiping,YP_component_leak,ts_misc,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_YardPiping Component.csv,gef study,no
+YardPiping,YP_pneumatic,ts_misc,PneumaticEmitterProduction,GEFCombined/ActivityData/GEFC_AF_YardPiping Pneumatic Controller.csv,TS/EmissionsData/TS_EF_Pneumatic Any.csv,ts study,yes
+YardPiping,Stn_common_vent_leak,ts_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Common Station Vent.csv,gef study,no
+YardPiping,Stn_common_vent_large_emitter,ts_misc,SpecificLeaksProduction,2,TS/EmissionsData/TS_EF_Station Superemitter.csv,ts study,yes
+YardPiping,Stn_components_large_emitter,ts_misc,SpecificLeaksProduction,2,GEFCombined/EmissionsData/GEFC_EF_Station Components Large Emitter.csv,gef study,no
+,,,,,,,
+TankBattery,Tank_thief_hatch_leak,ts_tanks,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Thief Hatch.csv,gef study,no
+TankBattery,Tank_component_leak,ts_tanks,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Compressor Component.csv,gef study,no
+TankBattery,Tank_thief_hatch_large,ts_tanks,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Thief Hatch Large Emitter.csv,gef study,no
+TankBattery,Tank_battery_vent_leak,ts_tanks,SpecificLeaksProduction,1,TS/EmissionsData/TS_EF_Tank TankVent.csv,ts study,yes
+TankBattery,Tank_battery_vent_large,ts_tanks,SpecificLeaksProduction,1,GEFCombined/EmissionsData/GEFC_EF_Tank Multi-Unit Vent Large Emitter.csv,gef study,no
+TankBattery,Tank_pneumatic,ts_tanks,PneumaticEmitterProduction,GEFCombined\ActivityData\GEFC_AF_Tank Pneumatic Controller.csv,TS/EmissionsData/TS_EF_Pneumatic Any.csv,ts study,yes
+,,,,,,,
+Flares,Flare_component_leak,ts_flare,LeakProduction,20,GEFCombined/EmissionsData/GEFC_EF_Separator Component.csv,gef study,no

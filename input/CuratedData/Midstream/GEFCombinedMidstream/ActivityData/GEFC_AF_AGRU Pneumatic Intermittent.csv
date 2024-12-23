@@ -1,0 +1,12 @@
+Distribution Type,Histogram
+Use,ACTIVITY
+Component,AGRU Pneumatic Intermittent
+ActivityBasis,Unit
+WasSimulated,No
+UnitsCounted,4
+UnitsSimmed,0
+Mean,0
+Source,GEF Study SI Table D12
+%%%ENDOFMETADATA%%%,
+ComponentCount,Probability
+0,1

@@ -1,0 +1,38 @@
+Distribution Type,Histogram
+Use,EMISSIONS
+Units,scf_wholegas
+Gas Type,whole_gas
+Emission Unit,scf
+Time Basis,s
+Activity Basis,One per Compressor
+User Units,scfs (wholegas)
+Source,doi: 10.1021/acs.est.0c00516
+Component,Screw Compressor Blowdown Vent
+Notes,Zero emissions may mean no emission location of this type or no emissions detected on known location
+Emission Factor Type,Leaker
+Leak Probability,0.605263158
+Survey Frequency,Annual (estimated)
+EmissionRate,Probability
+4.70E-05,0.043478261
+4.81E-05,0.043478261
+3.48E-05,0.043478261
+3.51E-05,0.043478261
+6.23E-05,0.043478261
+6.02E-05,0.043478261
+3.48E-05,0.043478261
+3.50E-05,0.043478261
+3.47E-05,0.043478261
+3.54E-05,0.043478261
+3.50E-05,0.043478261
+3.47E-05,0.043478261
+3.47E-05,0.043478261
+3.45E-05,0.043478261
+3.54E-05,0.043478261
+3.48E-05,0.043478261
+4.30E-05,0.043478261
+0.000245467,0.043478261
+4.84E-05,0.043478261
+3.47E-05,0.043478261
+3.47E-05,0.043478261
+3.47E-05,0.043478261
+3.42E-05,0.043478261

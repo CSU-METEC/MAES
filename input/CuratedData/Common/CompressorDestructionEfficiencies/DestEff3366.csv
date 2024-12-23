@@ -1,0 +1,8 @@
+Data Type,Test Destruction Efficiencies
+Use,Destruction efficiencies for compressors and flares
+Units,NA
+Source,Test Data
+%%%ENDOFMETADATA%%%,
+Species,Destruction Efficiency
+METHANE,0.33
+ETHANE,0.66

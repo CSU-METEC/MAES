@@ -1,0 +1,8 @@
+Field,Value,Type of Entry,Notes,,
+Gerry,Roop
+Distribution Type,Histogram,Pick List,Histogram or Analytic,,
+Value Column Name,Emission Rate,,
+%%%ENDOFMETADATA%%%,,
+Sample ID,Value,Probability
+1,0,.5
+2,1,.5
