@@ -78,9 +78,10 @@ def toParquet(config):
 
 def toFilter(varName, var):
     if var is not None:
-        if not isinstance(var, list):
-            var = [var]
-        return [(varName, 'in', var)]
+        if isinstance(var, list):
+            return [(varName, 'in', var)]
+        else:
+            return [(varName, '==', var)]
     return []
 
 
@@ -109,13 +110,27 @@ def baseReadParquet(config, dsName, mcRun=None, species=None, sort_by=None, addi
 
     return pqDF
 
+def _extendDSName(ds, site, mcRun):
+    if site is None:
+        if mcRun is None:
+            return ds
+        else:
+            raise ValueError(f"Parquet dataset: {ds} must specify site filter if mcRun is set as a filter ({mcRun})")
+    else:
+        dsPath = Path(ds)
+        if mcRun is None:
+            return dsPath / f'site={site}'
+        else:
+            return dsPath / f'site={site}/mcRun={mcRun}'
+
 def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=None, sort_by=None, additionalFilters=None):
     if additionalFilters is not None:
         filter = additionalFilters
     else:
         filter = []
-    filter.extend(toFilter('site', site))
-    filter.extend(toFilter('mcRun', mcRun))
+
+    # filter.extend(toFilter('site', site))
+    # filter.extend(toFilter('mcRun', mcRun))
     filter.extend(toFilter('species', species))
     if filter:
         filter = {'filters': filter}
@@ -123,15 +138,23 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
         filter = {}
 
     pqBase = config[dsName]
+    pqBase = _extendDSName(pqBase, site, mcRun)
     try:
         pqTable = pq.read_table(pqBase,
                                 **filter)
-        if sort_by:
-            pqTable = pqTable.sort_by(sort_by)
-
-        pqDF = pqTable.to_pandas()
     except FileNotFoundError as e:
         return None
+
+    if sort_by:
+        pqTable = pqTable.sort_by(sort_by)
+
+    pqDF = pqTable.to_pandas()
+
+    if site is not None:
+        pqDF = pqDF.assign(site=site)
+    if mcRun is not None:
+        pqDF = pqDF.assign(mcRun=mcRun)
+
 
     return pqDF
 
@@ -366,12 +389,17 @@ def getParquetMetadata(parquetDir):
     PARQUET_RE = re.compile(r'events\/site=(?P<site>.*)\/mcRun=(?P<mcRun>.*)')
 
     fakeConfig = {
-        "parquetEventDS":          f"{parquetDir}/events",
-        "parquetTimeseriesDS":     f"{parquetDir}/timeseries",
-        "parquetGasCompositionDS": f"{parquetDir}/gascomposition",
-        "parquetMetadataDS":       f"{parquetDir}/metadata",
-        "parquetSummaryDS":        f"{parquetDir}/simsummary",
-        "parquetEventListDS":      f"{parquetDir}/eventList"
+        "parquetEventDS":                       f"{parquetDir}/events",
+        "parquetTimeseriesDS":                  f"{parquetDir}/timeseries",
+        "parquetGasCompositionDS":              f"{parquetDir}/gascomposition",
+        "parquetMetadataDS":                    f"{parquetDir}/metadata",
+        "parquetSummaryDS":                     f"{parquetDir}/simsummary",
+        "parquetEventListDS":                   f"{parquetDir}/eventList",
+        "parquetFilteredEventSummaryDS":        f"{parquetDir}/filteredEventSummary",
+        "parquetSiteInstantaneousEmissionsDS":  f"{parquetDir}/siteInstantaneousEmissions",
+        "parquetSiteEmissionsByEquipmentDS":    f"{parquetDir}/siteEmissionsByEquipment",
+        "parquetSiteEmissionsByCategoryDS":     f"{parquetDir}/siteEmissionsByCategory",
+
     }
 
     pqBasePath = Path(parquetDir)
@@ -382,4 +410,5 @@ def getParquetMetadata(parquetDir):
         matchDict = match.groupdict()
         matchList.append(matchDict)
     pqMetadataDF = pd.DataFrame(matchList)
+    pqMetadataDF = pqMetadataDF.assign(mcRun=pqMetadataDF['mcRun'].astype(int))
     return pqMetadataDF, fakeConfig
