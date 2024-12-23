@@ -1,0 +1,68 @@
+*.txt
+*.DS_Store
+
+# R
+.Rproj.user
+.Rproj
+
+# data
+Results.*
+Inputs
+*.db
+
+# vim
+*~
+*.sw?
+
+# python
+*.pyc
+
+.idea
+/DES1/__pycache__
+/DES1/UnitTests/.pytest_cache
+/DES1/.pytest_cache
+/DES1/output/*
+/DES1/logs/*
+/DES1/venv
+/thermodynamics/example_outputs/*
+/DES1/input/GHGRPData
+/thermodynamics/test/*
+/thermodynamics/test_stability/*
+/thermodynamics/outputdir_no_stability/*
+/thermodynamics/outputdir_with_stability/*
+/DES1/output/RPSEASite
+/thermodynamics/__pycache__
+/thermodynamics/src/__pycache__
+/thermodynamics/src/utils/__pycache__
+/DES1/input/LeakModelData/GHGRP_Leak_Probabilities_2018_Production.json
+/DES1/input/LeakModelData/GEF_CC_Leak_Probabilities.json
+/DES1/input/LeakModelData/GHGRP_Leak_data_2018_Production.csv
+/DES1/input/LeakModelData/GHGRP_Leak_data_Method_a7_2018_Production.csv
+/DES1/input/DehydratorModelData/large_2018_Gathering and Boosting.json
+/DES1/input/LeakModelData/GEF_NC_Leak_Probabilities.json
+
+# slurm
+param_sweep*.[eo]???????
+/DES1/config/userConfig.json
+/DES1/UnitTests/testOutput
+/DES1/logs
+/DES1/output
+/DES1/ea.csv
+/DES1/input/CompressorModelData/ReciprocatingCompressor_2018_Gathering and Boosting.json
+/DES1/input/CompressorModelData/CentrifugalCompressor_2018_Gathering and Boosting.json
+/DES1/input/CompressorModelData/CachedFiles
+/DES1/input/DehydratorModelData/CachedFiles
+/DES1/input/LeakModelData/CachedFiles
+/output
+/input/Studies/MEET2/GeneratedC3Example.xlsx
+*.aux
+*.lof
+*.log
+*.lot
+*.tdo
+*.toc
+*.bbl
+*.blg
+*.dep
+*.gz
+.vscode
