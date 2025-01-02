@@ -66,3 +66,4 @@ param_sweep*.[eo]???????
 *.dep
 *.gz
 .vscode
+.idea/
