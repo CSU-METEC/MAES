@@ -7,3 +7,4 @@ pyarrow
 bokeh
 openpyxl
 xlsxwriter
+matplotlib
