@@ -35,6 +35,13 @@ jobs:
         run: |
           zip -r "input-${TAG}.zip" input
 
+      - name: Upload Input Study Sheets
+        uses: actions/upload-artifact@v4
+        with:
+          name: "input-${TAG}.zip"
+          path: "input-${TAG}.zip"
+          retentaion-days: 400
+
       # Store build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
