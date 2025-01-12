@@ -8,6 +8,10 @@ authors = [
     "Arthur Nahayo <a.nahayo@meshpower.co.rw>",
     "Arnaud Kayonga <a.kayonga@meshpower.co.rw>"]
 readme = "README.md"
+packages = [
+    { include = "src", from = "." }
+]
+
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
