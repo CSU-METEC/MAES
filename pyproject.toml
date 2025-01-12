@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "MAES"
-version = "0.0.2"
+version = "0.0.3"
 description = "Timeseries processing and analysis library"
 authors = [
     "Jerry Duggan <Jerry.Duggan@colstate.edu>",

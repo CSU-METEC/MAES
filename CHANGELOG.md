@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.0.3 (2025-01-12)
+
+### Bug Fixes
+
+- Remove non-package mode
+  ([`dda6ccf`](https://github.com/CSU-METEC/MAES/commit/dda6ccf7aac43069a66f259bc563984fb1724bfc))
+
+
 ## v0.0.2 (2025-01-12)
 
 ### Bug Fixes
