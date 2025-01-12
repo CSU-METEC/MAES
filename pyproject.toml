@@ -1,0 +1,63 @@
+[tool.poetry]
+name = "MAES"
+version = "0.1.0"
+description = "Timeseries processing and analysis library"
+authors = [
+    "Jerry Duggan <Jerry.Duggan@colstate.edu>",
+    "Mollel Winrose <WinRose.Mollel@colostate.edu>",
+    "Arthur Nahayo <a.nahayo@meshpower.co.rw>",
+    "Arnaud Kayonga <a.kayonga@meshpower.co.rw>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+numpy = "^2.2.1"
+mkdocs-with-pdf = "^0.9.3"
+twine = "^6.0.1"
+wheel = "^0.45.1"
+matplotlib = "3.10.0"
+bokeh = "3.6.2"
+pandas = "2.2.3"
+scipy = "1.15.0"
+plotly = "5.24.1"
+
+[tool.poetry.group.dev.dependencies]
+mkdocs-material = "^9.5.49"
+python-semantic-release = "^9.15.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.semantic_release]
+version_variables = ["timeseries/__init__.py:__version__"]
+version_toml = ["pyproject.toml:tool.poetry.version"]
+tag_format = "v{version}"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.dev]
+match = "dev"
+prerelease_token = "beta"
+prerelease = true
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = []
+mode = "init"
+insertion_flag = "<!-- version list -->"
+template_dir = "templates"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "docs/changelog.md"
+output_format = "md"
+mask_initial_release = false
+
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+other_allowed_tags = ["build", "chore", "ci", "docs", "style", "refactor", "test"]
+allowed_tags = ["feat", "fix", "perf", "build", "chore", "ci", "docs", "style", "refactor", "test"]
