@@ -37,7 +37,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.semantic_release]
-version_variables = ["timeseries/__init__.py:__version__"]
+version_variables = ["src/__init__.py:__version__"]
 version_toml = ["pyproject.toml:tool.poetry.version"]
 tag_format = "v{version}"
 
@@ -57,7 +57,7 @@ insertion_flag = "<!-- version list -->"
 template_dir = "templates"
 
 [tool.semantic_release.changelog.default_templates]
-changelog_file = "docs/changelog.md"
+changelog_file = "CHANGELOG.md"
 output_format = "md"
 mask_initial_release = false
 
