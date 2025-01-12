@@ -6,7 +6,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write # Needed for creating releases
 
@@ -33,11 +33,11 @@ jobs:
       #  Create a zip file of the input directory
       - name: Zip Input Study Sheets
         run: |
-          zip -r "dist/studysheets-${TAG}.zip" input
+          zip -r "input-${TAG}.zip" input
 
       # Store build artifacts
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
@@ -50,5 +50,6 @@ jobs:
           files: |
             dist/*.whl
             dist/*.tar.gz
+            "input-${TAG}.zip"
           draft: false
           generate_release_notes: true
