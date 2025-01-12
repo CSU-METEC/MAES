@@ -26,13 +26,22 @@ jobs:
       - name: Build package
         run: poetry build
 
+      - name: Get the latest tag
+        id: get_tag
+        run: echo ::set-output name=Tag::$(git describe --tags --abbrev=0)
+
+      #  Create a zip file of the input directory
+      - name: Zip Input Study Sheets
+        run: |
+          zip -r "dist/studysheets-${TAG}.zip" input
+
       # Store build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
           name: dist
           path: dist/
-          retention-days: 90 # How long to keep the artifacts
+          retention-days: 400
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
