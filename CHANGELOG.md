@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.0.2 (2025-01-12)
+
+### Bug Fixes
+
+- Automated input study sheet artifact storage
+  ([`5be8536`](https://github.com/CSU-METEC/MAES/commit/5be85363628e801d36d9d4831d50be2c27ac11e2))
+
+
 ## v0.0.1 (2025-01-12)
 
 ### Bug Fixes
