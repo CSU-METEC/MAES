@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.0 (2025-01-12)
+
+### Features
+
+- Build input study sheet artifacts & version
+  ([`d380921`](https://github.com/CSU-METEC/MAES/commit/d3809214d3d0e54a09eaaf7031961fe6fc665dc6))
+
+
 ## v0.1.0 (2025-01-12)
 
 ### Features
