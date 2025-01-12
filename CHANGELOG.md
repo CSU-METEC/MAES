@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.0.4 (2025-01-12)
+
+### Bug Fixes
+
+- Declare packages in pyproject.toml
+  ([`1af5f16`](https://github.com/CSU-METEC/MAES/commit/1af5f16cb87cb9332fdd03a348eb1067ed80fcf0))
+
+
 ## v0.0.3 (2025-01-12)
 
 ### Bug Fixes
