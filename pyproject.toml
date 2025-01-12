@@ -26,6 +26,7 @@ simpy = "^4.1.1"
 pyarrow = "^18.1.0"
 openpyxl = "^3.1.5"
 xlsxwriter = "^3.2.0"
+python-semantic-release = "^9.16.0"
 
 [tool.poetry.group.dev.dependencies]
 mkdocs-material = "^9.5.49"
