@@ -442,6 +442,13 @@ def dumpEmissions(summaryDF, config, summaryType, facID=None):
         extension = "_Fac_PDF"
     elif summaryType == "pdf_site_aggregate":
         extension = "_Site_PDF"
+
+    elif summaryType == "detailed_annualEmissions_summary":
+        extension = "_detailed_annualEmissions_summary"
+
+    elif summaryType == "detailed_instantEmissions_summary":
+        extension = "_detailed_instantEmissions_summary"
+
     if facID is None:
         facID = summaryDF['facilityID'].unique().tolist()[0]
     # todo: would it be better to put all the facility summaries into a single .csv file?
@@ -498,8 +505,8 @@ def postProcessParquetResults(config, df):
     equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
 
     # Dump summaries
-    detailed_emissionsDF.to_csv(au.expandFilename(config['siteEmissions'], {**config, 'facilityID': "/summaries/detailed_annualEmissions_summary"}), index=False)
-    detailed_inst_emissionsDF.to_csv(au.expandFilename(config['siteEmissions'], {**config, 'facilityID': "/summaries/detailed_instantEmissions_summary"}), index=False)
+    dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=summaryDF['facilityID'].unique().tolist()[0])
+    dumpEmissions(detailed_inst_emissionsDF, config, "detailed_instantEmissions_summary", facID=summaryDF['facilityID'].unique().tolist()[0])
     dumpEmissions(summaryDF, config, "facility")
     dumpEmissions(equipEmissSummaryDF , config, "equipment")
     toBaseParquet(config, emissCatDF, 'siteEmissionsbyCat', partition_cols=['facilityID'])
@@ -527,12 +534,6 @@ def postprocess(config):
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
             postProcessParquetResults(config, df)
-
-
-
-
-
-
 
 def getParquetMetadata(parquetDir):
     PARQUET_RE = re.compile(r'events\/site=(?P<site>.*)\/mcRun=(?P<mcRun>.*)')
