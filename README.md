@@ -20,5 +20,6 @@ pip install -r requirements.txt
 ### Usage
 To run MAES, run the following command:
 ```bash
-python MEETMain.py -s MEET2/ConstantSeparator.xlsx
+python src/SiteMain2.py -mc 2 -s C3/C3_Prototypical_Sites/P3_2stages_VRU.xlsx
 ```
+
