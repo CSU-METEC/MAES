@@ -233,7 +233,7 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
         fCompMask = fCompDF['GCUnits'] == fcUnits
 
         if fCompMask.sum() == 0:
-            msg = f"Unknown GC -- Fluid: {ffID}, GCUnits: {fcUnits} name: {self.fluidFlowID} in {self.fluidFlowGCFilename}"
+            msg = f"Unknown GC -- Fluid: {ffID}, GCUnits: {fcUnits} name: {self.fluidFlowID} in {self.fluidFlowGCFilename}, gcSerialNum: {self.serialNum}"
             if ffID == 'Vapor':
                 logger.error(msg)
                 raise me.IllegalArgumentError(msg)

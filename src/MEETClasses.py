@@ -824,6 +824,8 @@ class MEETCombustionEmitter(EmissionManager):
         self.fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(initialLoadingkW, 'kW')
 
     def stateChange(self, currentTime, state, op, delay=0, relatedEvent=0, initiator=None, **kwargs):
+        simdm = sdm.SimDataManager.getSimDataManager()
+        me = simdm.getEquipmentTable().elementLookup(self.facilityID, self.unitID, None, self.mcRunNum)
         if op != 'START':
             return
         if state.stateName in self.activeStatesList:
@@ -836,6 +838,7 @@ class MEETCombustionEmitter(EmissionManager):
                                      loading=loading_pu, kW=loading_kW)
         self.fluidFlow.driverRate = loading_kW
         self.fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(loading_kW, 'kW')
+        me.exhaustFF = self.fluidFlow
         super().stateChange(currentTime, state, op, delay=delay, relatedEvent=relatedEvent, initiator=initiator)
 
 class MEETFixedSource(SingleStateEquipment, StateEnabledVolume):

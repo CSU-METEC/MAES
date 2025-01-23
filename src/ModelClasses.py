@@ -1154,6 +1154,9 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
 
     def activityPick(self, simdm, mcRunNum=-1):
         return 1, None, None
+    
+    def pickFromMTTR(self, num):
+        return num
 
 class OGCILink(mc.LinkService):
     def __init__(self, **kwargs):
@@ -3348,6 +3351,45 @@ class EmpiricalFlowImmediateProduction(EmpiricalFluidFlow):
         fluidFlow = ff.FluidFlow('Vapor', driverRateInSecs, self.emissionDriverUnits, tmpGC, secondaryID=self.secondaryID)
         fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(driverRateInSecs, self.emissionDriverUnits)
         return fluidFlow
+
+
+class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
+    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['crankcaseDist']
+    def __init__(self,
+                 crankcaseDistrib=None, 
+                 **kwargs
+                ):
+        super().__init__(**kwargs)
+        simdm = sdm.SimDataManager.getSimDataManager()
+        self.crankcaseDistrib = crankcaseDistrib
+        self.crankcaseDist = getCrankcaseDist(crankcaseDistrib, simdm)
+        i = 10
+    
+    def initializeFluidFlow(self, simdm):
+        pass
+    
+    def stateChange(self, currentTime, stateInfo, op, delay=0, relatedEvent=0, initiator=None):
+        i = 10
+        crankcaseFraction = self.crankcaseDist.pick()
+        self.fluidFlow = self.majorEquipment.exhaustFF
+        self.fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(self.majorEquipment.loadingKW*crankcaseFraction, 'kW')  
+        # 14.4% of exhaust emissions calculated exactly after exhaust
+        super().stateChange(currentTime, stateInfo, op, delay, relatedEvent, initiator)
+
+
+def getCrankcaseDist(crankDist, simdm):
+    if isinstance(crankDist, int) or isinstance(crankDist, float):  # put to self if it is int
+        return d.Constant(crankDist)
+    elif isinstance(crankDist, str):  # if str
+        adVal = isNumber(crankDist)
+        if adVal is not None:  # check if it can be converted to float
+            return d.Constant(adVal)
+        else:  # distribution if it is dist file
+            dataBasePath = Path(au.expandFilename(simdm.config['emitterProfileDir'], simdm.config, readonly=True))
+            dataPath = dataBasePath / crankDist
+            dist = None if crankDist is None else dp.DistributionProfile.readFile(dataPath)
+            return dist
+        
 
 class SimpleUpstreamFlowStateEnabled(ABC):
     def __init__(self,

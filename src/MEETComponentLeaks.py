@@ -78,7 +78,7 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
         for singleEq in range(int(activityCount)):
             # pick leaking components and timing
             tmax = simdm.config['simDurationSeconds']  # get max sim time
-            leakList = calcLeakList(tMax=tmax, pLeak=self.pLeak, MTBF_hours=self.MTBF, MTTR_hours=self.MTTR)  # determine if and when this component will leak
+            leakList = self.calcLeakList(tMax=tmax, pLeak=self.pLeak, MTBF_hours=self.MTBF, MTTR_hours=self.MTTR, EFTag=self.emitterModelFactorTag)  # determine if and when this component will leak
             # If you return with no leaks, make sure you return *before* you cal super.instantiateFromTemplate()
             if not leakList:  # if leakList is empty return empty list
                 continue
@@ -120,54 +120,61 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
         emissionDriverPath = Path(au.expandFilename(simdm.config['emitterProfileDir'], simdm.config)) / self.emissionDriver
         self.fluidFlow = ff.EmpiricalFluidFlow('Vapor', emissionDriverPath, tmpGC)
 
+    def pickFromMTTR(self, num):
+        ret = int(-num * math.log(1 - np.random.random(1)))
+        return ret
 
-def calcLeakList(tMax=None, pLeak=None, MTBF_hours=None, MTTR_hours=None):
-    """Returns leak list on a single component
-    :param pLeak = probability of leak at initial time, nLeaks/nComponents, (float 0-1)
-    :param tMax = max sim time, seconds (integer)
-    :param MTBF = mean time between failures, non-failed component hours per failure
-    :param MTTR = mean time to repair, failed component hours per repair
-    """
-    listOfLeaks = []  # variable to hold list of leaks.
 
-    # Convert timing parameters: Model uses secs, but MTBF and MTTR should be specified in hours by user
-    MTBF_secs = u.hoursToSecs(MTBF_hours)
-    MTTR_secs = u.hoursToSecs(MTTR_hours)
+    def calcLeakList(self, tMax=None, pLeak=None, MTBF_hours=None, MTTR_hours=None, EFTag=None):
+        """Returns leak list on a single component
+        :param pLeak = probability of leak at initial time, nLeaks/nComponents, (float 0-1)
+        :param tMax = max sim time, seconds (integer)
+        :param MTBF = mean time between failures, non-failed component hours per failure
+        :param MTTR = mean time to repair, failed component hours per repair
+        """
+        listOfLeaks = []  # variable to hold list of leaks.
 
-    # determine timing of first failure
-    if np.random.random(1) <= pLeak:  # component is failed (i.e. leaking) at start of simulation if rand is less than or equal to pLeak
-        tstart = 0
-    else:  # calculate time at which component will fail
-        tstart = int(-MTBF_secs * math.log(1 - np.random.random(1)))
+        # Convert timing parameters: Model uses secs, but MTBF and MTTR should be specified in hours by user
+        MTBF_secs = u.hoursToSecs(MTBF_hours)
+        MTTR_secs = u.hoursToSecs(MTTR_hours)
 
-    if tstart > tMax:  # if component does not fail before end of sim return empty list
+        # determine timing of first failure
+        if np.random.random(1) <= pLeak:  # component is failed (i.e. leaking) at start of simulation if rand is less than or equal to pLeak
+            tstart = 0
+        else:  # calculate time at which component will fail
+            # tstart = int(-MTBF_secs * math.log(1 - np.random.random(1)))
+            tstart = self.pickFromMTTR(MTBF_secs)
+
+        if tstart > tMax:  # if component does not fail before end of sim return empty list
+            return listOfLeaks
+
+        leakcounter = 0  # counter to increment leak instances
+        leaking = True  # set leak state to True to enter while loop
+        t = tstart  # t = time into simulation for current component (sec)
+        while t <= tMax:  # until simulation time tMax is reached
+            if leaking:
+                # calculate time of repair
+                # deltat = int(-MTTR_secs * math.log(1 - np.random.random()))  # time until repair (sec)
+                deltat = self.pickFromMTTR(MTTR_secs)
+                tstop = t + deltat  # time at which leak is repaired
+                # increment leak counter and save leak as dict to listOfLeaks
+                leakcounter += 1
+                # set timing values for one shot emitter
+                thisLeak = {'componentLeakInstance': leakcounter,
+                            'startTime': t,
+                            'endTime': tstop}
+                listOfLeaks.append(thisLeak)
+                t = tstop  # time into sim for current component on next while loop
+                leaking = False  # turn leak OFF in while loop logic on next while loop
+            else:
+                # calculate time at which it will fail again
+                # deltat = int(-MTBF_secs * math.log(1 - np.random.random()))  # time until failure (sec)
+                deltat = self.pickFromMTTR(MTBF_secs)
+                tstart = t + deltat  # time at which component fails
+                t = tstart  # time into sim for current component on next while loop
+                leaking = True  # turn leak ON in while loop logic on next while loop
+        # logging.debug(f"Number of leaks: {len(listOfLeaks)}")
         return listOfLeaks
-
-    leakcounter = 0  # counter to increment leak instances
-    leaking = True  # set leak state to True to enter while loop
-    t = tstart  # t = time into simulation for current component (sec)
-    while t <= tMax:  # until simulation time tMax is reached
-        if leaking:
-            # calculate time of repair
-            deltat = int(-MTTR_secs * math.log(1 - np.random.random()))  # time until repair (sec)
-            tstop = t + deltat  # time at which leak is repaired
-            # increment leak counter and save leak as dict to listOfLeaks
-            leakcounter += 1
-            # set timing values for one shot emitter
-            thisLeak = {'componentLeakInstance': leakcounter,
-                        'startTime': t,
-                        'endTime': tstop}
-            listOfLeaks.append(thisLeak)
-            t = tstop  # time into sim for current component on next while loop
-            leaking = False  # turn leak OFF in while loop logic on next while loop
-        else:
-            # calculate time at which it will fail again
-            deltat = int(-MTBF_secs * math.log(1 - np.random.random()))  # time until failure (sec)
-            tstart = t + deltat  # time at which component fails
-            t = tstart  # time into sim for current component on next while loop
-            leaking = True  # turn leak ON in while loop logic on next while loop
-    # logging.debug(f"Number of leaks: {len(listOfLeaks)}")
-    return listOfLeaks
 
 
 class LeakProduction(mc.FactorManager, ComponentLeaks):
