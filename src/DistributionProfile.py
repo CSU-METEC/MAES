@@ -44,8 +44,6 @@ class DistributionProfile():
     @classmethod
     def readFile(cls, filename):                     # a factory
         try:
-            if filename == 'input\CuratedData\Allen\Rocky Mountain\Allen_RM_ALLPNM_EF.csv':
-                i = 10
             md, emissionRate = cls._readDistributionFile(filename, Distribution)
             return DistributionProfile(md, emissionRate)
         except:
