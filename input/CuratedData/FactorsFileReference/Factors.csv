@@ -71,6 +71,7 @@ Flares,Flare_component_leak,appalachian,LeakProduction,20,Common/Allen/Rocky Mou
 Flares,Flare_component_leak,mid-continent,LeakProduction,20,Common/Allen/Mid Continent/Allen_MC_ALLPNM_EF.csv,allen ,no,Confirm EF. No Flare data for Mid Continent
 ,,,,,,,,
 Compressors,Blowdown_event,gef_comp,EmpiricalFlowImmediateProduction,,,,yes,
+Compressors,Crankcase_em,gef_comp,EmpiricalFlowFromMajorEquipment,,,,,
 Compressors,Comp_blowdown,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Blowdown Vent.csv,gef,yes,
 Compressors,Comp_component_leak,gef_comp,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,gef,yes,
 Compressors,Comp_pneumatic,gef_comp,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,yes,
