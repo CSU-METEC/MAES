@@ -28,7 +28,7 @@ If you installed it elsewhere, use that directory in the following instructions
 assume it is c:\MAES-Project. 
 1. Copy the config and input directories from C:\MAES to c:\MAES-Project
 1. Start pycharm in c:\MAES-Project
-1. Set the virtual envirnment you created above to be the python interpreter
+1. Set the virtual environment you created above to be the python interpreter
 1. Set the c:\MAES\src directory as a content root & mark it as a source directory
 1. Run c:\MAES\src\SiteMain2.py & edit the configuration:
    1. Set the working directory to be c:\MAES-Project
