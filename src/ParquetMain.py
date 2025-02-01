@@ -10,16 +10,9 @@ logger = logging.getLogger(__name__)
 
 def main(cMgr):
     logging.basicConfig(level=logging.INFO)
-    workItems = sm.generateSummaryWorkitems(cMgr)
-    summaryWorkitems = workItems[0]
-    # for singleSummaryWorkitem in summaryWorkItems:
-    #     logging.info(f"Processing study {singleSummaryWorkitem['studyName']}, site {singleSummaryWorkitem['siteName']}, mcIter: {singleSummaryWorkitem['MCIteration']}")
-    #     with Timer(f"To parquet") as t0:
-    #         pl.toParquet(singleSummaryWorkitem)
-
-    # summaryWorkitems = workItems[3]
-    for singleSumWorkitem in summaryWorkitems:
-        pl.postprocess(singleSumWorkitem)
+    workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['parquet', 'summarize'])
+    # workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['summarize'])
+    sm.main(cMgr, workitemQueues=workitemQueues)
 
 
 if __name__ == "__main__":

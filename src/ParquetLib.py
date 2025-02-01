@@ -10,6 +10,7 @@ from pathlib import Path
 import scipy.stats as st
 import Timeseries as ts
 import re
+import urllib.parse as up
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,8 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
     else:
         filter = []
 
-    # filter.extend(toFilter('site', site))
+    expSite = up.quote(site) if site else None  # pandas to_parquet urlencodes filter strings
+    # filter.extend(toFilter('site', expSite))   # don't include filters for site / mcrun.  Instead, they are directly used to get the parquet file path in _extendDSName below
     # filter.extend(toFilter('mcRun', mcRun))
     filter.extend(toFilter('species', species))
     if filter:
@@ -142,7 +144,7 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
         filter = {}
 
     pqBase = config[dsName]
-    pqBase = _extendDSName(pqBase, site, mcRun)
+    pqBase = _extendDSName(pqBase, expSite, mcRun)
     try:
         pqTable = pq.read_table(pqBase,
                                 **filter)
@@ -550,6 +552,7 @@ def postprocess(config):
     with Timer("Read events") as t0:
         logging.info("Read Parquet Files")
         eventDF2 = readParquetEvents(config,
+                                     site=config['siteName'],
                                      mergeGC=True,
                                      species=['METHANE', 'ETHANE'],
                                      additionalEventFilters=[('command', '=', 'EMISSION')])
