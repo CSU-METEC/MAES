@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 def main(cMgr):
     logging.basicConfig(level=logging.INFO)
-    workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['parquet', 'summarize'])
-    # workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['summarize'])
+    # workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['parquet', 'summarize'])
+    workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['summarize'])
     sm.main(cMgr, workitemQueues=workitemQueues)
 
 

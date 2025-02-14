@@ -25,7 +25,7 @@ SUMMARY_FLUIDFLOW_DS = 'summaryFluidFlow'
 SUMMARY_FLUIDFLOWROLLUP_DS = 'summaryFluidFlowRollup'
 SUMMARY_EMITTER_DS = 'summaryEmitter'
 SUMMARY_EMISSION_DS = 'summaryEmission'
-
+SECONDSINHOUR = 3600
 US_TO_PER_METRIC_TON = 1.10231
 
 def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
@@ -296,12 +296,12 @@ def processEmissionsCat(df):
 
 def processEquipEmissions(df):
     df = df.groupby(['site', 'facilityID', 'mcRun', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory',
-                     'species'])['emissions_USTonsPerYear'].sum().reset_index()
+                     'species', 'emitterID'])['emissions_USTonsPerYear'].sum().reset_index()
     return df
 
 
 def processInstantEquipEmissions(df):
-    df['emissions_kgPerH'] = df['emission']*3600
+    df['emissions_kgPerH'] = df['emission'] * SECONDSINHOUR
     df = df[['site', 'facilityID', 'mcRun', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory',
              'timestamp', 'duration', 'species', 'emission', 'emissions_kgPerH']]
     newColumnNames = {'emission': 'emissions_kgPerS', 'duration': 'duration_s', 'timestamp': 'timestamp_s'}
@@ -395,6 +395,8 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, converted_emis
     return final_summary.sort_values(by=["METype", "unitID"], ascending=True)
 
 
+
+
 def calcFiveNumberSummary(emissCatDF, species, confidence_level=0.95):
     emissCatDF = emissCatDF[emissCatDF.species == species]
     facilityID = emissCatDF['facilityID'].unique().tolist()
@@ -459,20 +461,36 @@ def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=0.95):
 
 
 def dumpEmissions(summaryDF, config, summaryType, facID=None):
-    if summaryType == "facility":
-        extension = "_Fac_Level"
-    elif summaryType == "equipment":
-        extension = "_Equip_Level"
-    elif summaryType == "fac_pdf":
-        extension = "_Fac_PDF"
-    elif summaryType == "pdf_site_aggregate":
-        extension = "_Site_PDF"
+    abnormal = config['abnormal'].lower()
 
-    elif summaryType == "detailed_annualEmissions_summary":
-        extension = "_detailed_annualEmissions_summary"
+    match summaryType:
+        case "facility":
+            extension = "_Fac_Level"
 
-    elif summaryType == "detailed_instantEmissions_summary":
-        extension = "_detailed_instantEmissions_summary"
+        case "equipment":
+            extension = f"_Equip_Level_abnormal_{abnormal}"
+
+        case "unit_level":
+            extension = f"_unit_level_abnormal_{abnormal}"
+
+        case "equip_group_level":
+            extension = f"_equip_group_level_abnormal_{abnormal}"
+
+        case "fac_pdf":
+            extension = f"_Fac_PDF_abnormal_{abnormal}"
+
+        case "pdf_site_aggregate":
+            extension = f"_Site_PDF_abnormal_{abnormal}"
+
+        case "detailed_annualEmissions_summary":
+            extension = "_detailed_annualEmissions_summary"
+
+        case "detailed_instantEmissions_summary":
+            extension = "_detailed_instantEmissions_summary"
+
+        case _:
+            extension = None
+
 
     if facID is None:
         facID = summaryDF['facilityID'].unique().tolist()[0]
@@ -481,9 +499,54 @@ def dumpEmissions(summaryDF, config, summaryType, facID=None):
     summaryDF.to_csv(outFile, index=False)
     logger.info(f"Wrote {outFile}")
 
+def aggrSet(input_df, value_column, group_options=None):
+    """Aggregates a DataFrame by specified options, creating Timeseries objects."""
+    timeseries_set = []
+    if group_options:
+        input_df = input_df[input_df[group_options[0]] == group_options[1]]
+    
+    grouping_cols = ['facilityID', 'METype'] if value_column == "state" else ['facilityID', 'unitID', 'emitterID']
+    TimeseriesClass = ts.TimeseriesCategorical if value_column == "state" else ts.TimeseriesRLE
+
+    for _, subset_df in input_df.groupby(grouping_cols):
+        timeseries_set.append(TimeseriesClass(subset_df, valueColName=value_column))
+
+    if not timeseries_set:
+        raise ValueError("Group options do not match input data")
+    return timeseries_set
+
+def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
+    AllMcRuns = {}
+    for mcRun, mcRunDF in dfToGroup.groupby('mcRun'):
+        EndSimDF = siteEndSimDF[siteEndSimDF['mcRun'] == mcRun]
+        simDuration = EndSimDF.loc[EndSimDF['command'] == 'SIM-STOP', 'timestamp'].values[0]
+        totalTimeseriesSet = ts.TimeseriesSet(aggrSet(input_df=mcRunDF.sort_values(by=['nextTS'], ascending=[True]), value_column=valueColName, group_options=groupOptions))
+
+        if valueColName == "emission":
+            tdf = totalTimeseriesSet.sum()
+            tdf.df = tdf.df[tdf.df['nextTS'] <= simDuration]
+            tdf.df.loc[:, 'tsValue'] = tdf.df['tsValue'] * SECONDSINHOUR
+            AllMcRuns[mcRun] = tdf
+        else:
+            for tscat in totalTimeseriesSet.tsSetList:
+                tscat.df = tscat.df[tscat.df["nextTS"] <= simDuration]
+
+            AllMcRuns[mcRun] = totalTimeseriesSet.tsSetList
+
+    return AllMcRuns
+
+def calcProbabilitiesAllMCs(tss):
+    combined_ts_df = pd.concat([t.df for t in tss], ignore_index=True)
+    combined_ts = ts.TimeseriesRLE(combined_ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=True)
+    pdf = combined_ts.toPDF()
+    return pdf.data
 
 def postProcessParquetResults(config, df):
+    abnormal = config['abnormal'].upper()
     simDuration = config['simDurationDays']
+    meType = config['METype']
+    unitID = config['unitID']
+
     df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
 
     avg_duration = df[df['command'] == 'EMISSION']['duration'].mean()
@@ -499,25 +562,62 @@ def postProcessParquetResults(config, df):
     logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
     emissInstEquipDF = processInstantEquipEmissions(df)
 
+    #Check for abnormal condition
+    if abnormal == "OFF":
+        valid_emitter_ids = df[df['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
+        df = df[df['emitterID'].isin(valid_emitter_ids)]
+
     # Get PDF at Facility Level for CH4 Emissions
     facilityDF = df[df['species'] == 'METHANE']
-    facilityTS = ts.TimeseriesRLE(facilityDF.sort_values(by=['nextTS'], ascending=[True]), filterZeros=True, valueColName='emission')
-    facilityPDF = facilityTS.toPDF()
-    facilityPDF.data['siteCH4Emission_kg/h'] = facilityPDF.data['value'] * 3600
+    facEndSimDF = readParquetSummary(config)
+    facilityGrouped = grouping(dfToGroup=facilityDF, siteEndSimDF=facEndSimDF, valueColName="emission")
+    facilityPDF = calcProbabilitiesAllMCs(facilityGrouped.values())
+    facilityPDF['FacilityCH4Emission_kg/h'] = facilityPDF['value']
+    facilityPDF.drop(columns=['value', 'count'], inplace=True)
     # remove the value & count columns
-    facilityPDF.data.drop(columns=['value', 'count'], inplace=True)
-    dumpEmissions(facilityPDF.data, config, "fac_pdf", facID=facilityTS.df['facilityID'].unique().tolist()[0])
+    dumpEmissions(facilityPDF, config, "fac_pdf", facID=df['facilityID'].unique().tolist()[0])
 
     # Get PDF at Site Level for CH4 Emissions
-    for site in facilityDF['site'].unique().tolist():
-        siteTS = ts.TimeseriesRLE(facilityDF[facilityDF['site'] == site].sort_values(by=['nextTS'], ascending=[True]), filterZeros=True, valueColName='emission')
-        sitePDF = siteTS.toPDF()
-        sitePDF.data['siteCH4Emission_kg/h'] = sitePDF.data['value'] * 3600
-        # remove the value & count columns
-        sitePDF.data.drop(columns=['value', 'count'], inplace=True)
-        dumpEmissions(sitePDF.data, config, "pdf_site_aggregate", facID=site)
+    for site, Sdf in facilityDF.groupby('site'):
+        siteDF = Sdf[Sdf['site'] == site]
+        siteEndSimDF = readParquetSummary(config, site=site)
+        allMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
+        pdf = calcProbabilitiesAllMCs(allMCruns.values())
+        pdf['siteCH4Emission_kg/h'] = pdf['value']
+        pdf.drop(columns=['value', 'count'], inplace=True)
 
+        dumpEmissions(pdf, config, "pdf_site_aggregate", facID=site)
 
+        if meType:
+            meTypeAllMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("METype", meType))
+            meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
+            meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
+            meTypepdf.drop(columns=['value', 'count'], inplace=True)
+            dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"{site}_{meType}")
+        else:
+            for siMeType, meTyDF in siteDF.groupby('METype'):
+                meTypeAllMCruns = grouping(dfToGroup=meTyDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
+                meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
+                meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
+                meTypepdf.drop(columns=['value', 'count'], inplace=True)
+                dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"{site}_{siMeType}")
+
+        
+        if unitID:
+            unitAllMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("unitID", unitID))
+            unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
+            unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
+            unitPDF.drop(columns=['value', 'count'], inplace=True)
+            dumpEmissions(unitPDF, config, "unit_level", facID=f"{site}_{unitID}")
+        else:
+            for unitID, unitIDDF in siteDF.groupby('unitID'):
+                unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
+                unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
+                unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
+                unitPDF.drop(columns=['value', 'count'], inplace=True)
+                dumpEmissions(unitPDF, config, "unit_level", facID=f"{site}_{unitID}")
+
+        
 
     # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
     summaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95)
@@ -526,6 +626,10 @@ def postProcessParquetResults(config, df):
     detailed_inst_emissionsDF = calc_detailed_emissions_summary(emissInstEquipDF, emissions_colmn="emissions_kgPerH")
 
     # Get emissions summary by METype
+    if abnormal == "OFF":
+        valid_emitter_ids = emissEquipDF[emissEquipDF['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
+        emissEquipDF = emissEquipDF[emissEquipDF['emitterID'].isin(valid_emitter_ids)]
+
     equipEmissSummaryDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=0.95)
     equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
 
@@ -556,6 +660,7 @@ def postprocess(config):
                                      mergeGC=True,
                                      species=['METHANE', 'ETHANE'],
                                      additionalEventFilters=[('command', '=', 'EMISSION')])
+        
         t0.setCount(len(eventDF2))
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
