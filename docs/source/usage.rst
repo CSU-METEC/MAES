@@ -8,6 +8,9 @@ Usage
        MEETMain [-h] [-s STUDY] [-c CONFIGFILE] [-i INPUTDIR] [-o OUTPUTDIR] [-or OUTPUTROOT] [-t TESTINTERVALDAYS]
                 [-ts SCENARIOTIMESTAMP] [-mc MONTECARLOITERATIONS] [-r RUNNUMBER] [-w WORKERS] [-m MEMORY] [-si] [-gr]
                 [-su] [-dr DIRECTORY]
+::
+
+       ParquetMain [-s STUDY] [-me METype] [-ab abnormal] [-ui unitID]
 
 Options
 -------
@@ -44,3 +47,10 @@ Options
                         Disable summary generation in MEETMain (default: False)
   -dr DIRECTORY, --directory DIRECTORY
                         Study definition folder. Will run every study sheet in directory (default: False)
+
+  -me METype,
+                        A specific METype you want to generate pdf for , when summarizing (default: None)
+  -ab abnormal,
+                        Choose to generate pdf for abnormal emmission or all , when summarizing (default: OFF)
+  -ui unitID,
+                        A specific unitID you want to generate pdf for , when summarizing (default: None)
