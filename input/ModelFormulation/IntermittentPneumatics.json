@@ -26,7 +26,7 @@
 	{"Model Parameter": "Unit ID",              	          "Python Parameter": "unitID",                                "Parameter Type": "Sheet"},
 	{"Model Parameter": "Number of Pneumatics",               "Python Parameter": "eqComponentCount",                      "Parameter Type": "Sheet"},
 	{"Model Parameter": "Abnormal Intermittent Actuation Emission Duration Min",        "Python Parameter": "intermittentDurMin",           "Parameter Type": "Sheet"},
-	{"Model Parameter": "Abnormal Intermittent Actuation Emission Duration Min",        "Python Parameter": "intermittentDurMax",           "Parameter Type": "Sheet"},
+	{"Model Parameter": "Abnormal Intermittent Actuation Emission Duration Max",        "Python Parameter": "intermittentDurMax",           "Parameter Type": "Sheet"},
 	{"Model Parameter": "Intermittent Wait Duration Min",        "Python Parameter": "intermittentWaitDurMin",           "Parameter Type": "Sheet"},
 	{"Model Parameter": "Intermittent Wait Duration Max",        "Python Parameter": "intermittentWaitDurMax",           "Parameter Type": "Sheet"},
 	{"Model Parameter": "Abnormal Emissions pLeak",              "Python Parameter": "pLeakAb",                "Parameter Type": "Sheet"},

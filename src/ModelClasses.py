@@ -3160,8 +3160,14 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
         # how to set up FFs?
         self.abDur = int(self.abDurDist.pick())
         self.opDur = int(self.opDurDist.pick())
-        ret = {'INTERMITTENT_VENT': int(self.intermittentDurDist.pick()),
-               'INTERMITTENT_VENT_ABNORMAL': int(self.intermittentDurDist.pick())}
+        bigStateChoice = {'INTERMITTENT_VENT': self.opDur, 'INTERMITTENT_VENT_ABNORMAL': self.abDur}
+        retNew = UnscaledEmpiricalDistChooser(bigStateChoice).randomChoice()
+        if retNew == 'INTERMITTENT_VENT':
+            ret = {'INTERMITTENT_VENT': int(self.intermittentDurDist.pick())}
+        else:
+            ret = {'INTERMITTENT_VENT_ABNORMAL': int(self.intermittentDurDist.pick())}
+        # ret = {'INTERMITTENT_VENT': int(self.intermittentDurDist.pick()),
+        #        'INTERMITTENT_VENT_ABNORMAL': int(self.intermittentDurDist.pick())}
         return ret
 
     def initialStateUpdate(self, stateName, stateDuration, currentTime):
@@ -3357,11 +3363,14 @@ class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['crankcaseDist']
     def __init__(self,
                  crankcaseDistrib=None, 
+                #  efFlag=False,
                  **kwargs
                 ):
         super().__init__(**kwargs)
         simdm = sdm.SimDataManager.getSimDataManager()
         self.crankcaseDistrib = crankcaseDistrib
+        # self.efFlag = efFlag
+        # self.efName = efName
         self.crankcaseDist = getCrankcaseDist(crankcaseDistrib, simdm)
         i = 10
     

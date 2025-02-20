@@ -294,6 +294,9 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
         if 'Dehy' in self.fluidFlowID:
                 driveFactorUnits = 'scf/scf'
 
+        # if stage == 'Well':
+        #     deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage 1 Pressure to Pipeline Pressure (kJ/scf)'])
+        # else:
         deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage {currentStage[-1]} Pressure to Pipeline Pressure (kJ/scf)'])
         # deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage 1 Pressure to Pipeline Pressure (kJ/scf)'])
         i = 10
