@@ -51,7 +51,7 @@
 	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Uncontrolled Tank Emissions", "Category": "TANK VENT", "Emission Category": "FUGITIVE",
 	  "Model Parameters": [
 	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING,MECHANISTIC_THIEF_HATCH,PRV"},
-	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_overpressure_{serialNo}"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_controlled_tank_{serialNo}"},
 	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "tank_gas_outlet,tank_flash"},
 	  {"Model Parameter": "Tank Controlled",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
 			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
