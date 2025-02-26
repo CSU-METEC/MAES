@@ -3094,7 +3094,10 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
 
     def updateIntWaitDur(self, currentTime):
         if self.inletFluidFlows:
-            ret = self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime
+            if ('Water' or 'Condensate') in self.inletFluidFlows:
+                ret = self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime
+            elif 'Vapor' in self.inletFluidFlows:
+                ret = self.getMinChangeTimeVapor(self.inletFluidFlows) - currentTime    
         else:
             ret = int(self.intermittentWaitDurDist.pick())
         return ret
