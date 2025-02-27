@@ -27,6 +27,7 @@ SUMMARY_EMITTER_DS = 'summaryEmitter'
 SUMMARY_EMISSION_DS = 'summaryEmission'
 SECONDSINHOUR = 3600
 US_TO_PER_METRIC_TON = 1.10231
+US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 
 def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
@@ -309,7 +310,7 @@ def processInstantEquipEmissions(df):
     df = df[df['emissions_kgPerS'] > 0]
     return df
 
-def generate_intervals(series, mean_header,convert):
+def generate_intervals(series, mean_header, convert):
     modelNameValues = series / US_TO_PER_METRIC_TON if convert else series
     confidence = 0.95
     alpha = 1 - confidence
@@ -348,7 +349,6 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, converted_emis
         convert = False
     headers = ["METype", "unitID", "modelReadableName", mean_header, "lower95CI", "upper95CI"]
     summary = []
-    
     old_unit_id = None
     old_mType = None
     mean_emission_values = []
@@ -394,17 +394,27 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, converted_emis
     final_summary = pd.concat(summary, ignore_index=True)
     return final_summary.sort_values(by=["METype", "unitID"], ascending=True)
 
-def calcFiveNumberSummary(emissCatDF, species, confidence_level=0.95):
+ 
+def calcFiveNumberSummary(emissCatDF, species, confidence_level=0.95, instantEmissions=False):
+    if instantEmissions:
+        emissionsColumn = "emissions_kgPerH"
+        emissCatDF[emissionsColumn] = emissCatDF['emissions_USTonsPerYear'] * US_TO_PER_HOUR_TO_KG_PER_HOUR
+        mt = "kg/hour"
+    else:
+        emissionsColumn = "emissions_MetricTonsPerYear"
+        emissCatDF[emissionsColumn] = emissCatDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON # convert from US tons to metric tons
+        mt = "mt/year"
+
     emissCatDF = emissCatDF[emissCatDF.species == species]
     facilityID = emissCatDF['facilityID'].unique().tolist()
-    summary = [facilityID,  [species], ['mt/year']]
+    summary = [facilityID,  [species], [mt]]
     header = []
     alpha = 1 - confidence_level
 
     for cat, df in emissCatDF.groupby('modelEmissionCategory'):
         headStr = cat.capitalize()[:6]
         header.append([headStr + 'Min', headStr + 'Lower', headStr + 'Mean', headStr + 'Upper', headStr + 'Max', headStr + 'lower95CI', headStr + '95CI'])
-        catEmissions = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON  # convert from US tons to metric tons
+        catEmissions = df[emissionsColumn]
 
         minList = min(catEmissions)
         maxList = max(catEmissions)
@@ -421,17 +431,25 @@ def calcFiveNumberSummary(emissCatDF, species, confidence_level=0.95):
     summaryDF = pd.DataFrame([summary], columns=headers)
     return summaryDF
 
-def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=0.95):
+def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=0.95, instantEmissions = False):
+    if instantEmissions:
+        emissionsColumn = "emissions_kgPerH"
+        mt = "kg/hour"
+        emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] * US_TO_PER_HOUR_TO_KG_PER_HOUR
+    else:
+        emissionsColumn = "emissions_USTonsPerYear"
+        emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON # convert from US tons to metric tons
+        mt = "mt/year"
+
     emissEquipDF = emissEquipDF[emissEquipDF.species == species]   # Get only methane data for the summary
     facilityID = emissEquipDF['facilityID'].unique().tolist()
-    summary = [facilityID,  [species], ['mt/year']]
+    summary = [facilityID,  [species], [mt]]
     header = []
     alpha = 1 - confidence_level
 
     for equip, df in emissEquipDF.groupby('METype'):
         header.append([equip + 'Min', equip + 'Lower', equip + 'Mean', equip + 'Upper', equip + 'Max', equip + 'lower95CI', equip + '95CI'])
-        equipEmissions = df.groupby('mcRun')['emissions_USTonsPerYear'].sum()
-        equipEmissions = equipEmissions / US_TO_PER_METRIC_TON
+        equipEmissions = df.groupby('mcRun')[emissionsColumn].sum()
   
         minList = min(equipEmissions)
         maxList = max(equipEmissions)
@@ -454,28 +472,34 @@ def dumpEmissions(summaryDF, config, summaryType, facID=None):
 
     match summaryType:
         case "facility":
-            extension = f"_Fac_Level_abnormal_{abnormal}"
+            extension = f"_annualEmissions_by_site_abnormal_{abnormal}"
 
         case "equipment":
-            extension = f"_Equip_Level_abnormal_{abnormal}"
+            extension = f"_annualEmissions_by_METype_abnormal_{abnormal}"
 
         case "unit_level":
-            extension = f"_unit_level_abnormal_{abnormal}"
+            extension = f"_abnormal_{abnormal}"
 
         case "equip_group_level":
-            extension = f"_equip_group_level_abnormal_{abnormal}"
+            extension = f"_abnormal_{abnormal}"
 
         case "fac_pdf":
             extension = f"_Fac_PDF_abnormal_{abnormal}"
 
         case "pdf_site_aggregate":
-            extension = f"_Site_PDF_abnormal_{abnormal}"
+            extension = f"_PDF_for_site_abnormal_{abnormal}"
 
         case "detailed_annualEmissions_summary":
-            extension = f"_detailed_annualEmissions_summary_abnormal_{abnormal}"
+            extension = f"_annualEmissions_by_modelReadableName_abnormal_{abnormal}"
 
         case "detailed_instantEmissions_summary":
-            extension = f"_detailed_instantEmissions_summary_abnormal_{abnormal}"
+            extension = f"_instantEmissions_by_modelReadableName_abnormal_{abnormal}"
+
+        case "inst_site":
+            extension = f"_instantEmissions_by_site_abnormal_{abnormal}"
+
+        case "instMETypes":
+            extension = f"_instantEmissions_by_METype_abnormal_{abnormal}"
 
         case _:
             extension = None
@@ -552,13 +576,13 @@ def postProcessParquetResults(config, df, fac):
 
     # Get PDF at Facility Level for CH4 Emissions
     facilityDF = df[df['species'] == 'METHANE']
-    facEndSimDF = readParquetSummary(config)
-    facilityGrouped = grouping(dfToGroup=facilityDF, siteEndSimDF=facEndSimDF, valueColName="emission")
-    facilityPDF = calcProbabilitiesAllMCs(facilityGrouped.values())
-    facilityPDF['FacilityCH4Emission_kg/h'] = facilityPDF['value']
-    facilityPDF.drop(columns=['value', 'count'], inplace=True)
+    # facEndSimDF = readParquetSummary(config)
+    # facilityGrouped = grouping(dfToGroup=facilityDF, siteEndSimDF=facEndSimDF, valueColName="emission")
+    # facilityPDF = calcProbabilitiesAllMCs(facilityGrouped.values())
+    # facilityPDF['FacilityCH4Emission_kg/h'] = facilityPDF['value']
+    # facilityPDF.drop(columns=['value', 'count'], inplace=True)
     # remove the value & count columns
-    dumpEmissions(facilityPDF, config, "fac_pdf", facID=df['facilityID'].unique().tolist()[0])
+    # dumpEmissions(facilityPDF, config, "fac_pdf", facID=df['facilityID'].unique().tolist()[0])
 
     # Get PDF at Site Level for CH4 Emissions
     for site, Sdf in facilityDF.groupby('site'):
@@ -569,21 +593,21 @@ def postProcessParquetResults(config, df, fac):
         pdf['siteCH4Emission_kg/h'] = pdf['value']
         pdf.drop(columns=['value', 'count'], inplace=True)
 
-        dumpEmissions(pdf, config, "pdf_site_aggregate", facID=site)
+        dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/{site}")
 
         if meType:
             meTypeAllMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("METype", meType))
             meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
             meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
             meTypepdf.drop(columns=['value', 'count'], inplace=True)
-            dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"{site}_{meType}")
+            dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/{site}_{meType}")
         else:
             for siMeType, meTyDF in siteDF.groupby('METype'):
                 meTypeAllMCruns = grouping(dfToGroup=meTyDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
                 meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
                 meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
                 meTypepdf.drop(columns=['value', 'count'], inplace=True)
-                dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"{site}_{siMeType}")
+                dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/{site}_PDF_for_all_{siMeType}")
 
         
         if unitID:
@@ -591,20 +615,29 @@ def postProcessParquetResults(config, df, fac):
             unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
             unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
             unitPDF.drop(columns=['value', 'count'], inplace=True)
-            dumpEmissions(unitPDF, config, "unit_level", facID=f"{site}_{unitID}")
+            dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/{site}_{unitID}")
         else:
             for unitID, unitIDDF in siteDF.groupby('unitID'):
                 unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
                 unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
                 unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
                 unitPDF.drop(columns=['value', 'count'], inplace=True)
-                dumpEmissions(unitPDF, config, "unit_level", facID=f"{site}_{unitID}")
+                dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/{site}_PDF_for_{unitID}")
 
         
 
     # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
-    summaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95)
-    summaryDF = pd.concat([summaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
+    CategorySummaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95)
+    CategorySummaryDF = pd.concat([CategorySummaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
+
+
+    # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
+    CategoryInstantSummaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95, instantEmissions=True)
+    CategoryInstantSummaryDF = pd.concat([CategoryInstantSummaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95, instantEmissions=True)])  # add ethane summary
+
+
+
+
     detailed_emissionsDF = calc_detailed_emissions_summary(emissEquipDF, emissions_colmn="emissions_USTonsPerYear", converted_emission_colmn="emissions_MetricTonsPerYear")
     detailed_inst_emissionsDF = calc_detailed_emissions_summary(emissInstEquipDF, emissions_colmn="emissions_kgPerH")
 
@@ -612,11 +645,17 @@ def postProcessParquetResults(config, df, fac):
     equipEmissSummaryDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=0.95)
     equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
 
+    # Get instant emissions summary by METype
+    equipEmissInstantDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=0.95, instantEmissions=True)
+    equipEmissInstantDF = pd.concat([equipEmissInstantDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=0.95, instantEmissions=True)])  # add ethane summary
+
     # Dump summaries
-    dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=fac)
-    dumpEmissions(detailed_inst_emissionsDF, config, "detailed_instantEmissions_summary", facID=fac)
-    dumpEmissions(summaryDF, config, "facility")
-    dumpEmissions(equipEmissSummaryDF , config, "equipment")
+    dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=f"AnnualEmissions/{fac}")
+    dumpEmissions(detailed_inst_emissionsDF, config, "detailed_instantEmissions_summary", facID=f"InstantaneousEmissions/{fac}")
+    dumpEmissions(CategoryInstantSummaryDF, config, "inst_site", facID=f"InstantaneousEmissions/{fac}")
+    dumpEmissions(equipEmissInstantDF, config, "instMETypes", facID=f"InstantaneousEmissions/{fac}")
+    dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/{fac}")
+    dumpEmissions(equipEmissSummaryDF , config, "equipment", facID=f"AnnualEmissions/{fac}")
     toBaseParquet(config, emissCatDF, 'siteEmissionsbyCat', partition_cols=['facilityID'])
     toBaseParquet(config, emissEquipDF, 'siteEmissionsByEquip', partition_cols=['facilityID'])
     toBaseParquet(config, emissInstEquipDF, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
@@ -628,7 +667,7 @@ def postProcessParquetResults(config, df, fac):
     })
     toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
 
-    return summaryDF  # to aggregate stats across sites
+    return CategorySummaryDF  # to aggregate stats across sites
 
 
 def postprocess(config):
