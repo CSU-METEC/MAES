@@ -20,7 +20,10 @@
       "disableSimulation": false,
       "disableGraph": false,
       "disableSummary": false,
-
+      "METype": null,
+      "unitID": null,
+      "abnormal": "OFF",
+      
       "simDurationDays": 30,
       "monteCarloIterations": 10
 

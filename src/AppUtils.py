@@ -63,6 +63,10 @@ def getParser(defaultConfig):
 
     parser.add_argument("-sn", "--studyName", help="Name of study")
 
+    parser.add_argument("-ab", "--abnormal", help="include abnormal emittions or not")
+    parser.add_argument("-me", "--METype", help="Choose a METype to calculate its pdf")
+    parser.add_argument("-ui", "--unitID", help="Choose a unitID to calculate its pdf")
+
     return parser
 
 def getArgs(defaultConfig=DEFAULT_CONFIG, argsToParse=sys.argv[1:]):

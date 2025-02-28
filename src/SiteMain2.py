@@ -12,6 +12,8 @@ import Units as u
 import ParquetLib as pl
 import os
 
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize']
+
 logger = logging.getLogger(__name__)
 
 def MCInit(simdm):
@@ -145,11 +147,10 @@ def getFileList(cm):
     else:
         yield (cm.getConfigVar("studyFilename"), cm.getConfigVar("studyDefinitionFile"), cm.getConfigVar('studyName'))
 
-def generateWorkitems(cm):
+def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     initWorkitems = []
     simWorkitems = []
     parquetWorkitems = []
-    graphWorkitems = []
     summaryWorkitems = []
 
     fileList = getFileList(cm)
@@ -160,60 +161,36 @@ def generateWorkitems(cm):
         cm.expandPhase("simulation")
         cm.expandPhase("MCIteration", MCIteration=-1)
         initWorkitems.append(generateSingleWorkitem(cm, 'initialization'))
+        # simulation & parquet workitems work on individual site & MC iterations
         for singleMCIter in range(int(cm.getConfigVar('monteCarloIterations'))):
             cm.expandPhase("MCIteration", MCIteration=singleMCIter)
             simWorkitems.append(generateSingleWorkitem(cm, 'simulation'))
             parquetWorkitems.append(generateSingleWorkitem(cm, "parquet"))
+        # summarization happens at the site level only
+        summaryWI = generateSingleWorkitem(cm, 'summarize')
+        summaryWorkitems.append(summaryWI)
 
-    # summaryWorkitems.append(generateSingleWorkitem(cm, 'summarize'))
+    retWorkitems = []
+    if 'initialization' in phasesToInclude:
+        retWorkitems.append(initWorkitems)
+    if 'simulation' in phasesToInclude:
+        retWorkitems.append(simWorkitems)
+    if 'parquet' in phasesToInclude:
+        retWorkitems.append(parquetWorkitems)
+    if 'summarize' in phasesToInclude:
+        retWorkitems.append(summaryWorkitems)
 
-    # return [initWorkitems, simWorkitems, parquetWorkitems, summaryWorkitems]
-    return [initWorkitems, simWorkitems, parquetWorkitems]
+    return retWorkitems
 
 def generateSummaryWorkitems(cm):
     summaryWorkItems = []
     summaryWorkItems.append(generateSingleWorkitem(cm, 'summarize'))
     return [summaryWorkItems]
 
-
-
 def configFromConfigMgr(cMgr):
     workItems = generateWorkitems(cMgr)
     config = workItems[3][0]
     return config
-
-def initializeDaskLogging(*args, logTemplate=None):
-    from dask.distributed import get_worker
-    pid = os.getpid()
-    logger.warning(f"In initializeDaskLogging, pid: {pid}")
-    daskLogfile = au.expandFilename(logTemplate, {'workerPID': pid})
-    fh = logging.FileHandler(daskLogfile)
-    fm = logging.Formatter("%(asctime)s %(levelname)s %(process)d -- %(message)s")
-    fh.setFormatter(fm)
-
-    # daskLogger = logging.getLogger() ## set file handler & formatter at root (global) logger level
-    daskLogger = logging.getLogger(__name__)  ## set file handler & formatter just for this level (SiteMain2)
-    daskLogger.addHandler(fh)
-    daskLogger.setLevel(logging.INFO)
-
-    logger.warning(f"Dask logging started, pid: {pid}")
-    pass
-
-def initializeDask(cMgr):
-    # import these here so serial runs don't require dask to be installed
-    import dask.bag as db
-    from dask.distributed import Client
-    logger.info("Initializing dask")
-    client = Client(n_workers=cMgr.getConfigVar('workers'), threads_per_worker=1, memory_limit="10GB")
-    daskLogFilenameTemplate = cMgr.expandDynamicTemplate('daskWorkerLog', workerPID='{workerPID}')
-    client.run(initializeDaskLogging, logTemplate=daskLogFilenameTemplate)
-    return db
-
-def runDask(workQueue, db):
-    jobs = db.from_sequence(workQueue)
-    res = jobs.map(runWorkitem)
-    endres = res.compute()
-    return endres
 
 def runLocal(workQueue):
     retList = []
@@ -246,10 +223,13 @@ def defineConvenienceConfigVars(cMgr):
     cMgr.expandPhase("start", simDurationSeconds=simDurationSeconds)
     pass
 
-def main(cm):
+def main(cm, workitemQueues=None):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s  %(message)s")
     defineConvenienceConfigVars(cm)
-    listOfWorkitemQueues = generateWorkitems(cm)
+    if workitemQueues is None:
+        listOfWorkitemQueues = generateWorkitems(cm)
+    else:
+        listOfWorkitemQueues = workitemQueues
     resList = []
     workers = cm.getConfigVar("workers")
     parallel = workers and (workers > 0)
