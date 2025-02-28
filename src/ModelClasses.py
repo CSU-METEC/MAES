@@ -3166,7 +3166,7 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
         bigStateChoice = {'INTERMITTENT_VENT': self.opDur, 'INTERMITTENT_VENT_ABNORMAL': self.abDur}
         retNew = UnscaledEmpiricalDistChooser(bigStateChoice).randomChoice()
         if retNew == 'INTERMITTENT_VENT':
-            ret = {'INTERMITTENT_VENT': int(self.intermittentDurDist.pick())}
+            ret = {'INTERMITTENT_VENT': int(self.intermittentDurNormalDist.pick())}
         else:
             ret = {'INTERMITTENT_VENT_ABNORMAL': int(self.intermittentDurDist.pick())}
         # ret = {'INTERMITTENT_VENT': int(self.intermittentDurDist.pick()),
