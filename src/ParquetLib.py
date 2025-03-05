@@ -554,37 +554,10 @@ def calcProbabilitiesAllMCs(tss):
     pdf = combined_ts.toPDF()
     return pdf.data
 
-def postProcessParquetResults(config, df, fac):
-    simDuration = config['simDurationDays']
+def generatePDFs(config, df ):
+    facilityDF = df[df['species'] == 'METHANE']
     meType = config['METype']
     unitID = config['unitID']
-
-    df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
-
-    avg_duration = df[df['command'] == 'EMISSION']['duration'].mean()
-    total_events = len(df[df['command'] == 'EMISSION'])
-    total_years = simDuration / u.DAYS_PER_YEAR  # Assuming u.DAYS_PER_YEAR is defined in Units module
-    avg_frequency = total_events / total_years
-
-    # Get DFs for emissions by category (fugitive, vented, combustion) and by major equipment
-    logging.info("Creating Parquet Files for Emission by Categories...")
-    emissCatDF = processEmissionsCat(df)
-    logging.info("Creating Parquet Files for Emission by Equipment...")
-    emissEquipDF = processEquipEmissions(df)
-    logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
-    emissInstEquipDF = processInstantEquipEmissions(df)
-
-    # Get PDF at Facility Level for CH4 Emissions
-    facilityDF = df[df['species'] == 'METHANE']
-    # facEndSimDF = readParquetSummary(config)
-    # facilityGrouped = grouping(dfToGroup=facilityDF, siteEndSimDF=facEndSimDF, valueColName="emission")
-    # facilityPDF = calcProbabilitiesAllMCs(facilityGrouped.values())
-    # facilityPDF['FacilityCH4Emission_kg/h'] = facilityPDF['value']
-    # facilityPDF.drop(columns=['value', 'count'], inplace=True)
-    # remove the value & count columns
-    # dumpEmissions(facilityPDF, config, "fac_pdf", facID=df['facilityID'].unique().tolist()[0])
-
-    # Get PDF at Site Level for CH4 Emissions
     for site, Sdf in facilityDF.groupby('site'):
         siteDF = Sdf[Sdf['site'] == site]
         siteEndSimDF = readParquetSummary(config, site=site)
@@ -624,20 +597,59 @@ def postProcessParquetResults(config, df, fac):
                 unitPDF.drop(columns=['value', 'count'], inplace=True)
                 dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/{site}_PDF_for_{unitID}")
 
-        
+
+def postProcessParquetResults(config, df, fac):
+    simDuration = config['simDurationDays']
+    df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
+
+    avg_duration = df[df['command'] == 'EMISSION']['duration'].mean()
+    total_events = len(df[df['command'] == 'EMISSION'])
+    total_years = simDuration / u.DAYS_PER_YEAR  # Assuming u.DAYS_PER_YEAR is defined in Units module
+    avg_frequency = total_events / total_years
+
+    # Get DFs for emissions for the parquet files
+    logging.info("Creating Parquet Files for Emission by Categories...")
+    emissCatDFParq = processEmissionsCat(df)
+    logging.info("Creating Parquet Files for Emission by Equipment...")
+    emissEquipDFParq = processEquipEmissions(df)
+    logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
+    emissInstEquipDFParq = processInstantEquipEmissions(df)
+
+    #Check for abnormal condition
+    if config['abnormal'].upper() == "OFF":
+        valid_emitter_ids = df[df['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
+        df = df[df['emitterID'].isin(valid_emitter_ids)]
+
+    # Get DFs for emissions for the summaries
+    logging.info("Creating Parquet Files for Emission by Categories...")
+    emissCatDF = processEmissionsCat(df)
+    logging.info("Creating Parquet Files for Emission by Equipment...")
+    emissEquipDF = processEquipEmissions(df)
+    logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
+    emissInstEquipDF = processInstantEquipEmissions(df)
+
+    # Get PDF at Facility Level for CH4 Emissions
+    # facEndSimDF = readParquetSummary(config)
+    # facilityGrouped = grouping(dfToGroup=facilityDF, siteEndSimDF=facEndSimDF, valueColName="emission")
+    # facilityPDF = calcProbabilitiesAllMCs(facilityGrouped.values())
+    # facilityPDF['FacilityCH4Emission_kg/h'] = facilityPDF['value']
+    # facilityPDF.drop(columns=['value', 'count'], inplace=True)
+    # remove the value & count columns
+    # dumpEmissions(facilityPDF, config, "fac_pdf", facID=df['facilityID'].unique().tolist()[0])
+
+    # Get PDF at Site Level for CH4 Emissions
+    generatePDFs(config=config, df=df)
 
     # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
     CategorySummaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95)
     CategorySummaryDF = pd.concat([CategorySummaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
 
 
-    # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
+    # Get 5 number instant emissions summary for emission categories (vented, fugitives, combusted, total)
     CategoryInstantSummaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95, instantEmissions=True)
     CategoryInstantSummaryDF = pd.concat([CategoryInstantSummaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95, instantEmissions=True)])  # add ethane summary
 
-
-
-
+    # Get detailed emissions
     detailed_emissionsDF = calc_detailed_emissions_summary(emissEquipDF, emissions_colmn="emissions_USTonsPerYear", converted_emission_colmn="emissions_MetricTonsPerYear")
     detailed_inst_emissionsDF = calc_detailed_emissions_summary(emissInstEquipDF, emissions_colmn="emissions_kgPerH")
 
@@ -656,9 +668,9 @@ def postProcessParquetResults(config, df, fac):
     dumpEmissions(equipEmissInstantDF, config, "instMETypes", facID=f"InstantaneousEmissions/{fac}")
     dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/{fac}")
     dumpEmissions(equipEmissSummaryDF , config, "equipment", facID=f"AnnualEmissions/{fac}")
-    toBaseParquet(config, emissCatDF, 'siteEmissionsbyCat', partition_cols=['facilityID'])
-    toBaseParquet(config, emissEquipDF, 'siteEmissionsByEquip', partition_cols=['facilityID'])
-    toBaseParquet(config, emissInstEquipDF, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
+    toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
+    toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
+    toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
 
     avg_data = pd.DataFrame({
         'facilityID': df['facilityID'].unique(),
@@ -682,10 +694,6 @@ def postprocess(config):
         t0.setCount(len(eventDF2))
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
-                #Check for abnormal condition
-            if config['abnormal'].upper() == "OFF":
-                valid_emitter_ids = df[df['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
-                df = df[df['emitterID'].isin(valid_emitter_ids)]
             postProcessParquetResults(config, df, fac)
 
 def getParquetMetadata(parquetDir):
