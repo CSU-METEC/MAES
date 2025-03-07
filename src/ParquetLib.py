@@ -437,7 +437,7 @@ def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=0.95, insta
         mt = "kg/hour"
         emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] * US_TO_PER_HOUR_TO_KG_PER_HOUR
     else:
-        emissionsColumn = "emissions_USTonsPerYear"
+        emissionsColumn = "emissions_MetricTonsPerYear"
         emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON # convert from US tons to metric tons
         mt = "mt/year"
 
