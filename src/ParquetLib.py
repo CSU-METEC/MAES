@@ -1,5 +1,7 @@
 import pandas as pd
 import AppUtils as au
+import os
+import json
 from Timer import Timer
 import pyarrow.parquet as pq
 import GraphUtils as gu
@@ -296,13 +298,95 @@ def processEmissionsCat(df):
 
 
 def processEquipEmissions(df):
-    df = df.groupby(['site', 'facilityID', 'mcRun', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory',
+    eq_df = df.groupby(['site', 'facilityID', 'mcRun', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory',
                      'species', 'emitterID'])['emissions_USTonsPerYear'].sum().reset_index()
-    return df
+    complete_df = fillEmptyDataWithZero(full_df=df, eq_df=eq_df)
+    return complete_df
+
+
+
+def get_average_event_count_per_mcRun(df: pd.DataFrame, unitID_name: str, model_name: str, species_name: str) -> float:
+    """
+    Computes the average number of emission events per Monte Carlo (MC) run
+    for a given modelReadableName, species, and unitID.
+    """
+    # Filter the DataFrame for the specified emission type, species, and unitID
+    df_filtered = df[
+        (df["modelReadableName"] == model_name) &
+        (df["species"] == species_name) &
+        (df["unitID"] == unitID_name)
+        ].copy()
+
+    # Get the total number of MC runs in the dataset (max mcRun + 1)
+    total_mcRuns = int(df["mcRun"].max()) + 1  # Ensures all mcRuns are accounted for
+
+    # Count occurrences per mcRun
+    count_per_mcRun = df_filtered.groupby("mcRun").size()
+
+    # Create a Series covering all mcRuns (0 to max mcRun), defaulting to 0
+    all_mcRuns = pd.Series(0, index=range(total_mcRuns))
+
+    # Merge actual counts, filling missing MC runs with zeroes
+    count_per_mcRun = all_mcRuns.add(count_per_mcRun, fill_value=0)
+
+    return count_per_mcRun.mean(), total_mcRuns
+
+
+def get_average_rate_and_duration(df: pd.DataFrame, unitID_name: str, model_name: str, species_name: str):
+    """
+    Computes the average emission rate (kg/h) and average duration (s)
+    for a given modelReadableName, species, and unitID.
+    """
+    # Filter the DataFrame for the specified emission type, species, and unitID
+    df_filtered = df[
+        (df["modelReadableName"] == model_name) &
+        (df["species"] == species_name) &
+        (df["unitID"] == unitID_name)
+        ].copy()
+
+    # If no matching records exist, return 0 for both values
+    if df_filtered.empty:
+        return 0.0, 0.0
+
+    return df_filtered["emissions_kgPerS"].mean(), df_filtered["duration_s"].mean()
+
+
+def create_summary_table(df: pd.DataFrame, species) -> pd.DataFrame:
+    """
+    Creates a summary table (DataFrame) that contains, for each unique
+    combination of unitID and modelReadableName, the average event count,
+    average emission rate, and average emission duration.
+    """
+    # Get unique combinations of unitID and modelReadableName
+    unique_combinations = df[['unitID', 'modelReadableName']].drop_duplicates()
+    results = []
+
+    # Loop over each combination and compute the metrics using the functions above
+    for _, row in unique_combinations.iterrows():
+        unitID = row['unitID']
+        model = row['modelReadableName']
+
+        avg_event_count, _ = get_average_event_count_per_mcRun(df, unitID, model, species)
+        avg_rate, avg_duration = get_average_rate_and_duration(df, unitID, model, species)
+
+        results.append({
+            'unitID': unitID,
+            'modelReadableName': model,
+            'species': species,
+            'avg_event_count': avg_event_count,
+            'avg_emission_rate (kg/h)': avg_rate,
+            'avg_emission_duration (s)': avg_duration
+        })
+
+    summary_df = pd.DataFrame(results)
+    return summary_df
 
 
 def processInstantEquipEmissions(df):
+    # if emissionCol:
     df['emissions_kgPerH'] = df['emission'] * SECONDSINHOUR
+    # else:
+    #      df['emissions_kgPerH'] = df['emissions_mtPerYear'] / 8.76
     df = df[['site', 'facilityID', 'mcRun', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory',
              'timestamp', 'duration', 'species', 'emission', 'emissions_kgPerH']]
     newColumnNames = {'emission': 'emissions_kgPerS', 'duration': 'duration_s', 'timestamp': 'timestamp_s'}
@@ -462,6 +546,7 @@ def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=0.95, insta
 
 
     summary = [item for sublist in summary for item in sublist]
+    summary = [x for x in summary if str(x) != 'nan']
     headers = ['facilityID', 'species', 'units'] + [item for sublist in header for item in sublist]
     equipEmissSummaryDF = pd.DataFrame([summary], columns=headers)
     return equipEmissSummaryDF
@@ -597,6 +682,84 @@ def generatePDFs(config, df ):
                 unitPDF.drop(columns=['value', 'count'], inplace=True)
                 dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/{site}_PDF_for_{unitID}")
 
+def allModelReadableNamesDict():
+    result_dict = {}
+    folder_path = "./input/ModelFormulation"
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file_name)
+        if os.path.isfile(file_path) and file_name.endswith(".json"):
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+
+            # Extracting the "Value" for "Compressors" from "Model Parameters"
+            compressor_value = None
+            for param in data.get("Model Parameters", []):
+                if param.get("Python Parameter") == "modelCategory" and param.get("Value"):
+                    compressor_value = param["Value"]
+                    break
+
+            # Extracting "modelReadableName" and "modelEmissionCategory" values from "Emitters"
+            emitters = [
+                {"modelReadableName": emitter["Readable Name"], "modelEmissionCategory": emitter["Emission Category"]}
+                for emitter in data.get("Emitters", [])
+            ]
+
+            if compressor_value:
+                if compressor_value in result_dict:
+                    result_dict[compressor_value].extend(emitters)
+                else:
+                    result_dict[compressor_value] = emitters
+
+    # Remove duplicate values for each key
+    for key in result_dict:
+        unique_emitters = []
+        seen_emitters = set()
+        for emitter in result_dict[key]:
+            emitter_tuple = (emitter["modelReadableName"], emitter["modelEmissionCategory"])
+            if emitter_tuple not in seen_emitters:
+                seen_emitters.add(emitter_tuple)
+                unique_emitters.append(emitter)
+        result_dict[key] = unique_emitters
+
+    # Remove keys with empty lists
+    result_dict = {key: value for key, value in result_dict.items() if value}
+
+    return result_dict
+
+def fillEmptyDataWithZero(full_df, eq_df):
+    full_df = full_df[full_df['METype'].notnull() & (full_df['METype'] != "")]
+    unit_info = {r['unitID']: {'METype': r['METype'], 'emitterID': r['emitterID']}
+                 for _, r in full_df.iterrows()}
+    model_dict = allModelReadableNamesDict()
+    overall_species = list(eq_df['species'].unique())
+    mcRuns, unitIDs = eq_df['mcRun'].unique(), set(unit_info.keys())
+    missing = []
+
+    for mc in mcRuns:
+        for uid in unitIDs:
+            METype, emitterID = unit_info[uid]['METype'], unit_info[uid]['emitterID']
+            group = eq_df[(eq_df['mcRun'] == mc) & (eq_df['unitID'] == uid)]
+            if METype not in model_dict:
+                # Add missing species rows for units without a defined model dictionary.
+                pres_species = set(group['species'].unique())
+                for sp in set(overall_species) - pres_species:
+                    missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
+                                    'modelReadableName': None, 'modelEmissionCategory': None,
+                                    'emitterID': emitterID, 'emissions_USTonsPerYear': 0})
+            else:
+                # For units with a model dictionary, for each species add missing model events.
+                for sp in overall_species:
+                    pres_models = set(group[group['species'] == sp]['modelReadableName'].dropna().unique())
+                    for m in model_dict[METype]:
+                        if m['modelReadableName'] not in pres_models:
+                            missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
+                                            'modelReadableName': m['modelReadableName'],
+                                            'modelEmissionCategory': m['modelEmissionCategory'],
+                                            'emitterID': emitterID, 'emissions_USTonsPerYear': 0})
+    df_missing = pd.DataFrame(missing)
+    df_complete = pd.concat([eq_df, df_missing], ignore_index=True)
+    df_complete['emissions_USTonsPerYear'] = df_complete['emissions_USTonsPerYear'].fillna(0)
+    return df_complete
 
 def postProcessParquetResults(config, df, fac):
     simDuration = config['simDurationDays']
