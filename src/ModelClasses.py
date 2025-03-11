@@ -3046,7 +3046,7 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
         self.intermittentDurMax = intermittentDurMax
         self.intermittentDurDist = d.Uniform({'min': self.intermittentDurMin, 'max': self.intermittentDurMax})
         self.intermittentDurCurrent = 0
-        self.intermittentDurNormalDist = d.Uniform({'min': 10, 'max': 180})
+        self.intermittentDurNormalDist = d.Uniform({'min': 15, 'max': 60})
 
         self.intermittentWaitDurMin = intermittentWaitDurMin
         self.intermittentWaitDurMax = intermittentWaitDurMax
