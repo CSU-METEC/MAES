@@ -2424,6 +2424,8 @@ class MEETDumpingSeparator(MEETContinuousSeparator):
             raise AttributeError(f'no state {cs} for {self.__class__.__name__}')
         self.updateFFChangeTime(currentTime+delay, delay)   #  self.currentVolume and self.totalVolume should be the same when Dumping
         # self.updateFlowVolumes()
+        if int(delay) > 5000:
+            i = 10
         return int(delay)
 
     def updateFlowVolumes(self, delay):
@@ -2586,15 +2588,23 @@ class MEETDumpingSeparator(MEETContinuousSeparator):
                 self.updateFFChangeTime(self.getMinChangeTimeLiquids(self.inletFluidFlows), self.getMinChangeTimeLiquids(self.inletFluidFlows))
                 self.fillingStateDelay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
                 # self.currentVolume = self.getMinChangeTimeLiquids(self.inletFluidFlows) * self.initialTotalFillRate
+            delay = self.getMinChangeTimeLiquids(self.outletFluidFlows)
         else:
             self.currentGasFraction = self.gasFractionDist.pick()
             self.currentOutletDriverMultiplier = self.outletDriverMultiplier
+            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows), self.getMinChangeTimeLiquids(self.outletFluidFlows))
+            delay = min(delay, self.dumpTime)
+            self.updateFFChangeTime(delay, delay)
+            
         self.sdvTimeTracking = self.fillingStateDelay  # start tracking time
 
         # self.updateIndividualVolumes(self.inletFluidFlows, self.outletFluidFlows, randomStateDelay)
         ret = sm.StateInfo(randomState,
-                           deltaTimeInState=self.getMinChangeTimeLiquids(self.outletFluidFlows),
+                           deltaTimeInState=delay,
                            absoluteTimeInState=self.getMinChangeTimeLiquids(self.outletFluidFlows))
+        
+        if int(ret.deltaTimeInState) > 5000:
+            i = 10
         return ret
 
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
