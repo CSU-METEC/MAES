@@ -49,8 +49,18 @@ Options
                         Study definition folder. Will run every study sheet in directory (default: False)
 
   -me METype,
-                        A specific METype you want to generate pdf for , when summarizing (default: None)
+                        A specific METype you want to generate pdf for (example: Compressor) , when summarizing (default: None)
   -ab abnormal,
-                        Choose to generate pdf for abnormal emmission or all , when summarizing (default: OFF)
+                        Choose to generate pdf for abnormal emmission or all (select between ON and OFF), when summarizing (default: None)
   -ui unitID,
-                        A specific unitID you want to generate pdf for , when summarizing (default: None)
+                        A specific unitID you want to generate pdf for (example: flare_1), when summarizing (default: None)
+  -fs fullSummaries,
+                        Generate all summaries (annual, instantaneous, PDFs, and Average Emission Rates and Durations) (Set it to True) (default: False)
+  -as annualSummaries,
+                       Generate annual emissions summaries (Set it to True) (default: False)
+  -is instantaneousSummaries,
+                        Generate instantaneous emissions summaries (Set it to True) (default: False)
+  -ps pdfSummaries,
+                        Generate PDF emissions summaries (Set it to True) (default: False)
+  -ad avgDurSummaries,
+                        Generate Average Emission Rates and Durations table summary (Set it to True) (default: False)
