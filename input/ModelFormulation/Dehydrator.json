@@ -30,8 +30,10 @@
     {"Model Parameter": "Wet Gas Temperature",          	"Python Parameter": "wetGasTemperature",          "Parameter Type": "Sheet"},
     {"Model Parameter": "Wet Gas Pressure",          		"Python Parameter": "wetGasPressure",             "Parameter Type": "Sheet"},
     {"Model Parameter": "Lean Glycol Circulation Rate",     "Python Parameter": "leanGlycolCirculationRate",  "Parameter Type": "Sheet"},
+    {"Model Parameter": "Stripping Gas Flow Rate",          "Python Parameter": "strippingGasFlowRate",       "Parameter Type": "Sheet"},
     {"Model Parameter": "Tank Flash Controlled Flag",       "Python Parameter": "tankFlashControlledFlag",    "Parameter Type": "Sheet"},
-    {"Model Parameter": "Still Vent Controlled Flag",       "Python Parameter": "stillVentControlledFlag",    "Parameter Type": "Sheet"}
+    {"Model Parameter": "Still Vent Controlled Flag",       "Python Parameter": "stillVentControlledFlag",    "Parameter Type": "Sheet"},
+    {"Model Parameter": "Glycol Pump Injection Ratio",      "Python Parameter": "glycolPumpInjectionRatio",   "Parameter Type": "Sheet"}
   ],
 
   "Emitters": [
@@ -44,6 +46,33 @@
            {                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
          ]
     },
+    {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Glycol Pump Tank Flash Emissions", "Category": "GLYCOL PUMP EMITTER", "Emission Category": "VENTED",
+		 "Model Parameters": [
+           {"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+           {"Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_dehy_glycol_pump_{serialNo}"},
+           {"Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "gycol_pump_flash_tank_emissions"},
+           {"Model Parameter": "Tank Flash Controlled Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+           {                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+         ]
+    },
+   {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Glycol Pump Still Vent Emissions", "Category": "GLYCOL PUMP EMITTER", "Emission Category": "VENTED",
+       "Model Parameters": [
+         {"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+         {"Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_dehy_glycol_pump_{serialNo}"},
+         {"Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "gycol_pump_still_vent_emissions"},
+         {"Model Parameter": "Still Vent Controlled Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+         {                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+       ]
+    },
+    {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Stripping Gas Emissions", "Category": "STRIPPING GAS EMITTER", "Emission Category": "VENTED",
+       "Model Parameters": [
+         {"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+         {"Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_stripping_gas_emissions_{serialNo}"},
+         {"Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "stripping_gas_emissions"},
+         {"Model Parameter": "Still Vent Controlled Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+         {                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+       ]
+    },
     {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Still Vent Emissions", "Category": "STILL VENT EMITTER", "Emission Category": "VENTED",
 		 "Model Parameters": [
            {"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
@@ -54,5 +83,4 @@
          ]
     }
 	]
-
 }
