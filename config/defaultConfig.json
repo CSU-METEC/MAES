@@ -22,7 +22,12 @@
       "disableSummary": false,
       "METype": null,
       "unitID": null,
-      "abnormal": "OFF",
+      "abnormal": null,
+      "fullSummaries": false,
+      "annualSummaries": false,
+      "instantaneousSummaries": false,
+      "pdfSummaries": false,
+      "avgDurSummaries": false,
       
       "simDurationDays": 30,
       "monteCarloIterations": 10
