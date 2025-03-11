@@ -4478,7 +4478,8 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
         #     flashTankFlashesFraction = 0.9 * flashTankFlashesFraction
 
         #  Using average absorption values from research data when any of the fractions is negative
-        #  Improve this section, high circulation ratio (should) lead to high emission rates, (Is It C1 of BTEX emissions only?)
+        #  Improve this section, high circulation ratio > 7 gal/lb of H2O
+        #  (Run ProMax with high Circulation ratios to see what's the impact on emissions)
         if any(fraction < 0 for fraction in [dryGasFraction, flashTankFlashesFraction, stillVentEmissionsFraction]):
             dryGasFraction = 0.9995568
             flashTankFlashesFraction = 0.0002856
