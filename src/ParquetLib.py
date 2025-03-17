@@ -462,41 +462,45 @@ def calcFiveNumberSummary(emissCatDF, species, confidence_level=0.95, instantEmi
     summaryDF = pd.DataFrame([summary], columns=headers)
     return summaryDF
 
-def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=0.95, instantEmissions = False):
+def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=95, instantEmissions = False):
     if instantEmissions:
         emissionsColumn = "emissions_kgPerH"
         mt = "kg/hour"
         emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] * US_TO_PER_HOUR_TO_KG_PER_HOUR
     else:
         emissionsColumn = "emissions_MetricTonsPerYear"
-        emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON # convert from US tons to metric tons
+        emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
         mt = "mt/year"
 
-    emissEquipDF = emissEquipDF[emissEquipDF.species == species]   # Get only methane data for the summary
-    facilityID = emissEquipDF['facilityID'].unique().tolist()
-    summary = [facilityID,  [species], [mt]]
-    header = []
-    alpha = 1 - confidence_level
+    emissEquipDF = emissEquipDF[emissEquipDF["species"] == species]
+    alpha = 100 - float(confidence_level)
 
-    for equip, df in emissEquipDF.groupby('METype'):
-        header.append([equip + 'Min', equip + 'Lower', equip + 'Mean', equip + 'Upper', equip + 'Max', equip + 'lower95CI', equip + '95CI'])
-        equipEmissions = df.groupby('mcRun')[emissionsColumn].sum()
-  
-        minList = min(equipEmissions)
-        maxList = max(equipEmissions)
-        mean = np.mean(equipEmissions)
-        lower = np.percentile(equipEmissions, 25)
-        upper = np.percentile(equipEmissions, 75)
-        ci_lower = np.percentile(equipEmissions, alpha / 2 * 100)
-        ci_upper = np.percentile(equipEmissions, (1 - alpha / 2) * 100)
-        summary.append([minList, lower, mean, upper, maxList, ci_lower, ci_upper])
+    mcEq = emissEquipDF.groupby(["mcRun", "METype"], as_index=False)[emissionsColumn].sum()
 
+    medf = mcEq.groupby("METype", as_index=False)[emissionsColumn].mean()
 
-    summary = [item for sublist in summary for item in sublist]
-    summary = [x for x in summary if str(x) != 'nan']
-    headers = ['facilityID', 'species', 'units'] + [item for sublist in header for item in sublist]
-    equipEmissSummaryDF = pd.DataFrame([summary], columns=headers)
-    return equipEmissSummaryDF
+    min = mcEq.groupby("METype")[emissionsColumn].min()
+    max = mcEq.groupby("METype")[emissionsColumn].max()
+
+    lower = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, 25))
+    upper = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, 75))
+
+    ci_lower = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, alpha / 2))
+    ci_upper = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, (100 - alpha / 2)))
+
+    total = medf.merge(min.rename("Min"), on=["METype"], how="left")
+    total = total.merge(max.rename("Max"), on=["METype"], how="left")
+    total = total.merge(lower.rename("Lower"), on=["METype"], how="left")
+    total = total.merge(upper.rename("Upper"), on=["METype"], how="left")
+    total = total.merge(ci_lower.rename(f"{confidence_level}%_ci_lower"), on=["METype"], how="left")
+    total = total.merge(ci_upper.rename(f"{confidence_level}%_ci_upper"), on=["METype"], how="left")
+
+    total.rename(columns={emissionsColumn:'mean_emissions'}, inplace=True)
+
+    total["species"] = species
+    total["Unit"] = mt
+
+    return total
 
 
 def dumpEmissions(summaryDF, config, summaryType, facID=None, abnormal=None):
@@ -733,7 +737,6 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         CategorySummaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95)
         CategorySummaryDF = pd.concat([CategorySummaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
 
-
         # Get 5 number instant emissions summary for emission categories (vented, fugitives, combusted, total)
         CategoryInstantSummaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95, instantEmissions=True)
         CategoryInstantSummaryDF = pd.concat([CategoryInstantSummaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95, instantEmissions=True)])  # add ethane summary
@@ -746,12 +749,12 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         detailed_inst_emissionsDF = pd.concat([detailed_emissionsDF, calc_detailed_emissions_summary(emissEquipDF, emissions_colmn="emissions_USTonsPerYear", species="ETHANE",inst_emissions=True)])
 
         # Get emissions summary by METype
-        equipEmissSummaryDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=0.95)
-        equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
+        equipEmissSummaryDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=95)
+        equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=95)])  # add ethane summary
 
         # Get instant emissions summary by METype
-        equipEmissInstantDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=0.95, instantEmissions=True)
-        equipEmissInstantDF = pd.concat([equipEmissInstantDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=0.95, instantEmissions=True)])  # add ethane summary
+        equipEmissInstantDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=95, instantEmissions=True)
+        equipEmissInstantDF = pd.concat([equipEmissInstantDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=95, instantEmissions=True)])  # add ethane summary
 
         # Dump summaries
         dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
@@ -763,14 +766,14 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=fac, abnormal=abnormal)
 
     if config['annualSummaries']:
-        detailed_emissionsDF = calc_detailed_emissions_summary(emissEquipDF, emissions_colmn="emissions_USTonsPerYear", species="METHANE")
-        detailed_emissionsDF = pd.concat([detailed_emissionsDF, calc_detailed_emissions_summary(emissEquipDF, emissions_colmn="emissions_USTonsPerYear", species="ETHANE")])
+        detailed_emissionsDF = calc_detailed_emissions_summary(emissEquipDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
+        detailed_emissionsDF = pd.concat([detailed_emissionsDF, calc_detailed_emissions_summary(emissEquipDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE")])
                   # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
-        CategorySummaryDF = calcFiveNumberSummary(emissCatDF, species='METHANE', confidence_level=0.95)
-        CategorySummaryDF = pd.concat([CategorySummaryDF, calcFiveNumberSummary(emissCatDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
+        CategorySummaryDF = calcFiveNumberSummary(emissCatDF.copy(), species='METHANE', confidence_level=0.95)
+        CategorySummaryDF = pd.concat([CategorySummaryDF, calcFiveNumberSummary(emissCatDF.copy(), species='ETHANE', confidence_level=0.95)])  # add ethane summary
           # Get emissions summary by METype
-        equipEmissSummaryDF = calcEmissSummaryByMEType(emissEquipDF, species='METHANE', confidence_level=0.95)
-        equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(emissEquipDF, species='ETHANE', confidence_level=0.95)])  # add ethane summary
+        equipEmissSummaryDF = calcEmissSummaryByMEType(emissEquipDF.copy(), species='METHANE', confidence_level=95)
+        equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(emissEquipDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
 
         # Dump summaries
         dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
