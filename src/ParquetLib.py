@@ -390,7 +390,7 @@ def processInstantEquipEmissions(df):
     df = df[df['emissions_kgPerS'] > 0]
     return df
 
-def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_emissions = None):
+def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_emissions = False):
     if inst_emissions:
         emissionsDf[emissions_colmn] = emissionsDf[emissions_colmn] * US_TO_PER_HOUR_TO_KG_PER_HOUR
         mt = "kg/hour"
@@ -764,8 +764,8 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         detailed_emissionsDF = pd.concat([detailed_emissionsDF, calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE")])
         
         detailed_inst_emissionsDF = calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE",inst_emissions=True)
-        detailed_inst_emissionsDF = pd.concat([detailed_emissionsDF, calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE",inst_emissions=True)])
-
+        detailed_inst_emissionsDF = pd.concat([detailed_inst_emissionsDF, calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE",inst_emissions=True)])
+        
         # Get emissions summary by METype
         equipEmissSummaryDF = calcEmissSummaryByMEType(zerosDF.copy(), species='METHANE', confidence_level=95)
         equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(zerosDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
