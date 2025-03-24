@@ -390,6 +390,36 @@ def processInstantEquipEmissions(df):
     df = df[df['emissions_kgPerS'] > 0]
     return df
 
+
+def calc_instemiss_by_modelReadableName(df):
+    df_grouped = df.groupby(["METype", "unitID", "modelReadableName", "species"], as_index=False)[
+        "emissions_kgPerH"].mean()
+    df_grouped.rename(columns={"emissions_kgPerH": "mean_emissions"}, inplace=True)
+
+
+    # Compute the 95% confidence interval for each group (unitID, modelReadableName, species)
+    ci = 95
+    alpha = 100 - ci
+    ci_lower = df.groupby(["unitID", "modelReadableName", "species"])["emissions_kgPerH"].apply(
+        lambda x: np.percentile(x, alpha / 2))
+    ci_upper = df.groupby(["unitID", "modelReadableName", "species"])["emissions_kgPerH"].apply(
+        lambda x: np.percentile(x, 100 - alpha / 2))
+
+    # Merge CI back into grouped df
+    df_grouped = df_grouped.merge(ci_lower.rename(f"{ci}%_ci_lower"), on=["unitID", "modelReadableName", "species"],
+                                  how="left")
+    df_grouped = df_grouped.merge(ci_upper.rename(f"{ci}%_ci_upper"), on=["unitID", "modelReadableName", "species"],
+                                  how="left")
+    df_grouped["Unit"] = "kg/hour"
+    df_grouped = df_grouped.sort_values(
+        by=["species", "METype", "unitID"],
+        ascending=[False, True, True]
+    ).reset_index(drop=True)
+
+    return df_grouped
+
+
+
 def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_emissions = False):
     if inst_emissions:
         emissionsDf[emissions_colmn] = emissionsDf[emissions_colmn] * US_TO_PER_HOUR_TO_KG_PER_HOUR
@@ -549,12 +579,6 @@ def dumpEmissions(summaryDF, config, summaryType, facID=None, abnormal=None):
         case "detailed_instantEmissions_summary":
             extension = f"_instantEmissions_by_modelReadableName_abnormal_{abnormal}"
 
-        case "inst_site":
-            extension = f"_instantEmissions_by_site_abnormal_{abnormal}"
-
-        case "instMETypes":
-            extension = f"_instantEmissions_by_METype_abnormal_{abnormal}"
-
         case "avgERandDur":
             extension = f"_avg_ER_and_duration_by_modelReadableName_abnormal_{abnormal}"
 
@@ -607,11 +631,12 @@ def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
 
 def calcProbabilitiesAllMCs(tss):
     combined_ts_df = pd.concat([t.df for t in tss], ignore_index=True)
-    combined_ts = ts.TimeseriesRLE(combined_ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=True)
+    combined_ts = ts.TimeseriesRLE(combined_ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=False)
     pdf = combined_ts.toPDF()
     return pdf.data
 
 def generatePDFs(config, df, abnormal):
+    df = df[df['modelReadableName'] != 'Blowdown Event']    # exclude maintenance emissions
     facilityDF = df[df['species'] == 'METHANE']
     meType = config['METype']
     unitID = config['unitID']
@@ -741,7 +766,7 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     # logging.info("Creating dataframes for Emission by Equipment...")
     # emissEquipDF = processEquipEmissions(zerosDF)
     # logging.info("Creating dataframes for Instantaneous Emissions by Equipment...")
-    # emissInstEquipDF = processInstantEquipEmissions(zerosDF)
+    emissInstEquipDF = processInstantEquipEmissions(df)
 
     if config['fullSummaries']:
         # Get PDF at Site Level for CH4 Emissions
@@ -749,38 +774,30 @@ def generatedCsvSummaries(config, df, fac, abnormal):
 
         # Create a table showing the average emission rate and average duration of each emission type (modelReadableName)
         avgERandDur = create_summary_table(zerosDF.copy(), species="METHANE")
-        avgERandDur = pd.concat([avgERandDur,create_summary_table(zerosDF.copy(),species="ETHANE")])
+        avgERandDur = pd.concat([avgERandDur, create_summary_table(zerosDF.copy(), species="ETHANE")])
 
         # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
         CategorySummaryDF = calcFiveNumberSummary(emissCatDF.copy(), species='METHANE', confidence_level=95)
         CategorySummaryDF = pd.concat([CategorySummaryDF, calcFiveNumberSummary(emissCatDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
 
-        # Get 5 number instant emissions summary for emission categories (vented, fugitives, combusted, total)
-        CategoryInstantSummaryDF = calcFiveNumberSummary(emissCatDF.copy(), species='METHANE', confidence_level=95, instantEmissions=True)
-        CategoryInstantSummaryDF = pd.concat([CategoryInstantSummaryDF, calcFiveNumberSummary(emissCatDF.copy(), species='ETHANE', confidence_level=95, instantEmissions=True)])  # add ethane summary
-
         # Get detailed emissions
         detailed_emissionsDF = calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
         detailed_emissionsDF = pd.concat([detailed_emissionsDF, calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE")])
-        
-        detailed_inst_emissionsDF = calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE",inst_emissions=True)
-        detailed_inst_emissionsDF = pd.concat([detailed_inst_emissionsDF, calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE",inst_emissions=True)])
-        
+
         # Get emissions summary by METype
         equipEmissSummaryDF = calcEmissSummaryByMEType(zerosDF.copy(), species='METHANE', confidence_level=95)
         equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(zerosDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
 
-        # Get instant emissions summary by METype
-        equipEmissInstantDF = calcEmissSummaryByMEType(zerosDF.copy(), species='METHANE', confidence_level=95, instantEmissions=True)
-        equipEmissInstantDF = pd.concat([equipEmissInstantDF, calcEmissSummaryByMEType(zerosDF.copy(), species='ETHANE', confidence_level=95, instantEmissions=True)])  # add ethane summary
+        # Get instantaneous emissions summary by modelReadableName
+        instEmissByModelReadName = calc_instemiss_by_modelReadableName(emissInstEquipDF.copy())
+
 
         # Dump summaries
         dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
         dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
-        dumpEmissions(equipEmissSummaryDF , config, "equipment", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
-        dumpEmissions(detailed_inst_emissionsDF, config, "detailed_instantEmissions_summary", facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
-        dumpEmissions(CategoryInstantSummaryDF, config, "inst_site", facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
-        dumpEmissions(equipEmissInstantDF, config, "instMETypes", facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
+        dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
+        dumpEmissions(instEmissByModelReadName, config, "detailed_instantEmissions_summary",
+                      facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/{fac}", abnormal=abnormal)
 
     if config['annualSummaries']:
@@ -796,22 +813,12 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         # Dump summaries
         dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
         dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
-        dumpEmissions(equipEmissSummaryDF , config, "equipment", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
+        dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/{fac}", abnormal=abnormal)
 
     if config['instantaneousSummaries']:
-        # Get detailed emissions
-        detailed_inst_emissionsDF = calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE",inst_emissions=True)
-        detailed_inst_emissionsDF = pd.concat([detailed_inst_emissionsDF, calc_detailed_emissions_summary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE",inst_emissions=True)])
-        # Get 5 number instant emissions summary for emission categories (vented, fugitives, combusted, total)
-        CategoryInstantSummaryDF = calcFiveNumberSummary(emissCatDF.copy(), species='METHANE', confidence_level=95, instantEmissions=True)
-        CategoryInstantSummaryDF = pd.concat([CategoryInstantSummaryDF, calcFiveNumberSummary(emissCatDF.copy(), species='ETHANE', confidence_level=95, instantEmissions=True)])  # add ethane summary
-         # Get instant emissions summary by METype
-        equipEmissInstantDF = calcEmissSummaryByMEType(zerosDF.copy(), species='METHANE', confidence_level=95, instantEmissions=True)
-        equipEmissInstantDF = pd.concat([equipEmissInstantDF, calcEmissSummaryByMEType(zerosDF.copy(), species='ETHANE', confidence_level=95, instantEmissions=True)])  # add ethane summary
-
-        dumpEmissions(detailed_inst_emissionsDF, config, "detailed_instantEmissions_summary", facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
-        dumpEmissions(CategoryInstantSummaryDF, config, "inst_site", facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
-        dumpEmissions(equipEmissInstantDF, config, "instMETypes", facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
+        # Get instantaneous emissions summary by modelReadableName
+        instEmissByModelReadName = calc_instemiss_by_modelReadableName(emissInstEquipDF.copy())
+        dumpEmissions(instEmissByModelReadName, config, "detailed_instantEmissions_summary", facID=f"InstantaneousEmissions/{fac}", abnormal=abnormal)
     
     if config['pdfSummaries']:
         # Get PDF at Site Level for CH4 Emissions
