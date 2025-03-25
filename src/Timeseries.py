@@ -190,11 +190,11 @@ class Timeseries(ABC):
         tot = (self._durations * self._values).sum()
         return tot
 
-    def addSquare(self, ts2):
+    def addSquare(self, ts2, filterZeros):
         # add
         e1, e2, bpList = self._arithmeticPrep(ts2)
         e = list(e1 + e2)
-        tsOut = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=True)
+        tsOut = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=filterZeros)
         return tsOut
 
     def subtractSquare(self, ts2):
@@ -1036,12 +1036,12 @@ class TimeseriesSet():
     def addTimeseries(self, ts):
         self.tsSetList.append(ts)
 
-    def sum(self):
+    def sum(self, filterZeros=True):
         sumTS = TimeseriesRLE(pd.DataFrame(columns=['timestamp',
                                                     'nextTS',
                                                     'tsValue']))
         for singleTS in self.tsSetList:
-            sumTS = sumTS.addSquare(singleTS)
+            sumTS = sumTS.addSquare(singleTS, filterZeros)
 
         return sumTS
 

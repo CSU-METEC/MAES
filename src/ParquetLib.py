@@ -617,7 +617,7 @@ def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
         totalTimeseriesSet = ts.TimeseriesSet(aggrSet(input_df=mcRunDF.sort_values(by=['nextTS'], ascending=[True]), value_column=valueColName, group_options=groupOptions))
 
         if valueColName == "emission":
-            tdf = totalTimeseriesSet.sum()
+            tdf = totalTimeseriesSet.sum(filterZeros=False)
             tdf.df = tdf.df[tdf.df['nextTS'] <= simDuration]
             tdf.df.loc[:, 'tsValue'] = tdf.df['tsValue'] * SECONDSINHOUR
             AllMcRuns[mcRun] = tdf
