@@ -486,8 +486,8 @@ class TimeseriesRLE(Timeseries):
         retTS = TimeseriesFull(retDF, startTimeColName=self.startTimeColName, rateColName=self.valueColName)
         return retTS
 
-    def toPDF(self):
-        ret = TimeseriesPDF.fromTS(self)
+    def toPDF(self, omitZero=None):
+        ret = TimeseriesPDF.fromTS(self, omitZero)
         return ret
 
     def CDFInverse(self, pts=[0.5]):
@@ -927,7 +927,7 @@ class TimeseriesPDF():
         return self
 
     @classmethod
-    def fromTS(cls, ts, tolerance=[], datascale=1) -> "TimeseriesPDF":
+    def fromTS(cls, ts, tolerance=[], datascale=1, omitZero=None) -> "TimeseriesPDF":
         if ts.isempty():
             return cls(pd.DataFrame(columns=['value', 'count']))
 
@@ -936,7 +936,7 @@ class TimeseriesPDF():
             data = (data * datascale).round(tolerance[0]) * tolerance[0]
         counts = ts._durations.groupby(data).sum().reset_index()
         counts.columns = ['value', 'count']
-        counts["probability"] = counts["count"] / ts.totalDuration()
+        counts["probability"] = counts["count"] / ts.totalDuration(omitZero)
         return cls(counts)
 
     def toCDF(self) -> "pd.DataFrame":
