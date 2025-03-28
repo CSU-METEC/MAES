@@ -598,15 +598,13 @@ def aggrSet(input_df, value_column, group_options=None):
     timeseries_set = []
     if group_options:
         input_df = input_df[input_df[group_options[0]] == group_options[1]]
-    
     grouping_cols = ['facilityID', 'METype'] if value_column == "state" else ['facilityID', 'unitID', 'emitterID']
     TimeseriesClass = ts.TimeseriesCategorical if value_column == "state" else ts.TimeseriesRLE
-
+    if input_df.empty:
+        logger.warning(f"Where {group_options[0]} = {group_options[1]} and the selected abnormal emissions options do not match input data")
+        pass
     for _, subset_df in input_df.groupby(grouping_cols):
         timeseries_set.append(TimeseriesClass(subset_df, valueColName=value_column))
-
-    if not timeseries_set:
-        raise ValueError("Group options do not match input data")
     return timeseries_set
 
 def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
@@ -857,10 +855,17 @@ def postProcessParquetResults(config, df, fac):
     if not config['abnormal']:
         generatedCsvSummaries(config, df, fac, abnormal="ON")
         dfAbnormalOFF = filterAbnormalEmissions(df)
-        generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+        if dfAbnormalOFF.empty:
+            logger.log("No non fugitive emissions where found")
+        else:    
+            generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+       
     elif config['abnormal'].upper() == "OFF":
         dfAbnormalOFF = filterAbnormalEmissions(df)
-        generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+        if dfAbnormalOFF.empty:
+            logger.log("No non fugitive emissions where found")
+        else:    
+            generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
     elif config['abnormal'].upper() == "ON":
         generatedCsvSummaries(config, df, fac, abnormal="ON")
 
