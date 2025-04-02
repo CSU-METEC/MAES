@@ -630,7 +630,7 @@ def calcProbabilitiesAllMCs(tss):
     pdf = combined_ts.toPDF()
     return pdf.data
 
-def generatePDFs(config, df, abnormal):
+def generatePDFs(config, df, abnormal, fac):
     df = df[df['modelReadableName'] != 'Blowdown Event']    # exclude maintenance emissions
     facilityDF = df[df['species'] == 'METHANE']
     meType = config['METype']
@@ -643,21 +643,21 @@ def generatePDFs(config, df, abnormal):
         pdf['siteCH4Emission_kg/h'] = pdf['value']
         pdf.drop(columns=['value', 'count'], inplace=True)
 
-        dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/site={site}/", abnormal=abnormal)
+        dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/site={fac}/", abnormal=abnormal)
 
         if meType:
             meTypeAllMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("METype", meType))
             meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
             meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
             meTypepdf.drop(columns=['value', 'count'], inplace=True)
-            dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={site}/{meType}", abnormal=abnormal)
+            dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={fac}/{meType}", abnormal=abnormal)
         else:
             for siMeType, meTyDF in siteDF.groupby('METype'):
                 meTypeAllMCruns = grouping(dfToGroup=meTyDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
                 meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
                 meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
                 meTypepdf.drop(columns=['value', 'count'], inplace=True)
-                dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={site}/PDF_for_all_{siMeType}", abnormal=abnormal)
+                dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={fac}/PDF_for_all_{siMeType}", abnormal=abnormal)
 
         
         if unitID:
@@ -665,14 +665,14 @@ def generatePDFs(config, df, abnormal):
             unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
             unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
             unitPDF.drop(columns=['value', 'count'], inplace=True)
-            dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={site}/{unitID}", abnormal=abnormal)
+            dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={fac}/{unitID}", abnormal=abnormal)
         else:
             for unitID, unitIDDF in siteDF.groupby('unitID'):
                 unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
                 unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
                 unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
                 unitPDF.drop(columns=['value', 'count'], inplace=True)
-                dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={site}/PDF_for_{unitID}", abnormal=abnormal)
+                dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={fac}/PDF_for_{unitID}", abnormal=abnormal)
 
 def allModelReadableNamesDict():
     result_dict = {}
@@ -766,7 +766,7 @@ def generatedCsvSummaries(config, df, fac, abnormal):
 
     if config['fullSummaries']:
         # Get PDF at Site Level for CH4 Emissions
-        generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal)
+        generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal, fac=fac)
 
         # Create a table showing the average emission rate and average duration of each emission type (modelReadableName)
         avgERandDur = create_summary_table(zerosDF.copy(), species="METHANE")
@@ -818,7 +818,7 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     
     if config['pdfSummaries']:
         # Get PDF at Site Level for CH4 Emissions
-        generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal)
+        generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal, fac=fac)
 
     if config['avgDurSummaries']:
         avgERandDur = create_summary_table(zerosDF.copy(), species="METHANE")
