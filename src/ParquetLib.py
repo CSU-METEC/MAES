@@ -640,7 +640,7 @@ def generatePDFs(config, df, abnormal, fac):
         siteEndSimDF = readParquetSummary(config, site=site)
         allMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
         pdf = calcProbabilitiesAllMCs(allMCruns.values())
-        pdf['siteCH4Emission_kg/h'] = pdf['value']
+        pdf['CH4_EmissionRate_kg/h'] = pdf['value']
         pdf.drop(columns=['value', 'count'], inplace=True)
 
         dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/site={fac}/", abnormal=abnormal)
@@ -648,14 +648,14 @@ def generatePDFs(config, df, abnormal, fac):
         if meType:
             meTypeAllMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("METype", meType))
             meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
-            meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
+            meTypepdf['CH4_EmissionRate_kg/h'] = meTypepdf['value']
             meTypepdf.drop(columns=['value', 'count'], inplace=True)
             dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={fac}/{meType}", abnormal=abnormal)
         else:
             for siMeType, meTyDF in siteDF.groupby('METype'):
                 meTypeAllMCruns = grouping(dfToGroup=meTyDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
                 meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
-                meTypepdf['equipCH4Emission_kg/h'] = meTypepdf['value']
+                meTypepdf['CH4_EmissionRate_kg/h'] = meTypepdf['value']
                 meTypepdf.drop(columns=['value', 'count'], inplace=True)
                 dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={fac}/PDF_for_all_{siMeType}", abnormal=abnormal)
 
@@ -663,14 +663,14 @@ def generatePDFs(config, df, abnormal, fac):
         if unitID:
             unitAllMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("unitID", unitID))
             unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
-            unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
+            unitPDF['CH4_EmissionRate_kg/h'] = unitPDF['value']
             unitPDF.drop(columns=['value', 'count'], inplace=True)
             dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={fac}/{unitID}", abnormal=abnormal)
         else:
             for unitID, unitIDDF in siteDF.groupby('unitID'):
                 unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
                 unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
-                unitPDF['unitCH4Emission_kg/h'] = unitPDF['value']
+                unitPDF['CH4_EmissionRate_kg/h'] = unitPDF['value']
                 unitPDF.drop(columns=['value', 'count'], inplace=True)
                 dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={fac}/PDF_for_{unitID}", abnormal=abnormal)
 
