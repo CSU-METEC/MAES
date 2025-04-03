@@ -190,11 +190,11 @@ class Timeseries(ABC):
         tot = (self._durations * self._values).sum()
         return tot
 
-    def addSquare(self, ts2):
+    def addSquare(self, ts2, filterZeros):
         # add
         e1, e2, bpList = self._arithmeticPrep(ts2)
         e = list(e1 + e2)
-        tsOut = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=True)
+        tsOut = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=filterZeros)
         return tsOut
 
     def subtractSquare(self, ts2):
@@ -486,8 +486,8 @@ class TimeseriesRLE(Timeseries):
         retTS = TimeseriesFull(retDF, startTimeColName=self.startTimeColName, rateColName=self.valueColName)
         return retTS
 
-    def toPDF(self):
-        ret = TimeseriesPDF.fromTS(self)
+    def toPDF(self, omitZero=None):
+        ret = TimeseriesPDF.fromTS(self, omitZero)
         return ret
 
     def CDFInverse(self, pts=[0.5]):
@@ -927,7 +927,7 @@ class TimeseriesPDF():
         return self
 
     @classmethod
-    def fromTS(cls, ts, tolerance=[], datascale=1) -> "TimeseriesPDF":
+    def fromTS(cls, ts, tolerance=[], datascale=1, omitZero=None) -> "TimeseriesPDF":
         if ts.isempty():
             return cls(pd.DataFrame(columns=['value', 'count']))
 
@@ -936,7 +936,7 @@ class TimeseriesPDF():
             data = (data * datascale).round(tolerance[0]) * tolerance[0]
         counts = ts._durations.groupby(data).sum().reset_index()
         counts.columns = ['value', 'count']
-        counts["probability"] = counts["count"] / ts.totalDuration()
+        counts["probability"] = counts["count"] / ts.totalDuration(omitZero)
         return cls(counts)
 
     def toCDF(self) -> "pd.DataFrame":
@@ -1036,12 +1036,12 @@ class TimeseriesSet():
     def addTimeseries(self, ts):
         self.tsSetList.append(ts)
 
-    def sum(self):
+    def sum(self, filterZeros=True):
         sumTS = TimeseriesRLE(pd.DataFrame(columns=['timestamp',
                                                     'nextTS',
                                                     'tsValue']))
         for singleTS in self.tsSetList:
-            sumTS = sumTS.addSquare(singleTS)
+            sumTS = sumTS.addSquare(singleTS, filterZeros)
 
         return sumTS
 
