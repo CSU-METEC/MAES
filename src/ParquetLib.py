@@ -347,7 +347,7 @@ def get_average_rate_and_duration(df: pd.DataFrame, unitID_name: str, model_name
     if df_filtered.empty:
         return 0.0, 0.0
 
-    return df_filtered["emissions_kgPerH"].mean(), df_filtered["duration"].mean()
+    return df_filtered["emissions_kgPerH"].mean(), df_filtered["duration_s"].mean()
 
 
 def create_summary_table(df, species):
@@ -769,8 +769,8 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal, fac=fac)
 
         # Create a table showing the average emission rate and average duration of each emission type (modelReadableName)
-        avgERandDur = create_summary_table(zerosDF.copy(), species="METHANE")
-        avgERandDur = pd.concat([avgERandDur, create_summary_table(zerosDF.copy(), species="ETHANE")])
+        avgERandDur = create_summary_table(emissInstEquipDF.copy(), species="METHANE")
+        avgERandDur = pd.concat([avgERandDur, create_summary_table(emissInstEquipDF.copy(), species="ETHANE")])
 
         # Get 5 number summary for emission categories (vented, fugitives, combusted, total)
         CategorySummaryDF = calcFiveNumberSummary(emissCatDF.copy(), species='METHANE', confidence_level=95)
@@ -821,8 +821,8 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal, fac=fac)
 
     if config['avgDurSummaries']:
-        avgERandDur = create_summary_table(zerosDF.copy(), species="METHANE")
-        avgERandDur = pd.concat([avgERandDur,create_summary_table(zerosDF.copy(),species="ETHANE")])
+        avgERandDur = create_summary_table(emissInstEquipDF.copy(), species="METHANE")
+        avgERandDur = pd.concat([avgERandDur,create_summary_table(emissInstEquipDF.copy(),species="ETHANE")])
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={fac}/", abnormal=abnormal)
 
     return None
