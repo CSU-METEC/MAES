@@ -430,8 +430,8 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_
 
     ci = float(95)
     mean_header= "mean_emissions"
-    ci_lower_header = f"{ci}%_ci_lower"
-    ci_upper_header = f"{ci}%_ci_upper"
+    ci_lower_header = f"{int(ci)}%_ci_lower"
+    ci_upper_header = f"{int(ci)}%_ci_upper"
     alpha = 100 - ci
     emissionsDf = emissionsDf[emissionsDf['species'] == species]
 
@@ -440,8 +440,8 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_
 
     mdNameDf.rename(columns={emissions_colmn: mean_header}, inplace=True)
 
-    ci_lower = emissionsDf.groupby(["METype", "unitID", "modelReadableName"])[emissions_colmn].apply(lambda x: np.percentile(x, alpha / 2))
-    ci_upper = emissionsDf.groupby(["METype", "unitID", "modelReadableName"])[emissions_colmn].apply(lambda x: np.percentile(x, (100 - alpha / 2)))
+    ci_lower = mcNameDf.groupby(["METype", "unitID", "modelReadableName"])[emissions_colmn].apply(lambda x: np.percentile(x, alpha / 2))
+    ci_upper = mcNameDf.groupby(["METype", "unitID", "modelReadableName"])[emissions_colmn].apply(lambda x: np.percentile(x, (100 - alpha / 2)))
     mdNameDf = mdNameDf.merge(ci_lower.rename(ci_lower_header), on=["METype", "unitID", "modelReadableName"], how="left")
     mdNameDf = mdNameDf.merge(ci_upper.rename(ci_upper_header), on=["METype", "unitID", "modelReadableName"], how="left")
 
@@ -461,7 +461,7 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_
     final_df = pd.concat([final_df, total.to_frame().T], ignore_index=True)
     final_df["species"] = species
     final_df["Unit"] = mt
-
+    final_df = final_df.drop(final_df[(final_df[ci_lower_header] ==0) & (final_df[ci_upper_header] ==0) & (final_df[mean_header] ==0)].index)
     return final_df.sort_values(["METype"])
 
  
@@ -854,14 +854,14 @@ def postProcessParquetResults(config, df, fac):
         generatedCsvSummaries(config, df, fac, abnormal="ON")
         dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
-            logger.log("No non fugitive emissions where found")
+            logger.info("No non fugitive emissions where found")
         else:    
             generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
        
     elif config['abnormal'].upper() == "OFF":
         dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
-            logger.log("No non fugitive emissions where found")
+            logger.info("No non fugitive emissions where found")
         else:    
             generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
     elif config['abnormal'].upper() == "ON":
