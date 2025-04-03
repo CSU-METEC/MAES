@@ -125,7 +125,6 @@
 		{"Model Parameter": "Crankcase Emissions Flag",         "Python Parameter": "instantiationVal",              "Parameter Type": "Sheet"},
 		{                                                       "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant", "Value": "True"},
 		{"Model Parameter": "CCEE Ratio Distribution",           "Python Parameter": "crankcaseDistrib",              "Parameter Type": "Sheet"},
-		{"Model Parameter": "Crankcase Emissions Factor Flag",           "Python Parameter": "efFlag",              "Parameter Type": "Sheet"},
 		{"Model Parameter": "Factor Tag",                       "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
 		{                                                       "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Crankcase_em"},
 		{                                                       "Python Parameter": "emissionDriverUnits",    "Parameter Type": "Constant", "Value": "kW"},
