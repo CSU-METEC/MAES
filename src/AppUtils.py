@@ -63,6 +63,16 @@ def getParser(defaultConfig):
 
     parser.add_argument("-sn", "--studyName", help="Name of study")
 
+    parser.add_argument("-fs", "--fullSummaries", help="Generate all summaries (annual, instantaneous, PDFs, and Average Emission Rates and Durations)", default=False)
+    parser.add_argument("-as", "--annualSummaries", help="Generate annual emissions summaries", default=False)
+    parser.add_argument("-is", "--instantaneousSummaries", help="Generate instantaneous emissions summaries", default=False)
+    parser.add_argument("-ps", "--pdfSummaries", help="Generate PDF emissions summaries", default=False)
+    parser.add_argument("-ad", "--avgDurSummaries", help="Generate Average Emission Rates and Durations table summary", default=False)
+
+    parser.add_argument("-ab", "--abnormal", help="include abnormal emittions or not", default=None)
+    parser.add_argument("-me", "--METype", help="Choose a METype to calculate its pdf", default=None)
+    parser.add_argument("-ui", "--unitID", help="Choose a unitID to calculate its pdf", default=None)
+
     return parser
 
 def getArgs(defaultConfig=DEFAULT_CONFIG, argsToParse=sys.argv[1:]):

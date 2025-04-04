@@ -2424,6 +2424,8 @@ class MEETDumpingSeparator(MEETContinuousSeparator):
             raise AttributeError(f'no state {cs} for {self.__class__.__name__}')
         self.updateFFChangeTime(currentTime+delay, delay)   #  self.currentVolume and self.totalVolume should be the same when Dumping
         # self.updateFlowVolumes()
+        if int(delay) > 5000:
+            i = 10
         return int(delay)
 
     def updateFlowVolumes(self, delay):
@@ -2586,15 +2588,23 @@ class MEETDumpingSeparator(MEETContinuousSeparator):
                 self.updateFFChangeTime(self.getMinChangeTimeLiquids(self.inletFluidFlows), self.getMinChangeTimeLiquids(self.inletFluidFlows))
                 self.fillingStateDelay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
                 # self.currentVolume = self.getMinChangeTimeLiquids(self.inletFluidFlows) * self.initialTotalFillRate
+            delay = self.getMinChangeTimeLiquids(self.outletFluidFlows)
         else:
             self.currentGasFraction = self.gasFractionDist.pick()
             self.currentOutletDriverMultiplier = self.outletDriverMultiplier
+            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows), self.getMinChangeTimeLiquids(self.outletFluidFlows))
+            delay = min(delay, self.dumpTime)
+            self.updateFFChangeTime(delay, delay)
+            
         self.sdvTimeTracking = self.fillingStateDelay  # start tracking time
 
         # self.updateIndividualVolumes(self.inletFluidFlows, self.outletFluidFlows, randomStateDelay)
         ret = sm.StateInfo(randomState,
-                           deltaTimeInState=self.getMinChangeTimeLiquids(self.outletFluidFlows),
+                           deltaTimeInState=delay,
                            absoluteTimeInState=self.getMinChangeTimeLiquids(self.outletFluidFlows))
+        
+        if int(ret.deltaTimeInState) > 5000:
+            i = 10
         return ret
 
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
@@ -3036,7 +3046,7 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
         self.intermittentDurMax = intermittentDurMax
         self.intermittentDurDist = d.Uniform({'min': self.intermittentDurMin, 'max': self.intermittentDurMax})
         self.intermittentDurCurrent = 0
-        self.intermittentDurNormalDist = d.Uniform({'min': 10, 'max': 180})
+        self.intermittentDurNormalDist = d.Uniform({'min': 15, 'max': 60})
 
         self.intermittentWaitDurMin = intermittentWaitDurMin
         self.intermittentWaitDurMax = intermittentWaitDurMax
@@ -3166,7 +3176,7 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
         bigStateChoice = {'INTERMITTENT_VENT': self.opDur, 'INTERMITTENT_VENT_ABNORMAL': self.abDur}
         retNew = UnscaledEmpiricalDistChooser(bigStateChoice).randomChoice()
         if retNew == 'INTERMITTENT_VENT':
-            ret = {'INTERMITTENT_VENT': int(self.intermittentDurDist.pick())}
+            ret = {'INTERMITTENT_VENT': int(self.intermittentDurNormalDist.pick())}
         else:
             ret = {'INTERMITTENT_VENT_ABNORMAL': int(self.intermittentDurDist.pick())}
         # ret = {'INTERMITTENT_VENT': int(self.intermittentDurDist.pick()),
@@ -4377,13 +4387,12 @@ class MEETGenericStateMachine(mc.MajorEquipment, mc.StateChangeInitiator):
 
 class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
 
-    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'dryGasFraction', 'flashTankFlashesFraction', 'stillVentEmissionsFraction']
+    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'dryGasFraction', 'flashTankFlashesFraction', 'stillVentEmissionsFraction', 'glycolPumpInjectionRate']
 
     def __init__(self,
                  glycolType=None,
                  glycolPump=None,
                  flashTank=None,
-                 # flashTankControlled=None,
                  # reboilerCombustionEfficiency=None,
                  # strippingGas=None,
                  # strippingGasType=None,
@@ -4396,6 +4405,9 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
                  leanGlycolCirculationRate=None,
                  tankFlashControlledFlag=None,
                  stillVentControlledFlag=None,
+                 strippingGasFlowRate=None,
+                 glycolPumpInjectionRatio=None,
+                 # glycolPumpInjectionRate=None,
                  # dryGasFraction=None,
                  # flashTankFlashesFraction=None,
                  # stillVentFraction=None,
@@ -4404,10 +4416,10 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
         super().__init__(**kwargs)
         self.glycolType = glycolType
         self.glycolPump = glycolPump
-        self.flashTank = flashTank
-        # self.flashTankControlled = flashTankControlled
+        self.flashTank = flashTank if flashTank in [True, False]\
+            else (lambda: (_ for _ in ())
+                  .throw(ValueError(f"Flash Tank value must be 'TRUE' or 'FALSE' but provided as '{flashTank}'")))()
         # self.reboilerCombustionEfficiency = reboilerCombustionEfficiency
-        # self.strippingGas = strippingGas
         # self.strippingGasType = strippingGasType
         self.leanGlycolCirculationRatio = leanGlycolCirculationRatio
         self.wetGasFlowRate = wetGasFlowRate
@@ -4422,10 +4434,25 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
             }
         }
         self.dryGasFraction = self.getFFFractions()[0]
-        self.flashTankFlashesFraction = self.getFFFractions()[1]
-        self.stillVentEmissionsFraction = self.getFFFractions()[2]
+        # If flash tank is present
+        if flashTank:
+            self.flashTankFlashesFraction = self.getFFFractions()[1]
+            self.stillVentEmissionsFraction = self.getFFFractions()[2]
+        # If no flash tank
+        else:
+            self.flashTankFlashesFraction = 0
+            self.stillVentEmissionsFraction = self.getFFFractions()[1] + self.getFFFractions()[2]
+
         self.tankFlashControlledFlag = tankFlashControlledFlag
         self.stillVentControlledFlag = stillVentControlledFlag
+        self.strippingGasFlowRate = strippingGasFlowRate if strippingGasFlowRate else 0 # convert to scf/sec form scfm
+        self.glycolPumpInjectionRatio = glycolPumpInjectionRatio
+        self.glycolPumpInjectionRate = glycolPumpInjectionRatio * leanGlycolCirculationRate * self.operatingFraction() / 60 if glycolPumpInjectionRatio else 0  # convert to scf/s from scfm
+
+    # MAES scales emissions per sec to annual, therefore if
+    def operatingFraction(self):
+        opFrac = self.operatingHours/8760
+        return opFrac
 
     def getFFFractions(self):
         r = self.leanGlycolCirculationRatio
@@ -4444,10 +4471,19 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
         # terms = [1, r, t, p]
         dryGasFraction = sum(c * t for c, t in zip(dryGasCoeff, terms))/100
         flashTankFlashesFraction = sum(c * t for c, t in zip(flashTankFlashesCoeff, terms))/100
-        stillVentEmissionsFraction = 1 - dryGasFraction - flashTankFlashesFraction
-        if stillVentEmissionsFraction < 0:
-            stillVentEmissionsFraction = 0.1 * flashTankFlashesFraction
-            flashTankFlashesFraction = 0.9 * flashTankFlashesFraction
+        stillVentEmissionsFraction = sum(c * t for c, t in zip(stillVentEmissionsCoeff, terms))/100
+        # stillVentEmissionsFraction = 1 - dryGasFraction - flashTankFlashesFraction
+        # if stillVentEmissionsFraction < 0:
+        #     stillVentEmissionsFraction = 0.1 * flashTankFlashesFraction
+        #     flashTankFlashesFraction = 0.9 * flashTankFlashesFraction
+
+        #  Using average absorption values from research data when any of the fractions is negative
+        #  Improve this section, high circulation ratio > 7 gal/lb of H2O
+        #  (Run ProMax with high Circulation ratios to see what's the impact on emissions)
+        if any(fraction < 0 for fraction in [dryGasFraction, flashTankFlashesFraction, stillVentEmissionsFraction]):
+            dryGasFraction = 0.9995568
+            flashTankFlashesFraction = 0.0002856
+            stillVentEmissionsFraction = 0.0001450
 
         return [dryGasFraction, flashTankFlashesFraction, stillVentEmissionsFraction]
 
@@ -4467,14 +4503,60 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
         ret = {'OPERATING': min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows['Vapor']))}
         return ret
 
+    def initialStateUpdate(self, stateName, stateDuration, currentTime):
+        outflowCounts = len(self.outletFluidFlows['Vapor'])
+        # self.strippingGasFlowRate = self.strippingGasFlowRate * 3/outflowCounts  # distribute the stripping gas to the still vent outlet flows
+        # self.glycolPumpInjectionRate = self.glycolPumpInjectionRate * 3/outflowCounts  # distribute the pump injection rate to the flash tank outlet flows
+        ret = sm.StateInfo(stateName, deltaTimeInState=stateDuration, absoluteTimeInState=currentTime + stateDuration)
+        return ret
+
     def linkInletFlow(self, outletME, flow):
         self.addInletFluidFlow(flow)
-
         if flow.name == 'Vapor':
+            gas_sales_flow = flow if flow.secondaryID == 'gas_sales' else None
+            # gas glcol pump emsssions
+            # if no flash tank, this emissions will be lost: update this section to emit at the still vent if no flash tank
+            if len(self.outletFluidFlows) == 0 and self.glycolPumpInjectionRate > 0:
+                if self.flashTank:
+                    self.addOutletFluidFlow(ff.DependentFlow.factory(flow,
+                                                                     # rateTransform=lambda x: 0.056361544/100 * x,
+                                                                     rateTransform=lambda x: self.glycolPumpInjectionRate,
+                                                                     newUnits=flow.driverUnits,
+                                                                     secondaryID='gycol_pump_flash_tank_emissions',
+                                                                     gc=flow.gc
+                                                                     ))
+                else:
+                    self.addOutletFluidFlow(ff.DependentFlow.factory(flow,
+                                                                     # rateTransform=lambda x: 0.056361544/100 * x,
+                                                                     rateTransform=lambda
+                                                                         x: self.glycolPumpInjectionRate,
+                                                                     newUnits=flow.driverUnits,
+                                                                     secondaryID='gycol_pump_still_vent_emissions',
+                                                                     gc=flow.gc
+                                                                     ))
+                if self.strippingGasFlowRate > 0:
+                    self.addOutletFluidFlow(ff.DependentFlow.factory(flow,
+                                                                     # rateTransform=lambda x: 0.056361544/100 * x,
+                                                                     rateTransform=lambda
+                                                                         x: self.strippingGasFlowRate / 60,
+                                                                     newUnits=flow.driverUnits,
+                                                                     secondaryID='stripping_gas_emissions',
+                                                                     gc=flow.gc
+                                                                     ))
+            # add a stripping gas emissions flow if available
+            if len(self.outletFluidFlows) == 0 and self.glycolPumpInjectionRate == 0 and self.strippingGasFlowRate > 0:
+                    self.addOutletFluidFlow(ff.DependentFlow.factory(flow,
+                                                                     # rateTransform=lambda x: 0.056361544/100 * x,
+                                                                     rateTransform=lambda
+                                                                         x: self.strippingGasFlowRate / 60,
+                                                                     newUnits=flow.driverUnits,
+                                                                     secondaryID='stripping_gas_emissions',
+                                                                     gc=flow.gc
+                                                                     ))
             # dry gas from contactor
             self.addOutletFluidFlow(ff.DependentFlow.factory(flow,
                                                              # rateTransform=lambda x: 99.87764066/100 * x,
-                                                             rateTransform=lambda x: self.dryGasFraction * x,
+                                                             rateTransform=lambda x: self.dryGasFraction * (x - self.glycolPumpInjectionRate if gas_sales_flow else 0),
                                                              newUnits=flow.driverUnits,
                                                              secondaryID='gas_sales',
                                                              gc=flow.gc.derive('DehyContactor-Flash')
@@ -4482,7 +4564,7 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
             # flashed gas at the flash tank
             self.addOutletFluidFlow(ff.DependentFlow.factory(flow,
                                                              # rateTransform=lambda x: 0.06511518/100 * x,
-                                                             rateTransform=lambda x: self.flashTankFlashesFraction * x,
+                                                             rateTransform=lambda x: self.flashTankFlashesFraction * (x - self.glycolPumpInjectionRate if gas_sales_flow else 0),
                                                              newUnits=flow.driverUnits,
                                                              secondaryID='flash_tank_flashes',
                                                              gc=flow.gc.derive('DehyFlashTank-Flash')
@@ -4490,9 +4572,11 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
             # vented gas at the still vent column
             self.addOutletFluidFlow(ff.DependentFlow.factory(flow,
                                                              # rateTransform=lambda x: 0.056361544/100 * x,
-                                                             rateTransform=lambda x: self.stillVentEmissionsFraction * x,
+                                                             # rateTransform=lambda x: self.stillVentEmissionsFraction * (x - self.glycolPumpInjectionRate if gas_sales_flow else 0) + self.strippingGasFlowRate,
+                                                             rateTransform=lambda x: self.stillVentEmissionsFraction * (x - self.glycolPumpInjectionRate if gas_sales_flow else 0),
                                                              newUnits=flow.driverUnits,
                                                              secondaryID='still_vent_emissions',
                                                              gc=flow.gc.derive('DehyStillVent-Flash')
                                                              ))
+
         pass
