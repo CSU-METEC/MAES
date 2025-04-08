@@ -410,7 +410,7 @@ def calc_instemiss_by_modelReadableName(df):
                                   how="left")
     df_grouped = df_grouped.merge(ci_upper.rename(f"{ci}%_ci_upper"), on=["unitID", "modelReadableName", "species"],
                                   how="left")
-    df_grouped["Unit"] = "kg/hour"
+    df_grouped["unit"] = "kg/hour"
     df_grouped = df_grouped.sort_values(
         by=["species", "METype", "unitID"],
         ascending=[False, True, True]
@@ -460,7 +460,7 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_
 
     final_df = pd.concat([final_df, total.to_frame().T], ignore_index=True)
     final_df["species"] = species
-    final_df["Unit"] = mt
+    final_df["unit"] = mt
     final_df = final_df.drop(final_df[(final_df[ci_lower_header] ==0) & (final_df[ci_upper_header] ==0) & (final_df[mean_header] ==0)].index)
     return final_df.sort_values(["METype"])
 
@@ -492,18 +492,18 @@ def calcFiveNumberSummary(emissCatDF, species, confidence_level=95, instantEmiss
     ci_lower = emissCatDF.groupby(["modelEmissionCategory"])[emissionsColumn].apply(lambda x: np.percentile(x, alpha / 2))
     ci_upper = emissCatDF.groupby(["modelEmissionCategory"])[emissionsColumn].apply(lambda x: np.percentile(x, (100 - alpha / 2)))
 
-    mdCat = mdCat.merge(min.rename("Min"), on=["modelEmissionCategory"], how="left")
-    mdCat = mdCat.merge(max.rename("Max"), on=["modelEmissionCategory"], how="left")
+    mdCat = mdCat.merge(min.rename("min"), on=["modelEmissionCategory"], how="left")
+    mdCat = mdCat.merge(max.rename("max"), on=["modelEmissionCategory"], how="left")
 
-    mdCat = mdCat.merge(lower.rename("Lower"), on=["modelEmissionCategory"], how="left")
-    mdCat = mdCat.merge(upper.rename("Upper"), on=["modelEmissionCategory"], how="left")
+    mdCat = mdCat.merge(lower.rename("lower"), on=["modelEmissionCategory"], how="left")
+    mdCat = mdCat.merge(upper.rename("upper"), on=["modelEmissionCategory"], how="left")
 
     mdCat = mdCat.merge(ci_lower.rename(ci_lower_col), on=["modelEmissionCategory"], how="left")
     mdCat = mdCat.merge(ci_upper.rename(ci_upper_col), on=["modelEmissionCategory"], how="left")
 
     mdCat.rename(columns={emissionsColumn:'mean_emissions'}, inplace=True)
     mdCat["species"] = species
-    mdCat["Unit"] = mt
+    mdCat["unit"] = mt
 
     return mdCat
 
@@ -533,10 +533,10 @@ def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=95, instant
     ci_lower = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, alpha / 2))
     ci_upper = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, (100 - alpha / 2)))
 
-    medf = medf.merge(min.rename("Min"), on=["METype"], how="left")
-    medf = medf.merge(max.rename("Max"), on=["METype"], how="left")
-    medf = medf.merge(lower.rename("Lower"), on=["METype"], how="left")
-    medf = medf.merge(upper.rename("Upper"), on=["METype"], how="left")
+    medf = medf.merge(min.rename("min"), on=["METype"], how="left")
+    medf = medf.merge(max.rename("max"), on=["METype"], how="left")
+    medf = medf.merge(lower.rename("lower"), on=["METype"], how="left")
+    medf = medf.merge(upper.rename("upper"), on=["METype"], how="left")
     medf = medf.merge(ci_lower.rename(f"{confidence_level}%_ci_lower"), on=["METype"], how="left")
     medf = medf.merge(ci_upper.rename(f"{confidence_level}%_ci_upper"), on=["METype"], how="left")
 
@@ -546,7 +546,7 @@ def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=95, instant
     total.rename(columns={emissionsColumn:'mean_emissions'}, inplace=True)
 
     total["species"] = species
-    total["Unit"] = mt
+    total["unit"] = mt
 
     return total
 
