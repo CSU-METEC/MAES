@@ -448,12 +448,18 @@ def calc_detailed_emissions_summary(emissionsDf, emissions_colmn, species, inst_
     unitIDDF = mdNameDf.groupby(["METype", "unitID"], as_index=False)[[mean_header,ci_lower_header,ci_upper_header]].sum()
     unitIDDF["modelReadableName"] = "summed_modelReadableName"
 
-    meTypeDf = unitIDDF.groupby(["METype","modelReadableName"], as_index=False)[[mean_header,ci_lower_header,ci_upper_header]].sum()
+    uniDF = emissionsDf.groupby(["mcRun","METype"], as_index=False)[emissions_colmn].sum()
+    uni_ci_lower = uniDF.groupby(["METype"])[emissions_colmn].apply(lambda x: np.percentile(x, alpha / 2))
+    uni_ci_upper = uniDF.groupby(["METype"])[emissions_colmn].apply(lambda x: np.percentile(x, (100 - alpha / 2)))
+
+    meTypeDf = unitIDDF.groupby(["METype","modelReadableName"], as_index=False)[mean_header].sum()
     meTypeDf["unitID"] = "summed_unitID"
+    meTypeDf = meTypeDf.merge(uni_ci_lower.rename(ci_lower_header), on=["METype"], how="left")
+    meTypeDf = meTypeDf.merge(uni_ci_upper.rename(ci_upper_header), on=["METype"], how="left")
 
     final_df = pd.concat([mdNameDf,unitIDDF,meTypeDf], ignore_index=True)
     
-    total = mdNameDf.sum(numeric_only=True, axis=0)
+    total = meTypeDf.sum(numeric_only=True, axis=0)
     total["METype"] = "summed_METype"
     total["unitID"] = "summed_unitID"
     total["modelReadableName"] = "summed_modelReadableName"
