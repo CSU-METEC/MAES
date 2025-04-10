@@ -13,6 +13,7 @@ import scipy.stats as st
 import Timeseries as ts
 import re
 import urllib.parse as up
+import FileSystemManager as fsm
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,9 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
     df.to_parquet(pqBase, partition_cols=partition_cols,
                   basename_template=f"{dsName}-{{i}}.parquet",
-                  existing_data_behavior='overwrite_or_ignore')
+                  existing_data_behavior='overwrite_or_ignore',
+                  engine='auto',
+                  filesystem=fsm.BaseFSManager.getFSManager().fileSystem)
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = config[dsName]
@@ -44,7 +47,8 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
                   basename_template=f"{dsName}-{{i}}.parquet",
                   existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
-                  index=False
+                  index=False,
+                  filesystem=fsm.BaseFSManager.getFSManager().fileSystem
                   )
 
 # clean up the equipment type field as per Matlab postprocessing code.
@@ -107,7 +111,10 @@ def baseReadParquet(config, dsName, mcRun=None, species=None, sort_by=None, addi
 
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
     try:
-        pqTable = pq.read_table(pqBase,
+        filesystem = fsm.BaseFSManager.getFSManager().fileSystem
+        if filesystem:
+            pqBase = str(pqBase)
+        pqTable = pq.read_table(pqBase, filesystem=filesystem,
                                 **filter)
         if sort_by:
             pqTable = pqTable.sort_by(sort_by)
@@ -149,8 +156,10 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
     pqBase = config[dsName]
     pqBase = _extendDSName(pqBase, expSite, mcRun)
     try:
-        pqTable = pq.read_table(pqBase,
-                                **filter)
+        filesystem = fsm.BaseFSManager.getFSManager().fileSystem
+        if filesystem:
+            pqBase = str(pqBase)
+        pqTable = pq.read_table(pqBase, filesystem=filesystem, **filter)
     except FileNotFoundError as e:
         return None
 

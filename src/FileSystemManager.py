@@ -37,7 +37,7 @@ class S3FileSystemManager(BaseFSManager):
     S3-specific implementation of the file system operations.
     """
     
-    def __init__(self, config, access_key, access_secret, bucket_name, host="localhost", port = "9000", use_ssl= False):
+    def __init__(self, config):
         """
         Initialize the S3FileSystem with connection parameters.
         
@@ -50,13 +50,12 @@ class S3FileSystemManager(BaseFSManager):
             use_ssl (bool): Whether to use SSL (default: False)
         """
         super().__init__(config=config)
-        self.bucket_name = bucket_name
         self.fileSystem = S3FileSystem(
             key=os.environ.get("S3_ACCESS_KEY"),
             secret=os.environ.get("S3_SECRET_KEY"),
             client_kwargs={
-                'endpoint_url': f'http{"s" if use_ssl else ""}://{host}:{port}',
-                'use_ssl': use_ssl
+                'endpoint_url': "http://localhost:9000",
+                'use_ssl': False
             }
         )
 
