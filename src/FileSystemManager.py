@@ -1,4 +1,6 @@
 from s3fs import S3FileSystem
+import SimDataManager as sdm
+import MEETExceptions as me
 import os
 
 
@@ -18,13 +20,10 @@ class BaseFSManager():
         Returns:
             BaseFSManager: The singleton instance of the file system manager.
         """
-        if cls.FILE_SYSTEM_MANAGER_SINGLETON:
-            return cls.FILE_SYSTEM_MANAGER_SINGLETON.fileSystem
-        return cls.FILE_SYSTEM_MANAGER_SINGLETON
-    
-    @classmethod
-    def initializeSingleton(cls, config):
-        cls.FILE_SYSTEM_MANAGER_SINGLETON = cls(config=config)
+        if (sdm.SimDataManager.getSimDataManager() is None
+                or sdm.SimDataManager.getSimDataManager().filesystem is None):
+            raise me.IllegalElementError("No sim data manager filesystem available")
+        return sdm.SimDataManager.getSimDataManager().filesystem
     
     
     def __init__(self, config):
@@ -52,13 +51,21 @@ class S3FSManager(BaseFSManager):
         """
         super().__init__(config=config)
         self.fileSystem = S3FileSystem(
-            key=os.environ.get("S3_ACCESS_KEY"),
-            secret=os.environ.get("S3_SECRET_KEY"),
+            key="hrsb5fuR86g91pQPGQ3Z",
+            secret="6o7toFzW4w610MOCOM7S0Bb3RGqrahJxI8GYtzOJ",
             client_kwargs={
                 'endpoint_url': "http://localhost:9000",
                 'use_ssl': False
             }
         )
+        # self.fileSystem = S3FileSystem(
+        #     key=os.environ.get("S3_ACCESS_KEY"),
+        #     secret=os.environ.get("S3_SECRET_KEY"),
+        #     client_kwargs={
+        #         'endpoint_url': "http://localhost:9000",
+        #         'use_ssl': False
+        #     }
+        # )
 
 
 
@@ -74,10 +81,9 @@ def instantiateFSManager(config):
     """
     fs_manager = None
     if config['fsType'] == 's3':
-        fs_manager = S3FSManager.initializeSingleton(config=config)
-        
+        fs_manager = S3FSManager(config=config)
     elif config['fsType'] == 'local':
-        fs_manager = BaseFSManager.initializeSingleton(config=config)
+        fs_manager = BaseFSManager(config)
     else:
         raise ValueError(f"Unsupported file system type: {config['fsType']}")
     return fs_manager

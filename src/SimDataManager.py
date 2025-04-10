@@ -17,6 +17,7 @@ import TimeseriesTable as ts
 import numpy as np
 import MEETFluidFlow as ff
 import os
+import FileSystemManager as fsm
 
 def guaranteeColumn(df, colName, colSet):
     if colName not in colSet:
@@ -64,6 +65,7 @@ class SimDataManager():
         self.serializer = JsonSDMSerializer(config=self.config)
 
         self.caches = set()
+        self.filesystem = fsm.instantiateFSManager(config)
 
     @classmethod
     def initStubSimDataManager(cls):
