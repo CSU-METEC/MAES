@@ -51,6 +51,8 @@ def getParser(defaultConfig):
     parser.add_argument('-mc', '--monteCarloIterations', help="number of MC iterations", type=int)
     parser.add_argument('-r',  '--runNumber', help="scenario number", type=int)
 
+    parser.add_argument("-fst", "--fsType", help="File system type (local, s3, etc.)", type=str, default="local")
+
     parser.add_argument("-ts", "--scenarioTimestamp", help="simulation / serialization identifier (timestamp)")
 
     parser.add_argument('-w',  '--workers', type=int, help="Number of parallel python images (experimental)")

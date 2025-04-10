@@ -4,7 +4,7 @@ import MEETExceptions as me
 import os
 
 
-class BaseFSManager:
+class BaseFSManager():
     """
     Base class for file system operations using a singleton pattern.
     """
@@ -52,8 +52,8 @@ class S3FileSystemManager(BaseFSManager):
         super().__init__(config=config)
         self.bucket_name = bucket_name
         self.fileSystem = S3FileSystem(
-            key=os.environ.get("AWS_ACCESS_KEY_ID"),
-            secret=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            key=os.environ.get("S3_ACCESS_KEY"),
+            secret=os.environ.get("S3_SECRET_KEY"),
             client_kwargs={
                 'endpoint_url': f'http{"s" if use_ssl else ""}://{host}:{port}',
                 'use_ssl': use_ssl

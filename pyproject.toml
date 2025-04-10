@@ -35,6 +35,10 @@ python-semantic-release = "^9.16.0"
 mkdocs-material = "^9.5.49"
 python-semantic-release = "^9.15.2"
 
+
+[tool.poetry.group.api.dependencies]
+s3fs = "^2025.3.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
