@@ -122,8 +122,9 @@
 	{"Python Category": "Emitter", "Python Class": "EmpiricalFlowFromMajorEquipment", "Readable Name": "Crankcase Emissions", "Category": "Crankcase", "Emission Category": "VENTED",
       "Model Parameters": [
         {														"Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Crankcase"},
-		{"Model Parameter": "Crankcase Emissions Flag",         "Python Parameter": "instantiationVal",              "Parameter Type": "Sheet"},
-		{                                                       "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant", "Value": "True"},
+		{"Model Parameter": "Driver Type",         "Python Parameter": "instantiationVal",              "Parameter Type": "Sheet"},
+		{                                                       "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant", "Value": "2SLB, 4SLB, 4SRB, Turbine"},
+		{"Model Parameter": "Crankcase Emissions Flag",           "Python Parameter": "cceeFlag",              "Parameter Type": "Sheet"},
 		{"Model Parameter": "CCEE Ratio Distribution",           "Python Parameter": "crankcaseDistrib",              "Parameter Type": "Sheet"},
 		{"Model Parameter": "Factor Tag",                       "Python Parameter": "factorTag",              "Parameter Type": "Sheet",    "Optional":"True"},
 		{                                                       "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Crankcase_em"},

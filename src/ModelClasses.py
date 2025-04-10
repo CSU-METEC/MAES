@@ -3376,14 +3376,13 @@ class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['crankcaseDist']
     def __init__(self,
                  crankcaseDistrib=None, 
-                #  efFlag=False,
+                 cceeFlag=None,
                  **kwargs
                 ):
         super().__init__(**kwargs)
         simdm = sdm.SimDataManager.getSimDataManager()
         self.crankcaseDistrib = crankcaseDistrib
-        # self.efFlag = efFlag
-        # self.efName = efName
+        self.cceeFlag = cceeFlag
         self.crankcaseDist = getCrankcaseDist(crankcaseDistrib, simdm)
         i = 10
     
@@ -3392,11 +3391,14 @@ class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
     
     def stateChange(self, currentTime, stateInfo, op, delay=0, relatedEvent=0, initiator=None):
         i = 10
-        crankcaseFraction = self.crankcaseDist.pick()
-        self.fluidFlow = self.majorEquipment.exhaustFF
-        self.fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(self.majorEquipment.loadingKW*crankcaseFraction, 'kW')  
-        # 14.4% of exhaust emissions calculated exactly after exhaust
-        super().stateChange(currentTime, stateInfo, op, delay, relatedEvent, initiator)
+        if self.cceeFlag == False:
+            pass
+        else:
+            crankcaseFraction = self.crankcaseDist.pick()
+            self.fluidFlow = self.majorEquipment.exhaustFF
+            self.fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(self.majorEquipment.loadingKW*crankcaseFraction, 'kW')  
+            # 14.4% of exhaust emissions calculated exactly after exhaust
+            super().stateChange(currentTime, stateInfo, op, delay, relatedEvent, initiator)
 
 
 def getCrankcaseDist(crankDist, simdm):
