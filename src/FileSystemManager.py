@@ -1,6 +1,4 @@
 from s3fs import S3FileSystem
-import SimDataManager as sdm
-import MEETExceptions as me
 import os
 
 
@@ -20,10 +18,13 @@ class BaseFSManager():
         Returns:
             BaseFSManager: The singleton instance of the file system manager.
         """
-        if (sdm.SimDataManager.getSimDataManager() is None
-                or sdm.SimDataManager.getSimDataManager().filesystem is None):
-            raise me.IllegalElementError("No sim data manager gc table available")
-        return sdm.SimDataManager.getSimDataManager().filesystem
+        if cls.FILE_SYSTEM_MANAGER_SINGLETON:
+            return cls.FILE_SYSTEM_MANAGER_SINGLETON.fileSystem
+        return cls.FILE_SYSTEM_MANAGER_SINGLETON
+    
+    @classmethod
+    def initializeSingleton(cls, config):
+        cls.FILE_SYSTEM_MANAGER_SINGLETON = cls(config=config)
     
     
     def __init__(self, config):
@@ -32,7 +33,7 @@ class BaseFSManager():
         self.fileSystem = None
     
 
-class S3FileSystemManager(BaseFSManager):
+class S3FSManager(BaseFSManager):
     """
     S3-specific implementation of the file system operations.
     """
@@ -73,18 +74,10 @@ def instantiateFSManager(config):
     """
     fs_manager = None
     if config['fsType'] == 's3':
-        fs_manager = S3FileSystemManager(
-                config=config,
-                access_key="hrsb5fuR86g91pQPGQ3Z",
-                access_secret="6o7toFzW4w610MOCOM7S0Bb3RGqrahJxI8GYtzOJ",
-                bucket_name="meet",
-                host="localhost",
-                port=9000,
-                use_ssl=False
-            )
+        fs_manager = S3FSManager.initializeSingleton(config=config)
         
     elif config['fsType'] == 'local':
-        fs_manager = BaseFSManager(config)
+        fs_manager = BaseFSManager.initializeSingleton(config=config)
     else:
         raise ValueError(f"Unsupported file system type: {config['fsType']}")
     return fs_manager
