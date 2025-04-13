@@ -154,6 +154,7 @@ Compressors,Comp_blowdown,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF 
 Compressors,Rod_packing_vent_nod,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS2_VV_50_HP_Stage2_ScaledEFRodPackingNOD.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_nop,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS2_VV_50_HP_Stage2_ScaledEFRodPackingNOP.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_op,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS2_VV_50_HP_Stage2_ScaledEFRodPackingOP.csv,gef_scaled,yes,
+Compressors,Crankcase_em,50_PS2,EmpiricalFlowFromMajorEquipment,,,,,
 Compressors,Blowdown_event,50_PS2,EmpiricalFlowImmediateProduction,,,,no,
 Compressors,Comp_component_leak,50_PS2,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,gef,no,
 Compressors,Comp_pneumatic,50_PS2,PneumaticEmitterProduction,Common/Allen/Rocky Mountain/Allen_RM_ALLPNM_AF.csv,Common/Allen/Rocky Mountain/Allen_RM_ALLPNM_EF.csv,allen,no,Confirm EF

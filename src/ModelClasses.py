@@ -3371,6 +3371,16 @@ class EmpiricalFlowImmediateProduction(EmpiricalFluidFlow):
         fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(driverRateInSecs, self.emissionDriverUnits)
         return fluidFlow
 
+def strToBool(value):
+    if isinstance(value, bool):
+        return value
+    elif isinstance(value, str):
+        if value.lower() in ('true', 'yes', '1'):
+            return True
+        elif value.lower() in ('false', 'no', '0'):
+            return False
+    raise ValueError(f'Cannot convert {value} to boolean')
+
 
 class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['crankcaseDist']
@@ -3382,7 +3392,7 @@ class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
         super().__init__(**kwargs)
         simdm = sdm.SimDataManager.getSimDataManager()
         self.crankcaseDistrib = crankcaseDistrib
-        self.cceeFlag = cceeFlag
+        self.cceeFlag = strToBool(cceeFlag)
         self.crankcaseDist = getCrankcaseDist(crankcaseDistrib, simdm)
         i = 10
     
