@@ -16,7 +16,6 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
 numpy = "^2.2.1"
-mkdocs-with-pdf = "^0.9.3"
 twine = "^6.0.1"
 wheel = "^0.45.1"
 matplotlib = "3.10.0"
@@ -31,12 +30,11 @@ openpyxl = "^3.1.5"
 xlsxwriter = "^3.2.0"
 python-semantic-release = "^9.16.0"
 
-[tool.poetry.group.dev.dependencies]
-mkdocs-material = "^9.5.49"
+[tool.poetry.group.docs.dependencies]
 python-semantic-release = "^9.15.2"
 
 
-[tool.poetry.group.api.dependencies]
+[tool.poetry.group.docker.dependencies]
 s3fs = "^2025.3.2"
 
 [build-system]

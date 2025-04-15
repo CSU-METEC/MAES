@@ -47,6 +47,7 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
                   basename_template=f"{dsName}-{{i}}.parquet",
                   existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
+                  index=False,
                   filesystem=fsm.getFSManager().fileSystem
                   )
 
