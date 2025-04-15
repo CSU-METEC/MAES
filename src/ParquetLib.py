@@ -13,7 +13,7 @@ import scipy.stats as st
 import Timeseries as ts
 import re
 import urllib.parse as up
-import FileSystemManager as fsm
+from FileSystemManager import FileStorageManager as fsm
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
                   basename_template=f"{dsName}-{{i}}.parquet",
                   existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
-                  filesystem=fsm.BaseFSManager.getFSManager().fileSystem)
+                  filesystem=fsm.getFSManager().fileSystem)
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = config[dsName]
@@ -47,8 +47,7 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
                   basename_template=f"{dsName}-{{i}}.parquet",
                   existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
-                  index=False,
-                  filesystem=fsm.BaseFSManager.getFSManager().fileSystem
+                  filesystem=fsm.getFSManager().fileSystem
                   )
 
 # clean up the equipment type field as per Matlab postprocessing code.
@@ -156,7 +155,7 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
     pqBase = config[dsName]
     pqBase = _extendDSName(pqBase, expSite, mcRun)
     try:
-        filesystem = fsm.BaseFSManager.getFSManager().fileSystem
+        filesystem = fsm.getFSManager().fileSystem
         if filesystem:
             pqBase = str(pqBase)
         pqTable = pq.read_table(pqBase, filesystem=filesystem, **filter)

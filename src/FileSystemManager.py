@@ -1,12 +1,29 @@
-from s3fs import S3FileSystem
-import SimDataManager as sdm
+import fsspec
+from fsspec.implementations.local import LocalFileSystem
 import MEETExceptions as me
+import psutil
+import logging
 import os
 
 
-class BaseFSManager():
+def loadS3FileSystem():
     """
-    Base class for file system operations using a singleton pattern.
+    Function to load custom filesystem abstracted by the fsspec python module i.e s3, ftp, local, e.t.c
+    """
+    return fsspec.filesystem(
+            protocol='s3',
+            key=os.getenv('access_key', 'hrsb5fuR86g91pQPGQ3Z'),
+            secret=os.getenv('secret_key', '6o7toFzW4w610MOCOM7S0Bb3RGqrahJxI8GYtzOJ'),
+            client_kwargs={
+                'endpoint_url': os.getenv('endpoint_url', 'http://localhost:9000'),
+                'use_ssl': os.getenv('use_ssl', False)
+            }
+        )
+
+
+class FileStorageManager:
+    """
+    File Storage Manager Class
     """
     
     FILE_SYSTEM_MANAGER_SINGLETON = None
@@ -20,70 +37,26 @@ class BaseFSManager():
         Returns:
             BaseFSManager: The singleton instance of the file system manager.
         """
-        if (sdm.SimDataManager.getSimDataManager() is None
-                or sdm.SimDataManager.getSimDataManager().filesystem is None):
-            raise me.IllegalElementError("No sim data manager filesystem available")
-        return sdm.SimDataManager.getSimDataManager().filesystem
+        if cls.FILE_SYSTEM_MANAGER_SINGLETON is None:
+            logging.error("Unable to find any filesystem instance")
+            raise me.IllegalElementError("Unable to find any valid FileSystemManager instance!")
+        return cls.FILE_SYSTEM_MANAGER_SINGLETON
+    
+    @classmethod
+    def _initializeSingleton(cls, config):
+        cls.FILE_SYSTEM_MANAGER_SINGLETON = cls(config)
+        return cls.FILE_SYSTEM_MANAGER_SINGLETON
     
     
     def __init__(self, config):
         """Initialize the base file system"""
         self.config = config
-        self.fileSystem = None
-    
-
-class S3FSManager(BaseFSManager):
-    """
-    S3-specific implementation of the file system operations.
-    """
-    
-    def __init__(self, config):
-        """
-        Initialize the S3FileSystem with connection parameters.
-        
-        Args:
-            access_key (str): Acces Key
-            access_secret (str): Secret Key
-            bucket_name (str): S3 bucket name
-            host (str): S3 endpoint host (default: "localhost")
-            port (str): S3 endpoint port (default: "9000")
-            use_ssl (bool): Whether to use SSL (default: False)
-        """
-        super().__init__(config=config)
-        self.fileSystem = S3FileSystem(
-            key="hrsb5fuR86g91pQPGQ3Z",
-            secret="6o7toFzW4w610MOCOM7S0Bb3RGqrahJxI8GYtzOJ",
-            client_kwargs={
-                'endpoint_url': "http://localhost:9000",
-                'use_ssl': False
-            }
-        )
-        # self.fileSystem = S3FileSystem(
-        #     key=os.environ.get("S3_ACCESS_KEY"),
-        #     secret=os.environ.get("S3_SECRET_KEY"),
-        #     client_kwargs={
-        #         'endpoint_url': "http://localhost:9000",
-        #         'use_ssl': False
-        #     }
-        # )
+        if self.config['fsType'] == 's3':
+            self.fileSystem = loadS3FileSystem()
+        elif self.config['fsType'] == 'local':
+            self.fileSystem = LocalFileSystem()
 
 
 
-def instantiateFSManager(config):
-    """
-    Instantiate the file system manager based on the configuration.
-    
-    Args:
-        config (dict): Configuration dictionary containing file system parameters.
-        
-    Returns:
-        BaseFSManager: An instance of the appropriate file system manager.
-    """
-    fs_manager = None
-    if config['fsType'] == 's3':
-        fs_manager = S3FSManager(config=config)
-    elif config['fsType'] == 'local':
-        fs_manager = BaseFSManager(config)
-    else:
-        raise ValueError(f"Unsupported file system type: {config['fsType']}")
-    return fs_manager
+    def open(self, path, *args, **kwargs):
+        return self.fileSystem.open(path, *args, **kwargs)
