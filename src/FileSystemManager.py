@@ -57,6 +57,17 @@ class FileStorageManager:
             self.fileSystem = LocalFileSystem()
 
 
+    @staticmethod
+    def clean_paths(path):
+        if psutil.MACOS or psutil.LINUX:
+            logging.debug("Converting Path to Linux Compatible")
+            return str(path).replace("\\", "/")
+        elif psutil.WINDOWS:
+            logging.debug("Converting Path to Windows Compatible")
+            return str(path).replace("/", "\\")
+        else:
+            return path
+
 
     def open(self, path, *args, **kwargs):
         return self.fileSystem.open(path, *args, **kwargs)
