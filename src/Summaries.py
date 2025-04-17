@@ -210,6 +210,7 @@ def calcFiveNumberSummary(emissCatDF, species, confidence_level=95, instantEmiss
     mdCat["species"] = species
     mdCat["unit"] = mt
 
+    mdCat = mdCat.drop(mdCat[(mdCat["mean_emissions"] ==0 ) & (mdCat["max"] == 0)].index)
     return mdCat
 
 def calcEmissSummaryByMEType(emissEquipDF, species, confidence_level=95, instantEmissions = False):
@@ -432,10 +433,13 @@ def fillEmptyDataWithZero(df,emissionCol):
     overall_species = list(df['species'].unique())
     mcRuns, unitIDs = df['mcRun'].unique(), set(unit_info.keys())
     missing = []
+    facID = df['facilityID'].unique()[0]
+    site = df['site'].unique()[0]
 
     for mc in mcRuns:
         for uid in unitIDs:
             METype, emitterID = unit_info[uid]['METype'], unit_info[uid]['emitterID']
+            group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
             group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
             if METype not in model_dict:
                 # Add missing species rows for units without a defined model dictionary.
@@ -443,7 +447,7 @@ def fillEmptyDataWithZero(df,emissionCol):
                 for sp in set(overall_species) - pres_species:
                     missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
                                     'modelReadableName': None, 'modelEmissionCategory': None,
-                                    'emitterID': emitterID, emissionCol: 0})
+                                    'emitterID': emitterID, emissionCol: 0, 'facilityID': facID, 'site': site})
             else:
                 # For units with a model dictionary, for each species add missing model events.
                 for sp in overall_species:
@@ -453,7 +457,7 @@ def fillEmptyDataWithZero(df,emissionCol):
                             missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
                                             'modelReadableName': m['modelReadableName'],
                                             'modelEmissionCategory': m['modelEmissionCategory'],
-                                            'emitterID': emitterID, emissionCol: 0})
+                                            'emitterID': emitterID, emissionCol: 0, 'facilityID': facID, 'site': site})
     df_missing = pd.DataFrame(missing)
     df_complete = pd.concat([df, df_missing], ignore_index=True)
     df_complete[emissionCol] = df_complete[emissionCol].fillna(0)
