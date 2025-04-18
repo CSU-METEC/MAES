@@ -20,7 +20,7 @@ def getEmitterID(ie, md, unitID, modelReadableName):
 def plotEmAcross(parq, unitID, allModelReadableNames, saveIn):
     parq = parq[parq["unitID"] == unitID]
     interval_days = 5.0
-    ieNew = parq[ieNew['species'] == "METHANE"]
+    ieNew = parq[parq['species'] == "METHANE"]
     ieNew['timestamp'] = ieNew['timestamp_s']
     ieNew['timestamp_days'] = ieNew['timestamp'] / 86400.0
     ieNew['tsValue'] = ieNew['emissions_kgPerH']
@@ -174,46 +174,82 @@ def plotPDFsAndCDFsUnitID(parq, byType, saveIn, facName, excludeModelReadableNam
         plt.close()  
         pass
 
-def plotTimeseriesPerUnitID(parq, unitIDs, saveIn, facName, pdfOnRight=True):
+def plot_standard_timeseries(ax, parq2, interval_days=5.0):
+    for mcRun in parq2["mcRun"].unique():
+        temp2 = parq2[parq2["mcRun"] == mcRun]
+        if temp2.empty:
+            continue
+        for emitterID in temp2["emitterID"].unique():
+            temp3 = temp2[temp2["emitterID"] == emitterID]
+            dataTS = ts.TimeseriesRLE(temp3)
+            dataFull = dataTS.toFullTimeseries()
+            tsD = dataFull.df['timestamp'] / 86400.0
+            ax.plot(tsD, dataFull.df['tsValue'], label=f'EmitterID: {emitterID}, mcRun: {mcRun}')
+
+    parq2['interval'] = np.floor(parq2['timestamp_days'] / interval_days) * interval_days
+    mean_emissions = parq2.groupby('interval')['tsValue'].mean().reset_index()
+    ax.plot(mean_emissions['interval'], mean_emissions['tsValue'], label='Mean Emissions', color='black', linewidth=2)
+
+    ax.set_xlabel('Timestamp (Days)')
+    ax.set_ylabel('Emissions (kg/h)')
+    # ax.legend()
+    ax.grid(True)
+
+def plot_pdf(ax, parq2):
+    ax.hist(parq2['tsValue'], bins=50, density=True, orientation='horizontal', alpha=0.7, color='orange')
+    mean_emissions_value = parq2['tsValue'].mean()
+    ax.axhline(mean_emissions_value, color='red', linestyle='--', label=f'Mean: {mean_emissions_value:.2f} kg/h')
+
+    ax.set_xlabel('Probability Density')
+    ax.set_title('PDF of Emissions')
+    ax.legend()
+    ax.grid(True)
+
+def plotTimeseriesPerUnitID(parq, unitIDs, saveIn, facName, pdfOnRight=True, interval_days=5.0):
     parq = pd.read_parquet(parq + 'siteInstantEmissionsByEquip/' + f'facilityID={facName}/' + 'siteInstantEmissionsByEquip-0.parquet')
-    interval_days = 5.0
+    
     if unitIDs is None: 
         unitIDs = parq["unitID"].unique()
+    
     for unitID in unitIDs:
-        plt.figure(figsize=(10, 5))
         parq2 = parq[parq["unitID"] == unitID]
         parq2 = parq2[parq2["species"] == "METHANE"]
         parq2['tsValue'] = parq2['emissions_kgPerH']
         parq2['timestamp'] = parq2['timestamp_s']
         parq2['timestamp_days'] = parq2['timestamp'] / 86400.0
         parq2['nextTS'] = parq2['timestamp'] + parq2['duration_s']
-        for mcRun in parq2["mcRun"].unique():
-            temp2 = parq2[parq2["mcRun"] == mcRun]
-            if temp2.empty: 
-                continue
-            for emitterID in temp2["emitterID"].unique():
-                temp3 = temp2[temp2["emitterID"] == emitterID]
-                dataTS = ts.TimeseriesRLE(temp3)
-                dataFull = dataTS.toFullTimeseries()
-                tsD = dataFull.df['timestamp'] / 86400.0
-                plt.plot(tsD, dataFull.df['tsValue'], label=f'EmitterID: {emitterID}, unitID: {unitID}, mcRun: {mcRun}, {temp3["modelReadableName"].values[0]}')
-        plt.xlabel('Timestamp (Days)')
-        parq2['interval'] = np.floor(parq2['timestamp_days'] / interval_days) * interval_days
-        mean_emissions = parq2.groupby('interval')['tsValue'].mean().reset_index()
-        plt.plot(mean_emissions['interval'], mean_emissions['tsValue'], label='Mean Emissions', color='black', linewidth=2)
-        plt.ylabel('Emissions (kg/h)')
-        plt.title(f'Timeseries for UnitID: {unitID}')
-        # plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        # plt.show()
-        plt.savefig(saveIn + f"timeseriesPerUnitID_{unitID}.png")
-        plt.close()
 
-    pass
+        if pdfOnRight:
+            fig = plt.figure(figsize=(12, 6))
+            gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.3)
+
+            # Time series plot (left)
+            ax_ts = fig.add_subplot(gs[0, 0])
+            plot_standard_timeseries(ax_ts, parq2, interval_days)
+            ax_ts.set_title(f'Time Series for UnitID: {unitID}')
+
+            # PDF plot (right)
+            ax_pdf = fig.add_subplot(gs[0, 1], sharey=ax_ts)
+            plot_pdf(ax_pdf, parq2)
+
+            plt.tight_layout()
+            filename = f"{saveIn}/timeseries_with_pdf_{unitID}.png"
+            plt.savefig(filename)
+            print(f"Plot saved: {filename}")
+            plt.close()
+
+        else:
+            fig, ax = plt.subplots(figsize=(10, 5))
+            plot_standard_timeseries(ax, parq2, interval_days)
+            ax.set_title(f'Time Series for UnitID: {unitID}')
+
+            plt.tight_layout()
+            filename = f"{saveIn}/timeseries_{unitID}.png"
+            plt.savefig(filename)
+            print(f"Plot saved: {filename}")
+            plt.close()
 
 def plotTimeseriesWithPDF(parq, unitID, saveIn, facName, interval_days=5):
-    # Filter data for the specified unitID
     # modelReadableName = "Tank Vents PRV"
     parq = pd.read_parquet(parq + 'siteInstantEmissionsByEquip/' + f'facilityID={facName}/' + 'siteInstantEmissionsByEquip-0.parquet')
     parq = parq[parq["unitID"] == unitID]
@@ -267,28 +303,24 @@ def plotTimeseriesWithPDF(parq, unitID, saveIn, facName, interval_days=5):
     plt.close()
 
 def main():
-    # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Process and plot state machines.")
     parser.add_argument("-o", "--output", type=str, required=True, help="Input folder containing CSV files")
-    parser.add_argument("-p", "--parquet", type=str, required=True, help="Input folder containing Parquet files")
-    parser.add_argument("-s", "--saveIn", type=str, required=True, help="Save Plots in this folder")
     parser.add_argument("-f", "--facilityName", type=str, help="Facility Name in parquet file 'facilityID=123-5391'")
     args = parser.parse_args()
-    md = pd.read_csv(args.output + "metadata.csv")
-    site = args.output.split("/")[1]
-    saveIn = args.saveIn
+    outputMC = args.output + '/' + args.output.split("/")[1] + '/0/'
+    saveIn = args.output + '/parquet/' + 'plots/'
+    parq = args.output + '/parquet/'
     os.makedirs(saveIn, exist_ok=True)
     byTypes = ['modelReadableName', 'unitID', 'modelEmissionCategory']
 
-    # Use the provided input folder
-    tsMerged = preprocessTs(args.output)
-    # plotStateMachineTS(tsMerged, unitIDList=None, saveIn=saveIn, facName=args.facilityName)
-    # plotSiteInstantEmissionByEquip(parq=args.parquet, unitIDs=None, saveIn=saveIn, facName=args.facilityName)
-    # plotTimeseriesPerUnitID(parq=args.parquet, unitIDs=None, saveIn=saveIn, facName=args.facilityName)
-    # for byType in byTypes:
-        # plotPDFsAndCDFsUnitID(parq=args.parquet, byType=byType, saveIn=saveIn, facName=args.facilityName)
-    # plotPDFsAndCDFsUnitID(parq=args.parquet, byType='unitID', saveIn=saveIn, facName=args.facilityName, excludeModelReadableName='Tank Vents PRV', spPlotName='NO_PRV')
-    plotTimeseriesWithPDF(parq=args.parquet, unitID='tank_battery_OIL', saveIn=saveIn, facName=args.facilityName, interval_days=5)
+    tsMerged = preprocessTs(outputMC)
+    plotStateMachineTS(tsMerged, unitIDList=['05-123-12697', 'sep_stage1_1', 'sep_stage2_1', 'tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName)
+    plotSiteInstantEmissionByEquip(parq=parq, unitIDs=None, saveIn=saveIn, facName=args.facilityName)
+    plotTimeseriesPerUnitID(parq=parq, unitIDs=None, saveIn=saveIn, facName=args.facilityName)
+    for byType in byTypes:
+        plotPDFsAndCDFsUnitID(parq=parq, byType=byType, saveIn=saveIn, facName=args.facilityName)
+    plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', saveIn=saveIn, facName=args.facilityName, excludeModelReadableName='Tank Vents PRV', spPlotName='NO_PRV')
+    # plotTimeseriesPerUnitID(parq=args.parquet, unitIDs=['tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, interval_days=5, pdfOnRight=True)
     pass
 
 
