@@ -142,9 +142,9 @@ def main():
     """
 
     # Load the uploaded CSV file
-    FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
+    FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250415_100248/' \
            'summaries/AnnualEmissions/site=Mustang/mustang_annualEmissions_by_site_abnormal_on.csv'
-    FOLDER = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
+    FOLDER = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250415_100248/' \
            'summaries/'
 
     SPECIES = 'METHANE'  # or 'ETHANE'

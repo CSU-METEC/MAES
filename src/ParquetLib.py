@@ -152,7 +152,7 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
         pqTable = pq.read_table(pqBase,
                                 **filter)
     except FileNotFoundError as e:
-        return None
+        return e
 
     if sort_by:
         pqTable = pqTable.sort_by(sort_by)
@@ -384,7 +384,7 @@ def create_summary_table(df, species):
 def processInstantEquipEmissions(df):
     df['emissions_kgPerH'] = df['emission'] * SECONDSINHOUR
     df = df[['site', 'facilityID', 'mcRun', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory',
-             'timestamp', 'duration', 'species', 'emission', 'emissions_kgPerH']]
+             'timestamp', 'duration', 'species', 'emission', 'emissions_kgPerH', 'emitterID']]
     newColumnNames = {'emission': 'emissions_kgPerS', 'duration': 'duration_s', 'timestamp': 'timestamp_s'}
     df.rename(columns=newColumnNames, inplace=True)
     df = df[df['emissions_kgPerS'] > 0]
