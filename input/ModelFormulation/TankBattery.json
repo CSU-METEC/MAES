@@ -40,7 +40,7 @@
 	],
 	
   "Emitters": [
-       {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents PRV", "Category": "VENT", "Emission Category": "VENTED",
+       {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents PRV", "Category": "TANK VENT", "Emission Category": "VENTED",
 	  "Model Parameters": [
 	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "PRV"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_prv_{serialNo}"},
@@ -48,7 +48,7 @@
 	  ]
 	},
 	
-	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents Thief Hatch", "Category": "TH", "Emission Category": "FUGITIVE",
+	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents Thief Hatch", "Category": "LEAK", "Emission Category": "FUGITIVE",
 	  "Model Parameters": [
 	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "MECHANISTIC_THIEF_HATCH"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_thief_hatch_{serialNo}"},

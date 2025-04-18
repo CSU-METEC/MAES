@@ -119,7 +119,7 @@
         ]
     },
 	
-	{"Python Category": "Emitter", "Python Class": "EmpiricalFlowFromMajorEquipment", "Readable Name": "Crankcase Emissions", "Category": "Crankcase", "Emission Category": "VENTED",
+	{"Python Category": "Emitter", "Python Class": "EmpiricalFlowFromMajorEquipment", "Readable Name": "Crankcase Emissions", "Category": "CRANKCASE", "Emission Category": "VENTED",
       "Model Parameters": [
         {														"Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Crankcase"},
 		{"Model Parameter": "Driver Type",         "Python Parameter": "instantiationVal",              "Parameter Type": "Sheet"},
