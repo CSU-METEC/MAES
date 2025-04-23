@@ -476,7 +476,7 @@ def generatedCsvSummaries(config, df, fac, abnormal):
 
     if config['fullSummaries']:
         # Get PDF at Site Level for CH4 Emissions
-        generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal, fac=fac)
+        generatePDFs(config=config, df=df.copy(), abnormal=abnormal, fac=fac)
 
         # Create a table showing the average emission rate and average duration of each emission type (modelReadableName)
         avgERandDur = create_summary_table(emissInstEquipDF.copy(), species="METHANE")
@@ -525,10 +525,10 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         # Get instantaneous emissions summary by modelReadableName
         instEmissByModelReadName = calc_instemiss_by_modelReadableName(emissInstEquipDF.copy())
         dumpEmissions(instEmissByModelReadName, config, "detailed_instantEmissions_summary", facID=f"InstantaneousEmissions/site={fac}/", abnormal=abnormal)
-    
-    if config['pdfSummaries']:
+     
+    if config['pdfSummaries']: 
         # Get PDF at Site Level for CH4 Emissions
-        generatePDFs(config=config, df=zerosDF.copy(), abnormal=abnormal, fac=fac)
+        generatePDFs(config=config, df=df.copy(), abnormal=abnormal, fac=fac)
 
     if config['avgDurSummaries']:
         avgERandDur = create_summary_table(emissInstEquipDF.copy(), species="METHANE")
