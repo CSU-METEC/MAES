@@ -1,24 +1,97 @@
 import fsspec
-from fsspec.implementations.local import LocalFileSystem
+from fsspec.implementations.local import LocalFileSystem as lfs
 import MEETExceptions as me
 import psutil
 import logging
 import os
+import logging
+from abc import ABC, abstractmethod
 
 
-def loadS3FileSystem():
+class BaseFileSystem(ABC):
     """
-    Function to load custom filesystem abstracted by the fsspec python module i.e s3, ftp, local, e.t.c
+    Base File System Class
     """
-    return fsspec.filesystem(
+
+    @abstractmethod
+    def __init__(self, config):
+        """
+        Initialize the base file system.
+        
+        Args:
+            config (Dict[str, Any]): Configuration dictionary for the file system.
+        """
+        self.config = config
+
+
+class LocalFileSystem(BaseFileSystem):
+    """
+    Local File System Class
+    """
+
+    def __init__(self, config):
+        """
+        Initialize the local file system.
+        
+        Args:
+            config (Dict[str, Any]): Configuration dictionary for the file system.
+        """
+        super().__init__(config)
+        self.fs = lfs()
+
+
+class S3FileSystem(BaseFileSystem):
+    """
+    S3 File System Class
+    """
+
+    def __init__(self, config):
+        """
+        Initialize the S3 file system.
+        
+        Args:
+            config (Dict[str, Any]): Configuration dictionary for the file system.
+        """
+        super().__init__(config)
+        self.fs = fsspec.filesystem(
             protocol='s3',
-            key=os.getenv('access_key', 'hrsb5fuR86g91pQPGQ3Z'),
-            secret=os.getenv('secret_key', '6o7toFzW4w610MOCOM7S0Bb3RGqrahJxI8GYtzOJ'),
+            key=os.getenv('S3_ACCESS_KEY', ValueError("S3_ACCESS_KEY not set")),
+            secret=os.getenv('S3_SECRET_KEY', ValueError("S3_SECRET_KEY not set")),
             client_kwargs={
-                'endpoint_url': os.getenv('endpoint_url', 'http://localhost:9000'),
-                'use_ssl': os.getenv('use_ssl', False)
+                'endpoint_url': os.getenv('S3_ENDPOINT_URL', ValueError("S3_ENDPOINT_URL not set")),
+                'use_ssl': os.getenv('S3_USE_SSL', ValueError("S3_USE_SSL not set")),
             }
         )
+        self.bucket_id = os.getenv('S3_BUCKET_ID', ValueError("S3_BUCKET_ID not set"))
+
+        self.load_input_folder()
+        self.load_config_folder()
+
+
+
+    def load_input_folder(self, input_folder = "input"):
+        """
+        Load the input folder from S3.
+        
+        Args:
+            input_folder (str): The path to the input folder in S3.
+        """
+        logging.info(f"Copying Input folder to local file system")
+        self.fs.get(rpath=f"{self.bucket_id}/input", lpath=f".", recursive=True)
+        logging.info(f"Input folder copied to local file system")
+
+    
+    def load_config_folder(self, config = "config"):
+        """
+        Load the configuration files from S3.
+        
+        Args:
+            config (Dict[str, Any]): Configuration dictionary for the file system.
+        """
+        logging.info(f"Copying Configs Folder to local file system")
+        self.fs.get(rpath=f"{self.bucket_id}/config", lpath=f".", recursive=True)
+        logging.info(f"Configs folder copied to local file system")
+
 
 
 class FileStorageManager:
@@ -45,16 +118,18 @@ class FileStorageManager:
     @classmethod
     def _initializeSingleton(cls, config):
         cls.FILE_SYSTEM_MANAGER_SINGLETON = cls(config)
-        return cls.FILE_SYSTEM_MANAGER_SINGLETON
     
     
     def __init__(self, config):
         """Initialize the base file system"""
         self.config = config
         if self.config['fsType'] == 's3':
-            self.fileSystem = loadS3FileSystem()
+            self.FileSystem = S3FileSystem(config)
         elif self.config['fsType'] == 'local':
-            self.fileSystem = LocalFileSystem()
+            self.FileSystem = LocalFileSystem(config)
+        else:
+            logging.error(f"Unsupported file system type: {self.config['fsType']}")
+            raise me.IllegalElementError(f"Unsupported file system type: {self.config['fsType']}")
 
 
     @staticmethod
@@ -67,7 +142,3 @@ class FileStorageManager:
             return str(path).replace("/", "\\")
         else:
             return path
-
-
-    def open(self, path, *args, **kwargs):
-        return self.fileSystem.open(path, *args, **kwargs)

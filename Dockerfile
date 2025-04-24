@@ -12,12 +12,8 @@ COPY . .
 
 RUN pip install --upgrade pip
 
-RUN pip install poetry 
-
-RUN poetry config virtualenvs.create false
+RUN pip install "./[docker]"
 
 # Set Python path to include MAES source
-ENV PYTHONPATH="/maes/src:${PYTHONPATH}"
+ENV PYTHONPATH="/maes/src"
 
-# Install all dependencies of the current project
-RUN poetry install

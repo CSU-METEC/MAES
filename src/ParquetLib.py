@@ -38,7 +38,7 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
                   basename_template=f"{dsName}-{{i}}.parquet",
                   existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
-                  filesystem=fsm.getFSManager().fileSystem)
+                  filesystem=fsm.getFSManager().FileSystem.fs)
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = config[dsName]
@@ -48,7 +48,7 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
                   existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
                   index=False,
-                  filesystem=fsm.getFSManager().fileSystem
+                  filesystem=fsm.getFSManager().FileSystem.fs
                   )
 
 # clean up the equipment type field as per Matlab postprocessing code.
@@ -111,7 +111,7 @@ def baseReadParquet(config, dsName, mcRun=None, species=None, sort_by=None, addi
 
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
     try:
-        filesystem = fsm.BaseFSManager.getFSManager()
+        filesystem = fsm.getFSManager().FileSystem.fs
         if filesystem:
             pqBase = str(pqBase)
         pqTable = pq.read_table(pqBase, filesystem=filesystem.fileSystem,
@@ -156,7 +156,7 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
     pqBase = config[dsName]
     pqBase = _extendDSName(pqBase, expSite, mcRun)
     try:
-        filesystem = fsm.getFSManager().fileSystem
+        filesystem = fsm.getFSManager().FileSystem.fs
         if filesystem:
             pqBase = str(pqBase)
         pqTable = pq.read_table(pqBase, filesystem=filesystem, **filter)

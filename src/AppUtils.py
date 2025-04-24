@@ -86,8 +86,7 @@ def getArgs(defaultConfig=DEFAULT_CONFIG, argsToParse=sys.argv[1:]):
     return args
 
 def readVarsFromStudy(studyFullName, configParamMap):
-    with fsm.getFSManager().open(studyFullName, "rb") as studyFile:
-        modelDF = pd.read_excel(studyFile, sheet_name="Global Simulation Parameters", header=None)
+    modelDF = pd.read_excel(studyFullName, sheet_name="Global Simulation Parameters", header=None)
     sheetConfig = {}
     for sheetName, paramConfig in configParamMap.items():
         configVar = paramConfig['configVar']
@@ -106,7 +105,7 @@ def readVarsFromStudy(studyFullName, configParamMap):
 def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     args = getArgs(defaultConfig=defaultConfig, argsToParse=commandArgs)
     configFile = args.configFile
-    with fsm.getFSManager().open(configFile, "r") as cf:
+    with open(configFile, "r") as cf:
         config = json.load(cf)
 
     cm._initializeSingleton(config)
