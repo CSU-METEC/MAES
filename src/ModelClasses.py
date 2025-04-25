@@ -3753,6 +3753,12 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
             self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
             self.sumOfVaporOutletFlows = 999999   # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
+        elif self.overpressureTimeTracker > self.tankOverpressureMTBFMaxSec:
+            nextState = 'MECHANISTIC_THIEF_HATCH'
+            self.currentPrimaryEqRatio = 0
+            self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
+            self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
+            self.sumOfVaporOutletFlows = 999999   # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
         # check if AggregateFlow (outlets) < threshold at current time. ThiefHatch/Vent opens when AggregatedFlow > threshold
         elif self.tankOverpressureThresholdScfs < self.sumOfVaporOutletFlows <= self.inletFlowAtMaxPrimryFlowScfs:
             nextState = 'PRV'
@@ -3859,7 +3865,9 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             self.currentPrimaryEqRatio = 1
             self.prvSwitch = 0
             ret = {'OPERATING': delay}
-        self.overpressureTimeTracker = delay
+        self.tankOverpressureInitDist = d.Uniform({'min': 0,
+                                                     'max': self.tankOverpressureMTBFMinSec})
+        self.overpressureTimeTracker = self.tankOverpressureInitDist.pick()
         return ret
 
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
