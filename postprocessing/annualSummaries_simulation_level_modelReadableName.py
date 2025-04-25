@@ -122,7 +122,7 @@ def run_emissions_summary_pipeline(folder):
 
 def main():
     # Define the folder path
-    FOLDER = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/'
+    FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/'
     run_emissions_summary_pipeline(FOLDER)
 
 

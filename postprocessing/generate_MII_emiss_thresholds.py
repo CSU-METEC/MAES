@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 
 
@@ -95,17 +95,17 @@ def process_all_sites(base_folder):
             process_site(site_path)
 
 
-def main():
+def main(folder):
     """
     Main function that:
       1. Processes each site folder to compute the emission thresholds at 95% cumulative probability.
       2. Saves the thresholds to a CSV file in a site-specific 'MIIEmissionThresholds' folder.
     """
     # Define the base folder (update this path as needed)
-    BASE_FOLDER = r'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/summaries'
+    # BASE_FOLDER = r'/home/arthur/MAES/output/Mustang_/MC_20250321_144004/summaries'
 
     # Process all sites within the PDFs folder
-    process_all_sites(BASE_FOLDER)
+    process_all_sites(folder)
 
 
 if __name__ == "__main__":

@@ -181,7 +181,7 @@ def main():
     """
     FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
            'summaries/AnnualEmissions/site=Mustang/mustang_annualEmissions_by_modelReadableName_abnormal_on.csv'
-    FOLDER = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/summaries/'
+    FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/summaries/'
     SPECIES = 'METHANE'  # or 'ETHANE'
 
     # plot_annual_emissions(FILE, SPECIES, plot_by="file")
@@ -190,3 +190,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

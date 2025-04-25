@@ -51,7 +51,7 @@ def generate_annual_emissions_plot(file, species):
         print(f"Column 'METype' not found in {file}")
         return
 
-    unit = df['Unit'].values[0]
+    unit = df['unit'].values[0]
     summed_row = df[df['METype'] == 'summed_METype']
     df = df[df['METype'] != 'summed_METype']
 
@@ -153,19 +153,21 @@ def plot_annual_emissions(path, species, plot_by=None):
         print("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
 
 
-def main():
+def main(folder=None, file=None):
     """
     This code generates annual emissions plots by METype. Adjust the FILE (if you want to make plots
     for 1 specific site only) or FOLDER path (if you all to generate plots for all sites in that folder),
     and set the desired species ('METHANE' or 'ETHANE') accordingly.
     """
-    FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
-           'summaries/AggregatedSimulationEmissions/aggregated_sim_emissions_by_METype_abnormal_on.csv'
-    FOLDER = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/summaries/'
-    SPECIES = 'METHANE'  # or 'ETHANE'
-
-    plot_annual_emissions(FILE, SPECIES, plot_by="file")
-    #plot_annual_emissions(FOLDER, SPECIES, plot_by="folder")
+    # FILE = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/' \
+    #        'summaries/AggregatedSimulationEmissions/aggregated_sim_emissions_by_METype_abnormal_on.csv'
+    # FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/summaries/'
+    SPECIES = ['METHANE','ETHANE']
+    for sp in SPECIES:
+        if file:
+            plot_annual_emissions(file, sp, plot_by="file")
+        if folder:
+            plot_annual_emissions(folder, sp, plot_by="folder")
 
 
 if __name__ == "__main__":
