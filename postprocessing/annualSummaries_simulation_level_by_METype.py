@@ -45,7 +45,7 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
         result_rows.append({
             'species': species.upper(),
             'METype': me_type,
-            'Unit': 'mt/year',
+            'unit': 'mt/year',
             'mean_emissions': mean_val,
             '95%_ci_lower': ci_lower,
             '95%_ci_upper': ci_upper,
@@ -80,7 +80,7 @@ def compute_c2_c1_ratios(df_base):
             result_rows.append({
                 'species': 'C2/C1',
                 'METype': me_type,
-                'Unit': 'unitless',
+                'unit': 'unitless',
                 'mean_emissions': ratio.mean(),
                 '95%_ci_lower': np.percentile(ratio, 2.5),
                 '95%_ci_upper': np.percentile(ratio, 97.5)

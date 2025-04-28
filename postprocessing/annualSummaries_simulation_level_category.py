@@ -85,7 +85,7 @@ def compute_total_emissions_stats(folder, abnormal):
         results.append({
             'Species': species.upper(),
             'modelEmissionCategory': mec,
-            'Unit': 'mt/year',
+            'unit': 'mt/year',
             'mean_emissions': mean_emissions,
             '95%_ci_lower': ci_lower,
             '95%_ci_upper': ci_upper,
@@ -116,7 +116,7 @@ def compute_total_emissions_stats(folder, abnormal):
                 results.append({
                     'Species': 'C2/C1',
                     'modelEmissionCategory': mec,
-                    'Unit': 'unitless',
+                    'unit': 'unitless',
                     'mean_emissions': mean_ratio,
                     '95%_ci_lower': ci_lower_ratio,
                     '95%_ci_upper': ci_upper_ratio,

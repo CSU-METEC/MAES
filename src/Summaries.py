@@ -8,6 +8,7 @@ import Timeseries as ts
 import ParquetLib as Pl
 from postprocessing import plot_annualSummaries_METype_level as ptm
 from postprocessing import plot_annualSummaries_unitID_level as ptu
+from postprocessing import plot_annualSummaries_modelReadableName_level as ptd
 from postprocessing import plot_annualSummaries_site_level as pts
 from postprocessing import generate_MII_emiss_thresholds as gmt
 
@@ -504,6 +505,7 @@ def generatedCsvSummaries(config, df, fac, abnormal):
             unit_summary_path = dumpEmissions(detailed_emissionsDF, config, "detailed_annualEmissions_summary", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
             if config['plot']:
                 ptu.main(file=unit_summary_path)
+                ptd.main(file=unit_summary_path)
 
         if siteEmissions:
             CategorySummaryDF = calcFiveNumberSummary(emissCatDF.copy(), species='METHANE', confidence_level=95)

@@ -171,4 +171,4 @@ def main(folder=None, file=None):
 
 
 if __name__ == "__main__":
-    main()
+    main(folder='/home/arthur/MAES/output/Mustang_/MC_20250321_144004/summaries/')
