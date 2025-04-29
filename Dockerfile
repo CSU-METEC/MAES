@@ -5,8 +5,8 @@ WORKDIR /maes
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYDEVD_DISABLE_FILE_VALIDATION=1 \
-    # Turns off buffering for easier container logging
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8
 
 COPY . .
 
