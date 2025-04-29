@@ -53,19 +53,25 @@ class S3FileSystem(BaseFileSystem):
             config (Dict[str, Any]): Configuration dictionary for the file system.
         """
         super().__init__(config)
-        self.fs = fsspec.filesystem(
-            protocol='s3',
-            key=os.getenv('S3_ACCESS_KEY', ValueError("S3_ACCESS_KEY not set")),
-            secret=os.getenv('S3_SECRET_KEY', ValueError("S3_SECRET_KEY not set")),
-            client_kwargs={
-                'endpoint_url': os.getenv('S3_ENDPOINT_URL', ValueError("S3_ENDPOINT_URL not set")),
-                'use_ssl': os.getenv('S3_USE_SSL', ValueError("S3_USE_SSL not set")),
-            }
-        )
-        self.bucket_id = os.getenv('S3_BUCKET_ID', ValueError("S3_BUCKET_ID not set"))
+        try:
+            self.fs = fsspec.filesystem(
+                protocol='s3',
+                key=os.getenv('S3_ACCESS_KEY', "wlhU9gn5ZCN1zj0X8YEr"),
+                secret=os.getenv('S3_SECRET_KEY', "dgn6KPsN1AsSyKczgWZAPxj06htBkr80u2iMlnfg"),
+                client_kwargs={
+                    'endpoint_url': os.getenv('S3_ENDPOINT_URL', "http://localhost:9000"),
+                    'use_ssl': os.getenv('S3_USE_SSL', ValueError("S3_USE_SSL not set")),
+                }
+            )
+            self.bucket_id = os.getenv('S3_BUCKET_ID', ValueError("S3_BUCKET_ID not set"))
+        except ValueError as e:
+            logging.error(f"Error initializing S3 file system: {e}")
+            raise me.IllegalElementError(f"Error initializing S3 file system: {e}")
+        except Exception as e:
+            logging.error(f"Error initializing S3 file system: {e}")
+            raise me.IllegalElementError(f"Error initializing S3 file system: {e}")
 
         self.load_input_folder()
-        self.load_config_folder()
 
 
 
@@ -77,20 +83,8 @@ class S3FileSystem(BaseFileSystem):
             input_folder (str): The path to the input folder in S3.
         """
         logging.info(f"Copying Input folder to local file system")
-        self.fs.get(rpath=f"{self.bucket_id}/input", lpath=f".", recursive=True)
+        self.fs.get(rpath=f"{self.config['inputRoot']}", lpath=f"{self.config['inputRoot']}", recursive=True)
         logging.info(f"Input folder copied to local file system")
-
-    
-    def load_config_folder(self, config = "config"):
-        """
-        Load the configuration files from S3.
-        
-        Args:
-            config (Dict[str, Any]): Configuration dictionary for the file system.
-        """
-        logging.info(f"Copying Configs Folder to local file system")
-        self.fs.get(rpath=f"{self.bucket_id}/config", lpath=f".", recursive=True)
-        logging.info(f"Configs folder copied to local file system")
 
 
 

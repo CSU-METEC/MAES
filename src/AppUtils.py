@@ -105,7 +105,8 @@ def readVarsFromStudy(studyFullName, configParamMap):
 def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     args = getArgs(defaultConfig=defaultConfig, argsToParse=commandArgs)
     configFile = args.configFile
-    with open(configFile, "r") as cf:
+    fs = fsm.getFSManager()
+    with fs.FileSystem.fs.open(configFile, "r") as cf:
         config = json.load(cf)
 
     cm._initializeSingleton(config)
