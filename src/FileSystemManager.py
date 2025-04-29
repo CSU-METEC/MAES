@@ -56,14 +56,13 @@ class S3FileSystem(BaseFileSystem):
         try:
             self.fs = fsspec.filesystem(
                 protocol='s3',
-                key=os.getenv('S3_ACCESS_KEY', "wlhU9gn5ZCN1zj0X8YEr"),
-                secret=os.getenv('S3_SECRET_KEY', "dgn6KPsN1AsSyKczgWZAPxj06htBkr80u2iMlnfg"),
+                key=os.getenv('S3_ACCESS_KEY', ValueError("S3_ACCESS_KEY not set")),
+                secret=os.getenv('S3_SECRET_KEY', ValueError("S3_SECRET_KEY not set")),
                 client_kwargs={
-                    'endpoint_url': os.getenv('S3_ENDPOINT_URL', "http://localhost:9000"),
+                    'endpoint_url': os.getenv('S3_ENDPOINT_URL', ValueError("S3_ENDPOINT_URL not set")),
                     'use_ssl': os.getenv('S3_USE_SSL', ValueError("S3_USE_SSL not set")),
                 }
             )
-            self.bucket_id = os.getenv('S3_BUCKET_ID', ValueError("S3_BUCKET_ID not set"))
         except ValueError as e:
             logging.error(f"Error initializing S3 file system: {e}")
             raise me.IllegalElementError(f"Error initializing S3 file system: {e}")
