@@ -12,5 +12,6 @@ Notes,Zero emissions may mean no emission location of this type or no emissions 
 Emission Factor Type,Leaker
 Leak Probability,0
 Survey Frequency,Annual (estimated)
+%%%ENDOFMETADATA%%%,
 EmissionRate,Probability
 0.00E+00,1
