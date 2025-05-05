@@ -143,11 +143,11 @@ def run_total_emissions_pipeline(folder):
 
 
 
-def main():
+def main(folder):
     # Define the folder path
-    FOLDER = '/home/arthur/MAES/output/Mustang/MC_20250404_102836'
-    run_total_emissions_pipeline(FOLDER)
+    # FOLDER = '/home/arthur/MAES/output/Mustang/MC_20250404_102836'
+    run_total_emissions_pipeline(folder)
 
 
 if __name__ == "__main__":
-    main()
+    main(folder="/home/arthur/MAES/output/Mustang/MC_20250404_102836")

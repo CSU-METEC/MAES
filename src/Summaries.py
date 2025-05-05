@@ -8,6 +8,9 @@ import Timeseries as ts
 import ParquetLib as Pl
 from postprocessing import plot_annualSummaries_METype_level as ptm
 from postprocessing import plot_annualSummaries_unitID_level as ptu
+from postprocessing import annualSummaries_simulation_level_category as alc
+from postprocessing import annualSummaries_simulation_level_by_METype as alm
+from postprocessing import annualSummaries_simulation_level_modelReadableName as ald
 from postprocessing import plot_annualSummaries_modelReadableName_level as ptd
 from postprocessing import plot_annualSummaries_site_level as pts
 from postprocessing import generate_MII_emiss_thresholds as gmt
@@ -494,10 +497,11 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         siteEmissions = config['siteEmiss']
         meType = config['METype']
         unitID = config['unitID']
+        simulationEmissions = config['simulationEmissions']
 
-        all_false = all(not x for x in [siteEmissions, meType, unitID])
+        all_false = all(not x for x in [siteEmissions, meType, unitID, simulationEmissions])
         if all_false:
-            siteEmissions = meType = unitID = True
+            siteEmissions = meType = unitID = simulationEmissions = True
 
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
@@ -520,6 +524,11 @@ def generatedCsvSummaries(config, df, fac, abnormal):
             metype_summary_path = dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
             if config['plot']:
                 ptm.main(file=metype_summary_path)
+
+        if simulationEmissions:
+            alc.main(folder=config['simulationRoot'])
+            ald.main(folder=config['simulationRoot'])
+            alm.main(folder=config['simulationRoot'])
 
     if instantaneousSummaries:
         # Get instantaneous emissions summary by modelReadableName

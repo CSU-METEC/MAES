@@ -120,12 +120,12 @@ def run_emissions_summary_pipeline(folder):
     summarize_emissions_by_mode('OFF', df_all, all_mcRuns, all_species, folder)
 
 
-def main():
+def main(folder):
     # Define the folder path
-    FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/'
-    run_emissions_summary_pipeline(FOLDER)
+    # FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/'
+    run_emissions_summary_pipeline(folder)
 
 
 # Example of calling the main function
 if __name__ == "__main__":
-    main()
+    main(folder="/home/arthur/MAES/output/Mustang_/MC_20250321_144004/")
