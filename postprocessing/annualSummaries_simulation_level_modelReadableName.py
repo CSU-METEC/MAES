@@ -122,7 +122,7 @@ def run_emissions_summary_pipeline(folder):
 
 def main():
     # Define the folder path
-    FOLDER = "C:/METEC/MAES2/output/P2_2stages_flare/MC_20250423_105336/"
+    FOLDER = "C:/METEC/MAES2/output/P2_2stages_flare/MC_20250509_114055/"
     run_emissions_summary_pipeline(FOLDER)
 
 

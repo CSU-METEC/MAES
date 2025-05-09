@@ -87,7 +87,7 @@ def plotStateMachineTS(ie, unitIDList, saveIn, facName, mc='0'):
         unique_unitIDs = unitIDList
     
     num_units = len(unique_unitIDs)
-    fig, axes = plt.subplots(num_units, 1, figsize=(10, 5 * num_units), sharex=True)
+    fig, axes = plt.subplots(num_units, 1, figsize=(30, 5 * num_units), sharex=True)
     
     if num_units == 1:
         axes = [axes]
@@ -99,19 +99,25 @@ def plotStateMachineTS(ie, unitIDList, saveIn, facName, mc='0'):
         isTS = isTs.toFullTimeseries()
         tsToPlot = isTs.df
         
+        # Convert timestamp from seconds to days
+        tsToPlot['timestamp_days'] = tsToPlot['timestamp'] / 86400.0
+        
         category_mapping = {category: idx for idx, category in enumerate(tsToPlot['state'].unique())}
         tsToPlot['numericValue'] = tsToPlot['state'].map(category_mapping)
         
-        tsToPlot.plot(x='timestamp', y='numericValue', legend=False, ax=ax)
-        ax.set_title(f"State Machine for UnitID: {unitID}")
-        ax.set_xlabel('Timestamp')
-        ax.set_ylabel('State')
+        tsToPlot.plot(x='timestamp_days', y='numericValue', legend=False, ax=ax)
+        ax.set_title(f"State Machine for UnitID: {unitID}", fontsize=35)  # Increased title font size
+        ax.set_xlabel('Timestamp (Days)', fontsize=30, labelpad=10)  # Added label padding to avoid chopping
+        # ax.set_ylabel('State', fontsize=14, labelpad=10)  # Increased y-axis label font size and reduced padding
         ax.set_yticks(list(category_mapping.values()))
-        ax.set_yticklabels(list(category_mapping.keys()))
+        ax.set_yticklabels(list(category_mapping.keys()), fontsize=30)  # Increased y-tick label font size
+        ax.tick_params(axis='x', labelsize=30)  # Increased x-tick label font size
         ax.grid(True)
     
-    plt.tight_layout()
-    plt.savefig(saveIn + f"stateMachine_mcRun_{mc}.png")
+    # Adjust layout to reduce white space and avoid chopping
+    plt.subplots_adjust(left=0.2, right=0.95, top=0.95, bottom=0.05)  # Increased bottom margin
+    plt.tight_layout(pad=2.0)  # Add padding between subplots
+    plt.savefig(saveIn + f"stateMachine_mcRun_{mc}.png", bbox_inches='tight')  # Ensure everything fits in the saved image
     plt.close()
     pass
 
@@ -137,36 +143,35 @@ def plotPDFsAndCDFsUnitID(parq, byType, indType=None, saveIn=None, facName=None,
     if excludeModelReadableName is not None:
         for modelReadableName in excludeModelReadableName:
             parq = parq[parq["modelReadableName"] != modelReadableName]
-        # parq = parq[parq["modelReadableName"] != excludeModelReadableName]
+
     if not byType:
         byType = 'unitID'
     allType = parq[byType].unique()
     if indType:
         allType = indType
-    # allType = ['tank_battery_OIL']
-    
+
     for eachType in allType:
         parq2 = parq[parq[byType] == eachType]
         parq2 = parq2[parq2["species"] == "METHANE"]
         parq2['tsValue'] = parq2['emissions_kgPerH']
-        # parq2 = parq2.dropna(subset=["tsValue"])
         parq2['nextTS'] = parq2['timestamp_s'] + parq2['duration_s']
         parq2.sort_values(by="timestamp_s")
-        # mean_emissions = parq2['tsValue'].mean()
+
         mean_emissions = calcMean(parq2, mcruns=mcRuns)
-        fig, axes = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
-        
+        fig, axes = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+
         # Plot PDF (Probability Density Function) in the first subplot
         axes[0].hist(parq2['tsValue'], bins=100, density=True, alpha=0.7, label=f'{byType}: {eachType}')
         axes[0].axvline(mean_emissions, color='red', linestyle='--', label=f'Mean: {mean_emissions:.6f} kg/h')
         if compareWith is not None:
             axes[0].axvline(compareWith, color='green', linestyle='--', label=f'ONGAEIR Tank Emissions Estimate: {compareWith:.6f} kg/h')
-        axes[0].set_ylabel('Probability Density')
-        axes[0].set_title(f'PDF of Emissions for {byType}: {eachType}')
-        axes[0].legend()
+        axes[0].set_ylabel('Probability Density', fontsize=14)  # Increased y-axis label font size
+        axes[0].set_title(f'PDF of Emissions for {byType}: {eachType}', fontsize=16)  # Increased title font size
+        axes[0].legend(fontsize=12)  # Increased legend font size
+        axes[0].tick_params(axis='x', labelsize=12)  # Increased x-tick label font size
+        axes[0].tick_params(axis='y', labelsize=12)  # Increased y-tick label font size
         axes[0].grid(True)
 
-        
         # Plot CDF (Cumulative Distribution Function) in the second subplot
         sorted_values = np.sort(parq2['tsValue'])
         cdf = np.arange(1, len(sorted_values) + 1) / len(sorted_values)
@@ -174,21 +179,23 @@ def plotPDFsAndCDFsUnitID(parq, byType, indType=None, saveIn=None, facName=None,
         axes[1].axvline(mean_emissions, color='red', linestyle='--', label=f'Mean: {mean_emissions:.6f} kg/h')
         if compareWith is not None:
             axes[1].axvline(compareWith, color='green', linestyle='--', label=f'ONGAEIR Tank Emissions Estimate: {compareWith:.6f} kg/h')
-        axes[1].set_xlabel('Emissions (kg/h)')
-        axes[1].set_ylabel('Cumulative Probability')
-        axes[1].set_title(f'CDF of Emissions for {byType}: {eachType}')
-        axes[1].legend()
+        axes[1].set_xlabel('Emissions (kg/h)', fontsize=14)  # Increased x-axis label font size
+        axes[1].set_ylabel('Cumulative Probability', fontsize=14)  # Increased y-axis label font size
+        axes[1].set_title(f'CDF of Emissions for {byType}: {eachType}', fontsize=16)  # Increased title font size
+        axes[1].legend(fontsize=12)  # Increased legend font size
+        axes[1].tick_params(axis='x', labelsize=12)  # Increased x-tick label font size
+        axes[1].tick_params(axis='y', labelsize=12)  # Increased y-tick label font size
         axes[1].grid(True)
-        
+
+        # Adjust layout and save the plot
         plt.tight_layout()
         if spPlotName is not None:
             filename = f"{saveIn}/pdf_and_cdf_{eachType} [{spPlotName}].png"
         else:
             filename = f"{saveIn}/pdf_and_cdf_{eachType}.png"
-        plt.savefig(filename)
-        # print(f"Plot saved: {filename}")
-        plt.close()  
-        pass
+        plt.savefig(filename, bbox_inches='tight')  # Remove white spaces
+        print(f"Plot saved: {filename}")
+        plt.close()
 
 def plot_standard_timeseries(ax, parq2, interval_days=5.0, compareWith=None):
     """
@@ -214,7 +221,7 @@ def plot_standard_timeseries(ax, parq2, interval_days=5.0, compareWith=None):
     ax.plot(mean_emissions['interval'], mean_emissions['tsValue'], label='Simulation Mean Emissions', color='black', linewidth=2)
 
     # Add a single legend entry for all mcRun data
-    ax.plot([], [], label='Colors = Timeseries Emissions from Individual MC Runs', color='blue')  # Add a dummy plot for the legend
+    ax.plot([], [], label='Each Color = Timeseries Emissions from Individual MC Runs', color='blue')  # Add a dummy plot for the legend
 
     # Add a secondary Y-axis for compareWith if provided
     if compareWith is not None:
@@ -281,38 +288,49 @@ def plotTimeseriesPerUnitID(parq, unitIDs, saveIn, facName, pdfOnRight=True, int
         parq2['timestamp'] = parq2['timestamp_s']
         parq2['timestamp_days'] = parq2['timestamp'] / 86400.0
         parq2['nextTS'] = parq2['timestamp'] + parq2['duration_s']
-        # parq2 = parq2[parq2['modelReadableName'] != 'Tank Vents PRV']
-        # parq2['total'] = parq2['tsValue'] * (parq2['duration_s'] / 3600.0)
-        # parq2Em = parq2['total'].sum()/(25*8760)
-        # print(f"Total Emissions for {unitID} = {parq2Em * 9.656} us tonne/yr")
 
         if pdfOnRight:
-            fig = plt.figure(figsize=(12, 6))
+            fig = plt.figure(figsize=(14, 8))  # Increased figure size for better readability
             gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.3)
 
             # Time series plot (left)
             ax_ts = fig.add_subplot(gs[0, 0])
             plot_standard_timeseries(ax_ts, parq2, interval_days)
-            ax_ts.set_title(f'Time Series for UnitID: {unitID}')
+            ax_ts.set_title(f'Time Series for UnitID: {unitID}', fontsize=18)  # Increased title font size
+            ax_ts.set_xlabel('Timestamp (Days)', fontsize=16)  # Increased x-axis label font size
+            ax_ts.set_ylabel('Emissions (kg/h)', fontsize=16)  # Increased y-axis label font size
+            ax_ts.tick_params(axis='x', labelsize=12)  # Increased x-tick label font size
+            ax_ts.tick_params(axis='y', labelsize=12)  # Increased y-tick label font size
+            ax_ts.legend(fontsize=12)  # Increased legend font size
 
             # PDF plot (right)
             ax_pdf = fig.add_subplot(gs[0, 1], sharey=ax_ts)
             plot_pdf(ax_pdf, parq2, mcRuns)
+            ax_pdf.set_title('PDF of Emissions', fontsize=20)  # Increased title font size
+            ax_pdf.set_xlabel('Probability Density', fontsize=16)  # Increased x-axis label font size
+            ax_pdf.tick_params(axis='x', labelsize=12)  # Increased x-tick label font size
+            ax_pdf.tick_params(axis='y', labelsize=12)  # Increased y-tick label font size
+            ax_pdf.legend(fontsize=12)  # Increased legend font size
 
             plt.tight_layout()
             filename = f"{saveIn}/timeseries_with_pdf_{unitID}.png"
-            plt.savefig(filename)
+            plt.savefig(filename, bbox_inches='tight')  # Remove white spaces
             print(f"Plot saved: {filename}")
             plt.close()
 
         else:
-            fig, ax = plt.subplots(figsize=(10, 5))
+            fig, ax = plt.subplots(figsize=(14, 8))  # Increased figure size for better readability
             plot_standard_timeseries(ax, parq2, interval_days, compareWith)
-            ax.set_title(f'Time Series for UnitID: {unitID}')
+            ax.set_title(f'Time Series for UnitID: {unitID}', fontsize=18)  # Increased title font size
+            ax.set_xlabel('Timestamp (Days)', fontsize=14)  # Increased x-axis label font size
+            ax.set_ylabel('Emissions (kg/h)', fontsize=14)  # Increased y-axis label font size
+            ax.tick_params(axis='x', labelsize=12)  # Increased x-tick label font size
+            ax.tick_params(axis='y', labelsize=12)  # Increased y-tick label font size
+            ax.legend(fontsize=12)  # Increased legend font size
 
             plt.tight_layout()
             filename = f"{saveIn}/timeseries_{unitID}.png"
-            plt.savefig(filename)
+            plt.savefig(filename, bbox_inches='tight')  # Remove white spaces
             print(f"Plot saved: {filename}")
             plt.close()
 
@@ -396,28 +414,28 @@ def main():
     byTypes = ['modelReadableName', 'unitID', 'modelEmissionCategory']
     mcRuns = len(os.listdir(outputMC)) - 1
 
-    reqMC = ['97']
+    reqMC = ['48']
 
     # for mc in os.listdir(outputMC): 
-    for mc in reqMC:
-        opFolder = os.path.join(outputMC, mc)
-        if mc == 'template':
-            continue
-        tsMerged = preprocessTs(opFolder)
-        plotStateMachineTS(tsMerged, unitIDList=['05-123-12697', 'sep_stage1_1', 'sep_stage2_1', 'tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, mc=mc)
-    plotSiteInstantEmissionByEquip(parq=parq, unitIDs=None, saveIn=saveIn, facName=args.facilityName)
-    plotTimeseriesPerUnitID(parq=parq, unitIDs=None, saveIn=saveIn, facName=args.facilityName, excludeModelReadableName=None, mcRuns=mcRuns)
+    # for mc in reqMC:
+    #     opFolder = os.path.join(outputMC, mc)
+    #     if mc == 'template':
+    #         continue
+    #     tsMerged = preprocessTs(opFolder)
+    #     plotStateMachineTS(tsMerged, unitIDList=['05-123-12697', 'sep_stage1_1', 'sep_stage2_1', 'tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, mc=mc)
+    # plotSiteInstantEmissionByEquip(parq=parq, unitIDs=None, saveIn=saveIn, facName=args.facilityName)
+    # plotTimeseriesPerUnitID(parq=parq, unitIDs=None, saveIn=saveIn, facName=args.facilityName, excludeModelReadableName=None, mcRuns=mcRuns)
     # plotTimeseriesPerUnitID(parq=parq, unitIDs=None, saveIn=saveIn, facName=args.facilityName, excludeModelReadableName=['Tank Battery Component Leak', 'Tank Vents PRV'])
     # for byType in byTypes:
         # plotPDFsAndCDFsUnitID(parq=parq, byType=byType, saveIn=saveIn, facName=args.facilityName)
-    plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', saveIn=saveIn, facName=args.facilityName, 
-                          excludeModelReadableName=None, mcRuns=mcRuns)
+    # plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', saveIn=saveIn, facName=args.facilityName, 
+                        #   excludeModelReadableName=None, mcRuns=mcRuns)
     # plotTimeseriesPerUnitID(parq=parq, unitIDs=['tank_battery_OIL'], saveIn=saveIn, mcRuns=mcRuns,
-    #                         excludeModelReadableName=['Tank Battery Component Leak', 'Tank Vents PRV'], facName=args.facilityName, interval_days=5, pdfOnRight=False, compareWith=0.00006)
+    #                         excludeModelReadableName=['Tank Battery Component Leak'], facName=args.facilityName, interval_days=5, pdfOnRight=True)
+    plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', indType = ['tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, 
+                          excludeModelReadableName=None, spPlotName='With', mcRuns=mcRuns, compareWith=0.000150169008787642)
     # plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', indType = ['tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, 
-    #                       excludeModelReadableName=None, spPlotName='With', mcRuns=mcRuns, compareWith=0.00006)
-    # plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', indType = ['tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, 
-    #                       excludeModelReadableName=['Tank Battery Component Leak', 'Tank Vents PRV'], spPlotName='Without2', mcRuns=mcRuns, compareWith=0.00006)
+    #                       excludeModelReadableName=['Tank Battery Component Leak', 'Tank Vents PRV'], spPlotName='Without2', mcRuns=mcRuns, compareWith=0.000150169008787642)
     pass
 
 
