@@ -3319,7 +3319,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
         pass
 
 
-class EmpiricalFluidFlow(mc.FactorManager, mc.EmissionManager):
+class EmpiricalFluidFlow(mc.EmissionManager):
     def __init__(self,
                  gasComposition=None,
                  emissionDriverUnits=None,
@@ -3343,7 +3343,7 @@ class EmpiricalFluidFlow(mc.FactorManager, mc.EmissionManager):
         majorEquipment = simdm.getEquipmentTable().elementLookup(self.facilityID, self.unitID, None, self.mcRunNum)
         majorEquipment.addOutletFluidFlow(self.fluidFlow)
 
-class EmpiricalFlowProduction(EmpiricalFluidFlow):
+class EmpiricalFlowProduction(mc.FactorManager, EmpiricalFluidFlow):
     def __init__(self,
                  **kwargs
                  ):

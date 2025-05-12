@@ -86,7 +86,6 @@ Compressors,Comp_emp_wet_seal_vent,gef_comp,EmpiricalFlowProduction,,Midstream/T
 Compressors,Comp_single_unit_vent_large_emitter,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef,yes,
 Compressors,Comp_single_unit_vent_leak,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef,yes,
 Compressors,Comp_starter_vent_leak,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,yes,
-Compressors,Blowdown_event,ts_compressor,EmpiricalFlowImmediateProduction,,,,yes,
 Compressors,Comp_blowdown,ts_compressor,SpecificLeaksProduction,1,Midstream/TS/EmissionsData/TS_EF_BlowdownVent (OP & NOP).csv,ts,yes,
 Compressors,Comp_component_leak,ts_compressor,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,gef,no,Confirm EF
 Compressors,Comp_pneumatic,ts_compressor,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,Midstream/TS/EmissionsData/TS_EF_Pneumatic Any.csv,ts,yes,Confirm AF
@@ -101,7 +100,7 @@ Compressors,Comp_emp_wet_seal_vent,ts_compressor,EmpiricalFlowProduction,,Midstr
 Compressors,Comp_single_unit_vent_large_emitter,ts_compressor,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef,no,Confirm EF
 Compressors,Comp_single_unit_vent_leak,ts_compressor,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef,no,Confirm EF
 Compressors,Comp_starter_vent_leak,ts_compressor,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,no,Confirm EF
-Compressors,Crankcase_em,ts_compressor,EmpiricalFlowFromMajorEquipment,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,no,Confirm EF
+Compressors,Crankcase_em,ts_compressor,EmpiricalFlowFromMajorEquipment,,,gef,no,Confirm EF
 ,,,,,,,,
 YardPiping,YP_component_leak,gef_misc,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_YardPiping Component.csv,gef,yes,
 YardPiping,YP_pneumatic,gef_misc,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_YardPiping Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,yes,
