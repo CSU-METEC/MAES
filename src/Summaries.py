@@ -10,6 +10,7 @@ from postprocessing import plot_annualSummaries_METype_level as ptm
 from postprocessing import plot_annualSummaries_unitID_level as ptu
 from postprocessing import annualSummaries_simulation_level_category as alc
 from postprocessing import annualSummaries_simulation_level_by_METype as alm
+from postprocessing import plot_timeseries_and_state_transitions as pst
 from postprocessing import annualSummaries_simulation_level_modelReadableName as ald
 from postprocessing import plot_annualSummaries_modelReadableName_level as ptd
 from postprocessing import plot_annualSummaries_site_level as pts
@@ -498,10 +499,11 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         meType = config['METype']
         unitID = config['unitID']
         simulationEmissions = config['simulationEmissions']
+        statesAndTsPloting = config['statesAndTsPloting']
 
-        all_false = all(not x for x in [siteEmissions, meType, unitID, simulationEmissions])
+        all_false = all(not x for x in [siteEmissions, meType, unitID, simulationEmissions, statesAndTsPloting])
         if all_false:
-            siteEmissions = meType = unitID = simulationEmissions = True
+            siteEmissions = meType = unitID = simulationEmissions = statesAndTsPloting =True
 
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
@@ -529,6 +531,11 @@ def generatedCsvSummaries(config, df, fac, abnormal):
             alc.main(folder=config['simulationRoot'])
             ald.main(folder=config['simulationRoot'])
             alm.main(folder=config['simulationRoot'])
+
+        if statesAndTsPloting:
+            mcRunTs = config['mcRunTs']
+            mcRunStates = config['mcRunStates']
+            pst.main(config=config, abnormal="OFF", mcRunTs=mcRunTs, mcRunStates=mcRunStates)
 
     if instantaneousSummaries:
         # Get instantaneous emissions summary by modelReadableName

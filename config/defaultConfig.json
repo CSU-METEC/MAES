@@ -30,6 +30,9 @@
       "avgDurSummaries": false,
       "siteEmiss":false,
       "simulationEmissions":false,
+      "statesAndTsPloting":false,
+      "mcRunTs":null,
+      "mcRunStates":null,
       "miiEmiss":false,
       "plot":false,
       
