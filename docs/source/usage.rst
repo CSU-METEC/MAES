@@ -49,11 +49,11 @@ Options
                         Study definition folder. Will run every study sheet in directory (default: False)
 
   -me METype,
-                        A specific METype you want to generate pdf for (example: Compressor) , when summarizing (default: None)
+                        Choose to generate only METype summaries (default: False)
   -ab abnormal,
                         Choose to generate pdf for abnormal emmission or all (select between ON and OFF), when summarizing (default: None)
   -ui unitID,
-                        A specific unitID you want to generate pdf for (example: flare_1), when summarizing (default: None)
+                        Choose to generate only unitID summaries (default: False)
   -fs fullSummaries,
                         Generate all summaries (annual, instantaneous, PDFs, and Average Emission Rates and Durations) (Set it to True) (default: False)
   -as annualSummaries,
@@ -64,3 +64,19 @@ Options
                         Generate PDF emissions summaries (Set it to True) (default: False)
   -ad avgDurSummaries,
                         Generate Average Emission Rates and Durations table summary (Set it to True) (default: False)
+  -se siteEmiss,
+                        Generate site level emissions summary (Set it to True) (default: False)
+  -sl simulationEmissions,
+                        Generate simulation emissions summary (Set it to True) (default: False)
+  -mt miiEmiss,
+                       Generate MII emissions thresholds summary (Set it to True) (default: False)
+  -pt plot,
+                       Generate plots from summaries (Set it to True) (default: False)
+  -st statesAndTsPloting,
+                       Generate plots for Timeseries and State transistions (Set it to True) (default: False)
+  -mct mcRunTs,
+                       Specify which mcrun to plot in the timeseries plot if none is passed all mcruns will be plotted
+  -mcs mcRunStates,
+                       Specify which mcrun to plot in the state transition plot if none is passed the first mcrun will be the default
+  -dst stpDirectory,
+                       folder to store plots for Timeseries and State transistions if none is passed summaries/StatePlos will be the default

@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import os
 
@@ -9,7 +8,6 @@ def list_all_files(folder_path):
     all_files = []
 
     for root, dirs, files in os.walk(pdfs_path):
-        # Stop recursion beyond immediate subfolders
         if root.rstrip(os.sep).count(os.sep) > base_depth + 1:
             dirs.clear()
             continue
@@ -33,10 +31,9 @@ def generate_annual_emissions_plot(file, species):
     - species: filter for species (e.g., 'METHANE' or 'ETHANE').
     """
 
-    # === Adjustable Font Size Settings ===
+    # Adjustable Font Size Settings
     label_fontsize = 16  # Title, y-label, legend
     tick_fontsize = 16   # x-ticks and y-ticks
-    # =====================================
 
     try:
         df = pd.read_csv(file)
@@ -50,7 +47,7 @@ def generate_annual_emissions_plot(file, species):
         print(f"No data for species {species} in {file}")
         return
 
-    unit = df['Unit'].values[0]
+    unit = df['unit'].values[0]
     stack_categories = [x for x in df['modelEmissionCategory'].unique().tolist() if x != 'TOTAL']
 
     category_colors = {
@@ -93,15 +90,17 @@ def generate_annual_emissions_plot(file, species):
 
     for cat, val in zip(stack_categories, emissions_values):
         if val > 0:
-            ax.bar(x, val, bottom=bottom, width=bar_width, label=cat, color=category_colors.get(cat, 'gray'))
+            display_name = f"{cat.capitalize()}: {val:.1f}"
+            ax.bar(x, val, bottom=bottom, width=bar_width, label=display_name,
+                   color=category_colors.get(cat.upper(), 'gray'))
             bottom += val
 
     ax.errorbar(x, [total_emissions], yerr=[[error_low], [error_high]], fmt='none', alpha=0.4,
                 ecolor='black', capsize=5, label=f'95% CI')
 
     ax.set_ylabel(f'{species.capitalize()} Emissions ({unit})', fontsize=label_fontsize)
-    ax.set_title(f"{site_name} - Site Annual Emissions\nMean ± 95% Confidence Interval (CI): {total_emissions:.1f}"
-                 f" [{total_emissions - error_low:.1f}, {total_emissions + error_high:.1f}] {unit}", fontsize=label_fontsize)
+    ax.set_title(f"{site_name} - Site Annual Emissions in {unit}\nMean ± 95% Confidence Interval (CI): {total_emissions:.1f}"
+                 f" [{total_emissions - error_low:.1f}, {total_emissions + error_high:.1f}]", fontsize=label_fontsize)
     ax.set_xticks([])
     ax.set_xlim(-2, 2)
     ax.grid(alpha=0.3)
@@ -135,24 +134,28 @@ def plot_annual_emissions(path, species, plot_by=None):
         print("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
 
 
-def main():
+def main(file=None, folder=None):
     """
-    This code generates annual emissions plots at the Site level. Adjust the FILE and FOLDER paths,
+    This code generates annual emissions plots at the Site level. Adjust the FILE (if you want to make plots
+    for 1 specific site only) or FOLDER path (if you all to generate plots for all sites in that folder),
     and set the desired species ('METHANE' or 'ETHANE') accordingly.
     """
 
     # Load the uploaded CSV file
-    FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-CSU-CompressorDeltaFix/output/Mustang/MC_20250401_131957/' \
-           'summaries/AnnualEmissions/site=Mustang/mustang_annualEmissions_by_site_abnormal_on.csv'
-    FOLDER = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-CSU-CompressorDeltaFix/output/Mustang/MC_20250403_081746/' \
-           'summaries/'
+    # FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
+    #        'summaries/AnnualEmissions/site=Mustang/mustang_annualEmissions_by_site_abnormal_on.csv'
+    # FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/' \
+    #        'summaries/'
 
-    SPECIES = 'METHANE'  # or 'ETHANE'
+    SPECIES =['METHANE','ETHANE']
 
-    # Uncomment one of the following lines based on your requirement:
-    # plot_annual_emissions(FILE, SPECIES, plot_by="file")
-    plot_annual_emissions(FOLDER, SPECIES, plot_by="folder")
+    for sp in SPECIES:
+        if file:
+            plot_annual_emissions(file, sp, plot_by="file")
+        if folder:
+            plot_annual_emissions(folder, sp, plot_by="folder")
 
 
 if __name__=="__main__":
-    main()
+    main(folder='/home/arthur/MAES/output/Mustang_/MC_20250321_144004/' \
+              'summaries/')
