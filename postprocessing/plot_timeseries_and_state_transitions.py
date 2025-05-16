@@ -127,13 +127,15 @@ def plotStateTS(config, AllMCruns_states, AllMCruns, groupOptions, abnormal, mcR
             axes[0].legend(fontsize=14)
             axes[0].grid(alpha=0.3)
         else:
+            min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
+            mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
             for df in [t.df for t in tsf]:
                 start_time = df["timestamp"].min() / SECONDSINDAY
                 end_time = df["timestamp"].max() / SECONDSINDAY
                 axes[0].set_xlim(left=start_time, right=end_time)
                 axes[0].set_xticks(df['timestamp'] / SECONDSINDAY, minor=True)
                 axes[0].plot((df['timestamp'] - df['timestamp'].min()) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
-        
+            plotMeanEmissions(axes[0], mean_emissions, fac, abnormal)
         # Plot each state transition in subsequent subplots
         for i, state_ts in enumerate(allStateTS[batch_start:batch_start + 3], start=1):
             ax = axes[i]

@@ -32,6 +32,7 @@
       "simulationEmissions":false,
       "statesAndTsPloting":false,
       "mcRunTs":null,
+      "stpDirectory":null,
       "mcRunStates":null,
       "miiEmiss":false,
       "plot":false,
