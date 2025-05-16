@@ -45,7 +45,7 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
         result_rows.append({
             'species': species.upper(),
             'METype': me_type,
-            'Unit': 'mt/year',
+            'unit': 'mt/year',
             'mean_emissions': mean_val,
             '95%_ci_lower': ci_lower,
             '95%_ci_upper': ci_upper,
@@ -80,7 +80,7 @@ def compute_c2_c1_ratios(df_base):
             result_rows.append({
                 'species': 'C2/C1',
                 'METype': me_type,
-                'Unit': 'unitless',
+                'unit': 'unitless',
                 'mean_emissions': ratio.mean(),
                 '95%_ci_lower': np.percentile(ratio, 2.5),
                 '95%_ci_upper': np.percentile(ratio, 97.5)
@@ -120,12 +120,17 @@ def run_emissions_summary_pipeline(folder):
     summarize_emissions_by_mode('OFF', df_all, all_mcRuns, all_species, folder)
 
 
-def main():
+def main(folder):
     # Define the folder path
+<<<<<<< HEAD
     FOLDER = "C:/METEC/MAES2/output/P2_2stages_flare/MC_20250509_114055/"
     run_emissions_summary_pipeline(FOLDER)
+=======
+    # FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/'
+    run_emissions_summary_pipeline(folder)
+>>>>>>> 0c525ae70356439ac7e655703ff31b96a4df5f47
 
 
 # Example of calling the main function
 if __name__ == "__main__":
-    main()
+    main(folder="/home/arthur/MAES/output/Mustang_/MC_20250321_144004/")
