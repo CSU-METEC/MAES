@@ -145,7 +145,7 @@ def run_total_emissions_pipeline(folder):
 
 def main():
     # Define the folder path
-    FOLDER = "C:/METEC/MAES2/output/P2_2stages_flare/MC_20250509_114055/"
+    FOLDER = "C:/METEC/MAES2/output/CompOverload/MC_20250515_175504/"
     run_total_emissions_pipeline(FOLDER)
 
 
