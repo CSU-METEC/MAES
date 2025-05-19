@@ -8,7 +8,7 @@ import Units as u
 from pathlib import Path
 import re
 import urllib.parse as up
-from Summaries import generatedCsvSummaries, filterAbnormalEmissions
+import Summaries as sm
 
 logger = logging.getLogger(__name__)
 
@@ -326,21 +326,21 @@ def postProcessParquetResults(config, df, fac):
     #Check for abnormal condition
 
     if not config['abnormal']:
-        generatedCsvSummaries(config, df, fac, abnormal="ON")
-        dfAbnormalOFF = filterAbnormalEmissions(df)
+        sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
+        dfAbnormalOFF = sm.filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
             logger.info("No non fugitive emissions where found")
         else:    
-            generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+            sm.generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
        
     elif config['abnormal'].upper() == "OFF":
-        dfAbnormalOFF = filterAbnormalEmissions(df)
+        dfAbnormalOFF = sm.filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
             logger.info("No non fugitive emissions where found")
         else:    
-            generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+            sm.generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
     elif config['abnormal'].upper() == "ON":
-        generatedCsvSummaries(config, df, fac, abnormal="ON")
+        sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
 
     else:
         raise(ValueError("abnormal value should be on or off"))
