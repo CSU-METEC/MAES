@@ -142,10 +142,17 @@ def main(file=None, folder=None):
     """
 
     # Load the uploaded CSV file
+<<<<<<< HEAD
+    FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250415_100248/' \
+           'summaries/AnnualEmissions/site=Mustang/mustang_annualEmissions_by_site_abnormal_on.csv'
+    FOLDER = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250415_100248/' \
+           'summaries/'
+=======
     # FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
     #        'summaries/AnnualEmissions/site=Mustang/mustang_annualEmissions_by_site_abnormal_on.csv'
     # FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/' \
     #        'summaries/'
+>>>>>>> 0c525ae70356439ac7e655703ff31b96a4df5f47
 
     SPECIES =['METHANE','ETHANE']
 

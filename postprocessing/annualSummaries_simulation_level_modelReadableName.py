@@ -122,8 +122,13 @@ def run_emissions_summary_pipeline(folder):
 
 def main(folder):
     # Define the folder path
+<<<<<<< HEAD
+    FOLDER = "C:/METEC/MAES2/output/P2_2stages_flare/MC_20250509_114055/"
+    run_emissions_summary_pipeline(FOLDER)
+=======
     # FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/'
     run_emissions_summary_pipeline(folder)
+>>>>>>> 0c525ae70356439ac7e655703ff31b96a4df5f47
 
 
 # Example of calling the main function

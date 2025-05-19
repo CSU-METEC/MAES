@@ -1140,6 +1140,7 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
                  MTTRMinDays=None,
                  MTTRMaxDays=None,
                  pLeak=None,
+                 overriddenBy=None,
                  **kwargs):
         MTTRMinHour = u.daysToHours(MTTRMinDays)  # days to hours
         MTTRMaxHour = u.daysToHours(MTTRMaxDays)
@@ -1151,12 +1152,77 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
         super().__init__(**newArgs)  # do this to pick up default value for componentCount
         self.MTTRMinDays = MTTRMinDays
         self.MTTRMaxDays = MTTRMaxDays
+        self.overriddenBy = overriddenBy #MM edit
 
     def activityPick(self, simdm, mcRunNum=-1):
         return 1, None, None
     
     def pickFromMTTR(self, num):
         return num
+
+    def overrideLeaks(self, leakList, simdm,
+                      mcRunNum):  # MM edit: new function to adjust current leaks based on any previous emitters that should override them
+        if self.overriddenBy == None:
+            return leakList
+        elif self.overriddenBy == "Compressor Rod Packing Large Emitter":  # currently singling out specific cases to correct
+            equipment_table = simdm.getEquipmentTable()
+            equip_df = equipment_table.getMetadata()
+            large_emitter_df = equip_df[(equip_df['equipmentType'] == 'SpecificLeaksProduction') & (
+                        equip_df['modelReadableName'] == "Compressor Rod Packing Large Emitter") & (
+                                                    equip_df['mcRunNum'] == mcRunNum)]
+            override_intervals = []
+            for row in large_emitter_df.itertuples(index=False, name=None):
+                if row[2] == self.unitID:
+                    large_emitter = equipment_table.elementLookup(facilityID=row[1], unitID=row[2], emitterID=row[3],
+                                                                  mcRunNum=mcRunNum)
+                    if large_emitter == None:
+                        continue
+                    else:
+                        override_intervals.append((large_emitter.startTime, large_emitter.endTime))
+
+            # loop through override_intervals, removing any overlap from leaks in leakList
+            for individual_interval in override_intervals:
+                leakcounter = 0
+                updated_leakList = []
+                for leak in leakList:
+                    if leak['endTime'] <= individual_interval[0]:
+                        leakcounter += 1
+                        same_leak = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                     'endTime': leak['endTime']}
+                        updated_leakList.append(same_leak)
+                    elif leak['endTime'] <= individual_interval[1]:
+                        if individual_interval[0] <= leak['startTime']:
+                            continue  # leak removed
+                        else:
+                            leakcounter += 1
+                            reduced_leak = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                            'endTime': individual_interval[0]}
+                            updated_leakList.append(reduced_leak)
+                    else:  # individual_interval[1] < leak['endTime']
+                        if leak['startTime'] < individual_interval[
+                            0]:  # leak splits into two, before and after large emitter
+                            leakcounter += 1
+                            reduced_leak1 = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                             'endTime': individual_interval[0]}
+                            updated_leakList.append(reduced_leak1)
+                            leakcounter += 1
+                            reduced_leak2 = {'componentLeakInstance': leakcounter, 'startTime': individual_interval[1],
+                                             'endTime': leak['endTime']}
+                            updated_leakList.append(reduced_leak2)
+                        elif leak['startTime'] < individual_interval[1]:
+                            leakcounter += 1
+                            reduced_leak = {'componentLeakInstance': leakcounter, 'startTime': individual_interval[1],
+                                            'endTime': leak['endTime']}
+                            updated_leakList.append(reduced_leak)
+                        else: # individual_interval[1] <= leak['startTime']
+                            leakcounter += 1
+                            same_leak = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                         'endTime': leak['endTime']}
+                            updated_leakList.append(same_leak)
+                leakList = updated_leakList
+            return leakList
+        else:
+            return leakList
 
 class OGCILink(mc.LinkService):
     def __init__(self, **kwargs):
@@ -3319,7 +3385,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
         pass
 
 
-class EmpiricalFluidFlow(mc.FactorManager, mc.EmissionManager):
+class EmpiricalFluidFlow(mc.EmissionManager):
     def __init__(self,
                  gasComposition=None,
                  emissionDriverUnits=None,
@@ -3343,7 +3409,7 @@ class EmpiricalFluidFlow(mc.FactorManager, mc.EmissionManager):
         majorEquipment = simdm.getEquipmentTable().elementLookup(self.facilityID, self.unitID, None, self.mcRunNum)
         majorEquipment.addOutletFluidFlow(self.fluidFlow)
 
-class EmpiricalFlowProduction(EmpiricalFluidFlow):
+class EmpiricalFlowProduction(mc.FactorManager, EmpiricalFluidFlow):
     def __init__(self,
                  **kwargs
                  ):
@@ -3371,6 +3437,16 @@ class EmpiricalFlowImmediateProduction(EmpiricalFluidFlow):
         fluidFlow.ts = ts.ConstantTimeseriesTableEntry.factory(driverRateInSecs, self.emissionDriverUnits)
         return fluidFlow
 
+def strToBool(value):
+    if isinstance(value, bool):
+        return value
+    elif isinstance(value, str):
+        if value.lower() in ('true', 'yes', '1'):
+            return True
+        elif value.lower() in ('false', 'no', '0'):
+            return False
+    raise ValueError(f'Cannot convert {value} to boolean')
+
 
 class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['crankcaseDist']
@@ -3382,7 +3458,7 @@ class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
         super().__init__(**kwargs)
         simdm = sdm.SimDataManager.getSimDataManager()
         self.crankcaseDistrib = crankcaseDistrib
-        self.cceeFlag = cceeFlag
+        self.cceeFlag = strToBool(cceeFlag)
         self.crankcaseDist = getCrankcaseDist(crankcaseDistrib, simdm)
         i = 10
     
@@ -3743,6 +3819,12 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
             self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
             self.sumOfVaporOutletFlows = 999999   # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
+        elif self.overpressureTimeTracker > self.tankOverpressureMTBFMaxSec:
+            nextState = 'MECHANISTIC_THIEF_HATCH'
+            self.currentPrimaryEqRatio = 0
+            self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
+            self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
+            self.sumOfVaporOutletFlows = 999999   # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
         # check if AggregateFlow (outlets) < threshold at current time. ThiefHatch/Vent opens when AggregatedFlow > threshold
         elif self.tankOverpressureThresholdScfs < self.sumOfVaporOutletFlows <= self.inletFlowAtMaxPrimryFlowScfs:
             nextState = 'PRV'
@@ -3849,7 +3931,9 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             self.currentPrimaryEqRatio = 1
             self.prvSwitch = 0
             ret = {'OPERATING': delay}
-        self.overpressureTimeTracker = delay
+        self.tankOverpressureInitDist = d.Uniform({'min': 0,
+                                                     'max': self.tankOverpressureMTBFMinSec})
+        self.overpressureTimeTracker = self.tankOverpressureInitDist.pick()
         return ret
 
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
