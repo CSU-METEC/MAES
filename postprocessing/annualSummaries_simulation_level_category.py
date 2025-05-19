@@ -145,13 +145,8 @@ def run_total_emissions_pipeline(folder):
 
 def main(folder):
     # Define the folder path
-<<<<<<< HEAD
-    FOLDER = "C:/METEC/MAES2/output/P2_2stages_flare/MC_20250509_114055/"
-    run_total_emissions_pipeline(FOLDER)
-=======
     # FOLDER = '/home/arthur/MAES/output/Mustang/MC_20250404_102836'
     run_total_emissions_pipeline(folder)
->>>>>>> 0c525ae70356439ac7e655703ff31b96a4df5f47
 
 
 if __name__ == "__main__":

@@ -179,14 +179,6 @@ def main(file=None, folder=None):
     for 1 specific site only) or FOLDER path (if you all to generate plots for all sites in that folder),
     and set the desired species ('METHANE' or 'ETHANE') accordingly.
     """
-<<<<<<< HEAD
-    FILE = 'C:/METEC/MAES2/output/P2_2stages_flare/MC_20250415_100248/summaries/AggregatedSimulationEmissions/aggregated_sim_emissions_by_modelReadableName_abnormal_on.csv'
-    FOLDER = 'C:/METEC/MAES2/output/P2_2stages_flare/MC_20250415_100248/summaries/'
-    SPECIES = 'METHANE'  # or 'ETHANE'
-
-    plot_annual_emissions(FILE, SPECIES, plot_by="file")
-    # plot_annual_emissions(FOLDER, SPECIES, plot_by="folder")
-=======
     # FILE = 'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
     #        'summaries/AnnualEmissions/site=Mustang/mustang_annualEmissions_by_modelReadableName_abnormal_on.csv'
     # FOLDER = '/home/arthur/MAES/output/Mustang_/MC_20250321_144004/summaries/'
@@ -196,7 +188,6 @@ def main(file=None, folder=None):
             plot_annual_emissions(file, sp, plot_by="file")
         if folder:
             plot_annual_emissions(folder, sp, plot_by="folder")
->>>>>>> 0c525ae70356439ac7e655703ff31b96a4df5f47
 
 
 if __name__ == "__main__":

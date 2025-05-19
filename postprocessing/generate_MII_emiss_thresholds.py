@@ -102,12 +102,7 @@ def main(folder):
       2. Saves the thresholds to a CSV file in a site-specific 'MIIEmissionThresholds' folder.
     """
     # Define the base folder (update this path as needed)
-<<<<<<< HEAD
-    # BASE_FOLDER = r'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/summaries'
-    BASE_FOLDER = "C:/METEC/MAES2/output/P2_2stages_flare/MC_20250415_100248/"
-=======
     # BASE_FOLDER = r'/home/arthur/MAES/output/Mustang_/MC_20250321_144004/summaries'
->>>>>>> 0c525ae70356439ac7e655703ff31b96a4df5f47
 
     # Process all sites within the PDFs folder
     process_all_sites(folder)
