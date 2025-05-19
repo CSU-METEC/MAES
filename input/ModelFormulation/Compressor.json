@@ -120,8 +120,9 @@
 	{"Python Category": "Emitter", "Python Class": "EmpiricalFlowFromMajorEquipment", "Readable Name": "Crankcase Emissions", "Category": "CRANKCASE", "Emission Category": "VENTED",
       "Model Parameters": [
         {														"Python Parameter": "modelSubcategory",       "Parameter Type": "Constant", "Value": "Crankcase"},
-		{"Model Parameter": "Crankcase Emissions Flag",         "Python Parameter": "instantiationVal",              "Parameter Type": "Sheet"},
-		{                                                       "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant", "Value": "True"},
+		{"Model Parameter": "Driver Type",         "Python Parameter": "instantiationVal",              "Parameter Type": "Sheet"},
+		{                                                       "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant", "Value": "2SLB, 4SLB, 4SRB, Turbine"},
+		{"Model Parameter": "Crankcase Emissions Flag",           "Python Parameter": "cceeFlag",              "Parameter Type": "Sheet"},
 		{"Model Parameter": "CCEE Ratio Distribution",           "Python Parameter": "crankcaseDistrib",              "Parameter Type": "Sheet"},
 		{                                                       "Python Parameter": "emissionDriverUnits",    "Parameter Type": "Constant", "Value": "kW"},
         {"Model Parameter": "Leak GC Name",               "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
@@ -191,8 +192,7 @@
 			{                                                "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Rod_packing_vent_nod"},
             {                                                "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "NOT_OPERATING_DEPRESSURIZED"},
 			{"Model Parameter": "Seal Type",     			 "Python Parameter": "instantiationVal",       "Parameter Type": "Sheet"},
-			{                                                "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Rod Packing"},
-			{                                                "Python Parameter": "overriddenBy",           "Parameter Type": "Constant", "Value": "Compressor Rod Packing Large Emitter"}
+			{                                                "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Rod Packing"}
             ]
         },
 
@@ -208,8 +208,7 @@
 			{                                                "Python Parameter": "emitterModelFactorTag",    "Parameter Type": "Constant", "Value": "Rod_packing_vent_nop"},
             {                                                "Python Parameter": "statesActive",             "Parameter Type": "Constant", "Value": "NOT_OPERATING_PRESSURIZED"},
 			{"Model Parameter": "Seal Type",     			 "Python Parameter": "instantiationVal",         "Parameter Type": "Sheet"},
-			{                                                "Python Parameter": "valsForInstantiation",     "Parameter Type": "Constant", "Value": "Rod Packing"},
-			{                                                "Python Parameter": "overriddenBy",           "Parameter Type": "Constant", "Value": "Compressor Rod Packing Large Emitter"}
+			{                                                "Python Parameter": "valsForInstantiation",     "Parameter Type": "Constant", "Value": "Rod Packing"}
             ]
         },
 		
@@ -225,8 +224,7 @@
 			{                                                "Python Parameter": "emitterModelFactorTag",  "Parameter Type": "Constant", "Value": "Rod_packing_vent_op"},
             {												 "Python Parameter": "statesActive",           "Parameter Type": "Constant", "Value": "OPERATING"},
 			{"Model Parameter": "Seal Type",     			 "Python Parameter": "instantiationVal",       "Parameter Type": "Sheet"},
-			{                                                "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Rod Packing"},
-			{                                                "Python Parameter": "overriddenBy",           "Parameter Type": "Constant", "Value": "Compressor Rod Packing Large Emitter"}
+			{                                                "Python Parameter": "valsForInstantiation",   "Parameter Type": "Constant", "Value": "Rod Packing"}
             ]
         },
 
