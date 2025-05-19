@@ -184,7 +184,7 @@ def main():
     # Define paths (update as needed)
     FILE = r'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
            r'summaries/PDFs/Mustang_PDF_for_comp_1_abnormal_off.csv'
-    FOLDER = r'C:/Users/Arthur_Santos/PycharmProjects/MAES-main/output/Mustang/MC_20250404_102836/' \
+    FOLDER = r'/home/arthur/MAES/output/Mustang_/MC_20250321_144004' \
              r'summaries/'
 
     # Define where the file with Aerial Measurements aggregated by site is located

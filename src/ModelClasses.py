@@ -1140,6 +1140,7 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
                  MTTRMinDays=None,
                  MTTRMaxDays=None,
                  pLeak=None,
+                 overriddenBy=None,
                  **kwargs):
         MTTRMinHour = u.daysToHours(MTTRMinDays)  # days to hours
         MTTRMaxHour = u.daysToHours(MTTRMaxDays)
@@ -1151,12 +1152,77 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
         super().__init__(**newArgs)  # do this to pick up default value for componentCount
         self.MTTRMinDays = MTTRMinDays
         self.MTTRMaxDays = MTTRMaxDays
+        self.overriddenBy = overriddenBy #MM edit
 
     def activityPick(self, simdm, mcRunNum=-1):
         return 1, None, None
     
     def pickFromMTTR(self, num):
         return num
+
+    def overrideLeaks(self, leakList, simdm,
+                      mcRunNum):  # MM edit: new function to adjust current leaks based on any previous emitters that should override them
+        if self.overriddenBy == None:
+            return leakList
+        elif self.overriddenBy == "Compressor Rod Packing Large Emitter":  # currently singling out specific cases to correct
+            equipment_table = simdm.getEquipmentTable()
+            equip_df = equipment_table.getMetadata()
+            large_emitter_df = equip_df[(equip_df['equipmentType'] == 'SpecificLeaksProduction') & (
+                        equip_df['modelReadableName'] == "Compressor Rod Packing Large Emitter") & (
+                                                    equip_df['mcRunNum'] == mcRunNum)]
+            override_intervals = []
+            for row in large_emitter_df.itertuples(index=False, name=None):
+                if row[2] == self.unitID:
+                    large_emitter = equipment_table.elementLookup(facilityID=row[1], unitID=row[2], emitterID=row[3],
+                                                                  mcRunNum=mcRunNum)
+                    if large_emitter == None:
+                        continue
+                    else:
+                        override_intervals.append((large_emitter.startTime, large_emitter.endTime))
+
+            # loop through override_intervals, removing any overlap from leaks in leakList
+            for individual_interval in override_intervals:
+                leakcounter = 0
+                updated_leakList = []
+                for leak in leakList:
+                    if leak['endTime'] <= individual_interval[0]:
+                        leakcounter += 1
+                        same_leak = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                     'endTime': leak['endTime']}
+                        updated_leakList.append(same_leak)
+                    elif leak['endTime'] <= individual_interval[1]:
+                        if individual_interval[0] <= leak['startTime']:
+                            continue  # leak removed
+                        else:
+                            leakcounter += 1
+                            reduced_leak = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                            'endTime': individual_interval[0]}
+                            updated_leakList.append(reduced_leak)
+                    else:  # individual_interval[1] < leak['endTime']
+                        if leak['startTime'] < individual_interval[
+                            0]:  # leak splits into two, before and after large emitter
+                            leakcounter += 1
+                            reduced_leak1 = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                             'endTime': individual_interval[0]}
+                            updated_leakList.append(reduced_leak1)
+                            leakcounter += 1
+                            reduced_leak2 = {'componentLeakInstance': leakcounter, 'startTime': individual_interval[1],
+                                             'endTime': leak['endTime']}
+                            updated_leakList.append(reduced_leak2)
+                        elif leak['startTime'] < individual_interval[1]:
+                            leakcounter += 1
+                            reduced_leak = {'componentLeakInstance': leakcounter, 'startTime': individual_interval[1],
+                                            'endTime': leak['endTime']}
+                            updated_leakList.append(reduced_leak)
+                        else: # individual_interval[1] <= leak['startTime']
+                            leakcounter += 1
+                            same_leak = {'componentLeakInstance': leakcounter, 'startTime': leak['startTime'],
+                                         'endTime': leak['endTime']}
+                            updated_leakList.append(same_leak)
+                leakList = updated_leakList
+            return leakList
+        else:
+            return leakList
 
 class OGCILink(mc.LinkService):
     def __init__(self, **kwargs):
