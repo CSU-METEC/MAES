@@ -6,6 +6,8 @@ import logging
 import numpy as np
 import Timeseries as ts
 import ParquetLib as Pl
+import matplotlib.pyplot as plt
+
 from postprocessing import plot_annualSummaries_METype_level as ptm
 from postprocessing import plot_annualSummaries_unitID_level as ptu
 from postprocessing import annualSummaries_simulation_level_category as alc
@@ -19,6 +21,7 @@ from postprocessing import generate_MII_emiss_thresholds as gmt
 logger = logging.getLogger(__name__)
 
 SECONDSINHOUR = 3600
+SECONDSINDAY = 86400
 US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 
@@ -320,6 +323,18 @@ def aggrSet(input_df, value_column, group_options=None):
         timeseries_set.append(TimeseriesClass(subset_df, valueColName=value_column))
     return timeseries_set
 
+def readParquetFiles(config, site, abnormal, mergeGC, additionalEventFilters):
+    siteEVDF = Pl.readParquetEvents(config, site=site, mergeGC=mergeGC, species="METHANE", additionalEventFilters=additionalEventFilters)
+    siteEVDF = siteEVDF[siteEVDF["nextTS"] - siteEVDF["timestamp"] == siteEVDF["duration"]]
+    siteEVDF = siteEVDF[siteEVDF['duration'] >= 0]
+    siteEndSimDF = Pl.readParquetSummary(config, site=site)
+
+    if abnormal == "OFF":
+        valid_emitter_ids = siteEVDF[siteEVDF['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
+        siteEVDF = siteEVDF[siteEVDF['emitterID'].isin(valid_emitter_ids)]
+
+    return siteEVDF, siteEndSimDF
+
 def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
     AllMcRuns = {}
     for mcRun, mcRunDF in dfToGroup.groupby('mcRun'):
@@ -340,11 +355,139 @@ def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
 
     return AllMcRuns
 
+def calculateMeanEmissions(time_series_list, min_timestamp):
+    """Calculates mean emissions for all MC runs or a specified MC run."""
+    max_timestamp = max(td.df['timestamp'].max() for td in time_series_list)
+    total_seconds = int((max_timestamp - min_timestamp) / SECONDSINHOUR) + 1
+
+    emission_sum = np.zeros(total_seconds)
+    emission_count = np.zeros(total_seconds)
+
+    for tf in time_series_list:
+        for i, row in tf.df.iterrows():
+            start = int((row['timestamp'] - min_timestamp) / SECONDSINHOUR)
+            end = int((tf.df.iloc[i + 1]['timestamp'] - min_timestamp) / SECONDSINHOUR) if i + 1 < len(tf.df) else total_seconds
+            emission_sum[start:end] += row['tsValue']
+            emission_count[start:end] += 1
+
+    return emission_sum / np.where(emission_count == 0, 1, emission_count)
+
+def plotMeanEmissions(ax, mean_emissions, fac, abnormal):
+    """Plots the mean emissions on the provided axis."""
+    time_range = np.arange(len(mean_emissions)) * SECONDSINHOUR / SECONDSINDAY
+    ax.plot(time_range, mean_emissions, color='black', linewidth=2, label='Mean Emissions')
+    ax.set_xlabel('Time (days)', fontsize=14)
+    ax.set_ylabel('CH4 Emissions (kg/h)', fontsize=14)
+    ax.set_title(f'Mean Emissions - Facility: {fac} \n Abnormal: {abnormal}', fontsize=14)
+    ax.legend(fontsize=14)
+    ax.grid(alpha=0.3)
+
 def calcProbabilitiesAllMCs(tss):
-    combined_ts_df = pd.concat([t.df for t in tss], ignore_index=True)
-    combined_ts = ts.TimeseriesRLE(combined_ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=False)
+    ts_df = pd.concat([t.df for t in tss.values()], ignore_index=True)
+    combined_ts = ts.TimeseriesRLE(ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=True)
     pdf = combined_ts.toPDF()
-    return pdf.data
+    return pdf.data.rename(columns={"value": "tsValue"})
+
+def plotTs(allTSs, site, pdf, abnormal, config):
+    """Plots emissions time series for all MC runs and mean emissions."""
+    fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios': [2, 1]})
+
+    tsf = [t.toFullTimeseries() for t in allTSs.values()]
+    min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
+    mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
+
+    # Plot individual time series
+    for df in [t.df for t in tsf]:
+        ax[0].plot((df['timestamp'] - min_timestamp) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
+    
+    # Plot Mean Emissions on the first axis
+    plotMeanEmissions(ax[0], mean_emissions, site, abnormal)
+    
+    ax[1].hist(pdf["tsValue"], density=1, orientation='horizontal', color='royalblue')
+    ax[1].set_xlabel('Probability', fontsize=14)
+    ax[1].set_ylabel('CH4 kg/h', fontsize=14)
+    # ax[1].set_title(f'Facility: {fac} Aggregated CH4 Emissions Time Series', fontsize=14)
+    ax[1].grid(alpha=0.3)
+
+    if site:
+        plot_dir = os.path.join(config['simulationRoot'], f"summaries/TimeSeriesPlots/site={site}")
+    else:
+        plot_dir = os.path.join(config['simulationRoot'], "summaries/TimeSeriesPlots")
+
+    os.makedirs(plot_dir, exist_ok=True)
+    output_image_path = os.path.join(plot_dir, "CH4_Emissions_Time_Series.png")
+    plt.tight_layout()
+    plt.savefig(output_image_path)
+    plt.close()
+
+    return
+
+def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupOptions=None):
+    """Plots Mean Emissions as the first subplot and State Transitions for each run, with a max of 2 subplots per figure."""
+    mcRunStates = config['mcRunStates']
+    mcRunStates = 0 if not mcRunStates else int(mcRunStates)
+
+    if mcRunStates not in AllMCruns_states:
+        print(f"MC Run {mcRunStates} not found in AllMCruns_states")
+        return
+
+
+    tsf = [t.toFullTimeseries() for t in AllMCruns.values()]
+
+    allStateTS = AllMCruns_states[mcRunStates]
+    num_states = len(allStateTS)
+    fac = config['site']
+
+    # Plot 1 state transitions per figure (plus 1 for the time series)
+    for batch_start in range(0, num_states, 1):
+        fig, axes = plt.subplots(2, 1, figsize=(15, 5 * 2))
+        axes = axes.flatten()
+
+        min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
+        mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
+        for df in [t.df for t in tsf]:
+            start_time = df["timestamp"].min() / SECONDSINDAY
+            end_time = df["timestamp"].max() / SECONDSINDAY
+            axes[0].set_xlim(left=start_time, right=end_time)
+            axes[0].plot((df['timestamp'] - df['timestamp'].min()) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
+
+        plotMeanEmissions(axes[0], mean_emissions, fac, abnormal)
+
+        # Plot each state transition in subsequent subplots
+        for i, state_ts in enumerate(allStateTS[batch_start:batch_start + 1], start=1):
+            ax = axes[i]
+            ax.set_xlim(left=start_time, right=end_time)
+            ax.set_xlabel('Time (days)', fontsize=12)
+            ax.set_ylabel('State', fontsize=12)
+            
+            if groupOptions and groupOptions[0] == "unitID":
+                ax.set_title(f"State Transitions -\n {groupOptions[0]}: {groupOptions[1]}\nMCrun: {mcRunStates}", fontsize=14)
+            else:
+                for unitid, unitidDF in state_ts.df.groupby("unitID"):
+                    unitts = ts.TimeseriesCategorical(unitidDF, valueColName="state").toFullTimeseries().df
+                    ax.step(unitts["timestamp"] / SECONDSINDAY, unitts["tsValue"], label=unitid)
+                    meType = state_ts.df["METype"].unique()[0]
+                ax.set_title(f'State Transitions - {meType} for {fac}\nMCrun: {mcRunStates}', fontsize=14)
+            
+            ax.legend()
+            ax.grid(alpha=0.3)
+        
+        # Hide any unused subplots in this figure
+        for j in range(2, len(axes)):
+            fig.delaxes(axes[j])
+
+        if site:
+            plot_dir = os.path.join(config['simulationRoot'], f"summaries/StatesPlots/site={site}")
+        else:
+            plot_dir = os.path.join(config['simulationRoot'], "summaries/StatesPlots")
+        os.makedirs(plot_dir, exist_ok=True)
+        output_image_path = os.path.join(plot_dir, f"state_transition_by_mcRun={mcRunStates}_meType={meType}.png")
+
+        plt.tight_layout(pad=10.0)
+        plt.savefig(output_image_path)
+        plt.close()
+
+    return
 
 def generatePDFs(config, df, abnormal, fac):
     df = df[df['modelReadableName'] != 'Blowdown Event']    # exclude maintenance emissions
@@ -366,26 +509,26 @@ def generatePDFs(config, df, abnormal, fac):
 
         if siteEmissions:
             allMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
-            pdf = calcProbabilitiesAllMCs(allMCruns.values())
-            pdf['CH4_EmissionRate_kg/h'] = pdf['value']
-            pdf.drop(columns=['value', 'count'], inplace=True)
+            pdf = calcProbabilitiesAllMCs(allMCruns)
+            pdf['CH4_EmissionRate_kg/h'] = pdf['tsValue']
+            pdf.drop(columns=['tsValue', 'count'], inplace=True)
             dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/site={fac}/", abnormal=abnormal)
 
         if meType:
             for siMeType, meTyDF in siteDF.groupby('METype'):
                 meTypeAllMCruns = grouping(dfToGroup=meTyDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
-                meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns.values())
-                meTypepdf['CH4_EmissionRate_kg/h'] = meTypepdf['value']
-                meTypepdf.drop(columns=['value', 'count'], inplace=True)
+                meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns)
+                meTypepdf['CH4_EmissionRate_kg/h'] = meTypepdf['tsValue']
+                meTypepdf.drop(columns=['vatsValuelue', 'count'], inplace=True)
                 dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={fac}/PDF_for_all_{siMeType}", abnormal=abnormal)
 
         
         if unitID:
             for unitID, unitIDDF in siteDF.groupby('unitID'):
                 unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
-                unitPDF = calcProbabilitiesAllMCs(unitAllMCruns.values())
-                unitPDF['CH4_EmissionRate_kg/h'] = unitPDF['value']
-                unitPDF.drop(columns=['value', 'count'], inplace=True)
+                unitPDF = calcProbabilitiesAllMCs(unitAllMCruns)
+                unitPDF['CH4_EmissionRate_kg/h'] = unitPDF['tsValue']
+                unitPDF.drop(columns=['tsValue', 'count'], inplace=True)
                 dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={fac}/PDF_for_{unitID}", abnormal=abnormal)
 
         if miiEmiss:
@@ -490,6 +633,7 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     instantaneousSummaries = config['instantaneousSummaries']
     pdfSummaries = config['pdfSummaries']
     avgDurSummaries = config['avgDurSummaries']
+    statesAndTsPloting = config['statesAndTsPloting']
     
     if config['fullSummaries']:
         annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = True
@@ -499,11 +643,11 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         meType = config['METype']
         unitID = config['unitID']
         simulationEmissions = config['simulationEmissions']
-        statesAndTsPloting = config['statesAndTsPloting']
+        
 
-        all_false = all(not x for x in [siteEmissions, meType, unitID, simulationEmissions, statesAndTsPloting])
+        all_false = all(not x for x in [siteEmissions, meType, unitID, simulationEmissions])
         if all_false:
-            siteEmissions = meType = unitID = simulationEmissions = statesAndTsPloting =True
+            siteEmissions = meType = unitID = simulationEmissions =True
 
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
@@ -532,10 +676,17 @@ def generatedCsvSummaries(config, df, fac, abnormal):
             ald.main(folder=config['simulationRoot'])
             alm.main(folder=config['simulationRoot'])
 
-        if statesAndTsPloting:
-            mcRunTs = config['mcRunTs']
-            mcRunStates = config['mcRunStates']
-            pst.main(config=config, abnormal="OFF", mcRunTs=mcRunTs, mcRunStates=mcRunStates)
+    if statesAndTsPloting:
+        siteEVDF, siteEndSimDF = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=True, additionalEventFilters=[('command', '=', 'EMISSION')])
+        AllMCruns = grouping(dfToGroup=siteEVDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
+        pdf = calcProbabilitiesAllMCs(AllMCruns)
+        plotTs(AllMCruns, config=config, site=fac, pdf=pdf, abnormal=abnormal)
+        # Get state transitions
+        siteEVDF_state, siteEndSimDF_state = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=False, additionalEventFilters=[('command', '=', 'STATE_TRANSITION')])
+        AllMCruns_states = grouping(dfToGroup=siteEVDF_state, siteEndSimDF=siteEndSimDF_state, valueColName="state")
+
+        # Plot state transitions with mean emissions
+        plotStateTS(config, AllMCruns_states, AllMCruns, abnormal=abnormal, site=fac) 
 
     if instantaneousSummaries:
         # Get instantaneous emissions summary by modelReadableName
