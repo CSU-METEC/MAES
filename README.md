@@ -36,12 +36,7 @@ assume it is c:\MAES-Project.
 1. This should produce a MAES run in the pycharm output window.  
 If it does so, you have successfully installed & configured MAES.
 
-<<<<<<< HEAD
-### Usage
-To run MAES, run the following command:
-```bash
+## Usage
+```sh
 python src/SiteMain2.py -mc 2 -s C3/C3_Prototypical_Sites/P3_2stages_VRU.xlsx
 ```
-
-=======
->>>>>>> fcaa85b793ef9fe63d404ae58e13dba5b07d25c0

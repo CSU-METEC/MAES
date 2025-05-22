@@ -13,14 +13,10 @@ packages = [
 ]
 
 
+
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
 numpy = "^2.2.1"
-mkdocs-with-pdf = "^0.9.3"
-twine = "^6.0.1"
-wheel = "^0.45.1"
-matplotlib = "3.10.0"
-bokeh = "3.6.2"
 pandas = "2.2.3"
 scipy = "1.15.0"
 plotly = "5.24.1"
@@ -29,11 +25,26 @@ simpy = "^4.1.1"
 pyarrow = "^18.1.0"
 openpyxl = "^3.1.5"
 xlsxwriter = "^3.2.0"
-python-semantic-release = "^9.16.0"
+psutil = "^7.0.0"
+fsspec = "^2025.3.2"
+s3fs = {version="^2025.3.2", optional=true}
 
-[tool.poetry.group.dev.dependencies]
-mkdocs-material = "^9.5.49"
+[tool.poetry.group.docs.dependencies]
 python-semantic-release = "^9.15.2"
+
+[tool.poetry.group.packaging.dependencies]
+twine = "^6.0.1"
+wheel = "^0.45.1"
+
+[tool.poetry.group.graph.dependencies]
+bokeh = "3.6.2"
+matplotlib = "3.10.0"
+
+
+[tool.poetry.extras]
+docs = ["python-semantic-release"]
+packaging = ["twine", "wheel"]
+docker = ["s3fs"]
 
 [build-system]
 requires = ["poetry-core"]

@@ -12,6 +12,7 @@ from ConfigManager import ConfigManager as cm
 import MEETExceptions as me
 import math
 import re
+from FileSystemManager import FileStorageManager as fsm
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,8 @@ def getParser(defaultConfig):
     parser.add_argument("-t",  "--testIntervalDays", help="simulation / serialization duration, days", type=int)
     parser.add_argument('-mc', '--monteCarloIterations', help="number of MC iterations", type=int)
     parser.add_argument('-r',  '--runNumber', help="scenario number", type=int)
+
+    parser.add_argument("-fst", "--fsType", help="File system type (local, s3, etc.)", type=str, default="local")
 
     parser.add_argument("-ts", "--scenarioTimestamp", help="simulation / serialization identifier (timestamp)")
 
@@ -102,7 +105,8 @@ def readVarsFromStudy(studyFullName, configParamMap):
 def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     args = getArgs(defaultConfig=defaultConfig, argsToParse=commandArgs)
     configFile = args.configFile
-    with open(configFile, "r") as cf:
+    fs = fsm.getFSManager()
+    with fs.FileSystem.fs.open(configFile, "r") as cf:
         config = json.load(cf)
 
     cm._initializeSingleton(config)

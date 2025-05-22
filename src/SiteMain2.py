@@ -11,6 +11,7 @@ import utilities.EmissionsCSVGenerator as eg
 import Units as u
 import ParquetLib as pl
 import os
+from FileSystemManager import FileStorageManager as fsm
 
 ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize']
 
@@ -252,6 +253,7 @@ def main(cm, workitemQueues=None):
 # set this up as preMain so config does not get instantiated as a global variable
 
 def preMain():
+    fsm._initializeSingleton(config=au.getArgs().__dict__)
     cm, args = au.getConfig()
     main(cm)
 
