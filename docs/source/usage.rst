@@ -78,5 +78,3 @@ Options
                        Specify which mcrun to plot in the timeseries plot if none is passed all mcruns will be plotted
   -mcs mcRunStates,
                        Specify which mcrun to plot in the state transition plot if none is passed the first mcrun will be the default
-  -dst stpDirectory,
-                       folder to store plots for Timeseries and State transistions if none is passed summaries/StatePlos will be the default
