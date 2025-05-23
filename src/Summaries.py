@@ -1478,69 +1478,62 @@ def plotTs(allTSs, site, pdf, abnormal, config):
     return
 
 def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupOptions=None):
-    """Plots Mean Emissions as the first subplot and State Transitions for each run, with a max of 2 subplots per figure."""
-    mcRunStates = config['mcRunStates']
-    mcRunStates = 0 if not mcRunStates else int(mcRunStates)
+    """Plots one figure per unitID in each state transition: top = time series, bottom = unitID's state transitions."""
+    mcRunStates = config.get('mcRunStates', 0)
+    mcRunStates = int(mcRunStates) if mcRunStates else 0
 
     if mcRunStates not in AllMCruns_states:
         print(f"MC Run {mcRunStates} not found in AllMCruns_states")
         return
 
-
     tsf = [t.toFullTimeseries() for t in AllMCruns.values()]
-
     allStateTS = AllMCruns_states[mcRunStates]
-    num_states = len(allStateTS)
     fac = config['site']
+    min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
+    mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
 
-    # Plot 1 state transitions per figure (plus 1 for the time series)
-    for batch_start in range(0, num_states, 1):
-        fig, axes = plt.subplots(2, 1, figsize=(15, 5 * 2))
-        axes = axes.flatten()
+    for state_ts in allStateTS:
+        meType = state_ts.df["METype"].unique()[0]
 
-        min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
-        mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
-        for df in [t.df for t in tsf]:
-            start_time = df["timestamp"].min() / SECONDSINDAY
-            end_time = df["timestamp"].max() / SECONDSINDAY
-            axes[0].set_xlim(left=start_time, right=end_time)
-            axes[0].plot((df['timestamp'] - df['timestamp'].min()) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
+        for unitid, unitidDF in state_ts.df.groupby("unitID"):
+            _, axes = plt.subplots(2, 1, figsize=(15, 10))
+            ts_ax, state_ax = axes
 
-        plotMeanEmissions(axes[0], mean_emissions, fac, abnormal)
+            # Plot time series on top
+            for df in [t.df for t in tsf]:
+                start_time = df["timestamp"].min() / SECONDSINDAY
+                end_time = df["timestamp"].max() / SECONDSINDAY
+                ts_ax.set_xlim(left=start_time, right=end_time)
+                ts_ax.plot((df['timestamp'] - df['timestamp'].min()) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
 
-        # Plot each state transition in subsequent subplots
-        for i, state_ts in enumerate(allStateTS[batch_start:batch_start + 1], start=1):
-            ax = axes[i]
-            ax.set_xlim(left=start_time, right=end_time)
-            ax.set_xlabel('Time (days)', fontsize=12)
-            ax.set_ylabel('State', fontsize=12)
-            
-            if groupOptions and groupOptions[0] == "unitID":
-                ax.set_title(f"State Transitions -\n {groupOptions[0]}: {groupOptions[1]}\nMCrun: {mcRunStates}", fontsize=14)
+            plotMeanEmissions(ts_ax, mean_emissions, fac, abnormal)
+            ts_ax.set_title("Time Series with Mean Emissions", fontsize=14)
+
+            # Plot state transitions for this unitID only
+            unitts = ts.TimeseriesCategorical(unitidDF, valueColName="state").toFullTimeseries().df
+            state_ax.step(unitts["timestamp"] / SECONDSINDAY, unitts["tsValue"], label=unitid)
+            state_ax.set_xlim(left=start_time, right=end_time)
+            state_ax.set_xlabel('Time (days)', fontsize=12)
+            state_ax.set_ylabel('State', fontsize=12)
+            state_ax.set_title(f'State Transitions for unitID: {unitid}\nMEType: {meType}, MCrun: {mcRunStates}, Site: {fac}', fontsize=14)
+            state_ax.legend()
+            state_ax.grid(alpha=0.3)
+
+            # Output directory and file path
+            if site:
+                plot_dir = os.path.join(config['simulationRoot'], f"summaries/StatesPlots/site={site}")
             else:
-                for unitid, unitidDF in state_ts.df.groupby("unitID"):
-                    unitts = ts.TimeseriesCategorical(unitidDF, valueColName="state").toFullTimeseries().df
-                    ax.step(unitts["timestamp"] / SECONDSINDAY, unitts["tsValue"], label=unitid)
-                    meType = state_ts.df["METype"].unique()[0]
-                ax.set_title(f'State Transitions - {meType} for {fac}\nMCrun: {mcRunStates}', fontsize=14)
-            
-            ax.legend()
-            ax.grid(alpha=0.3)
-        
-        # Hide any unused subplots in this figure
-        for j in range(2, len(axes)):
-            fig.delaxes(axes[j])
+                plot_dir = os.path.join(config['simulationRoot'], "summaries/StatesPlots")
 
-        if site:
-            plot_dir = os.path.join(config['simulationRoot'], f"summaries/StatesPlots/site={site}")
-        else:
-            plot_dir = os.path.join(config['simulationRoot'], "summaries/StatesPlots")
-        os.makedirs(plot_dir, exist_ok=True)
-        output_image_path = os.path.join(plot_dir, f"state_transition_by_mcRun={mcRunStates}_meType={meType}.png")
+            os.makedirs(plot_dir, exist_ok=True)
+            output_image_path = os.path.join(
+                plot_dir,
+                f"state_transition_mcRun={mcRunStates}_unitID={unitid}.png"
+            )
 
-        plt.tight_layout(pad=10.0)
-        plt.savefig(output_image_path)
-        plt.close()
+            plt.tight_layout(pad=3.0)
+            plt.savefig(output_image_path)
+            plt.close()
 
     return
 
@@ -1767,7 +1760,3 @@ def generatedCsvSummaries(config, df, fac, abnormal):
 
     return None
    
-def filterAbnormalEmissions(df):
-    valid_emitter_ids = df[df['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
-    df = df[df['emitterID'].isin(valid_emitter_ids)]
-    return df
