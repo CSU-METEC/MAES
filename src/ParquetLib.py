@@ -307,6 +307,11 @@ def processInstantEquipEmissions(df):
     df = df[df['emissions_kgPerS'] > 0]
     return df
 
+def filterAbnormalEmissions(df):
+    valid_emitter_ids = df[df['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
+    df = df[df['emitterID'].isin(valid_emitter_ids)]
+    return df
+
 def postProcessParquetResults(config, df, fac):
     simDuration = config['simDurationDays']
     df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
@@ -323,18 +328,21 @@ def postProcessParquetResults(config, df, fac):
     emissEquipDFParq = processEquipEmissions(df)
     logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
     emissInstEquipDFParq = processInstantEquipEmissions(df)
-    #Check for abnormal condition
+    toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
+    toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
+    toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
 
+    #Check for abnormal condition
     if not config['abnormal']:
         sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
-        dfAbnormalOFF = sm.filterAbnormalEmissions(df)
+        dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
             logger.info("No non fugitive emissions where found")
         else:    
             sm.generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
        
     elif config['abnormal'].upper() == "OFF":
-        dfAbnormalOFF = sm.filterAbnormalEmissions(df)
+        dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
             logger.info("No non fugitive emissions where found")
         else:    
@@ -346,9 +354,6 @@ def postProcessParquetResults(config, df, fac):
         raise(ValueError("abnormal value should be on or off"))
 
    
-    toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
-    toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
-    toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
 
     avg_data = pd.DataFrame({
         'facilityID': df['facilityID'].unique(),
