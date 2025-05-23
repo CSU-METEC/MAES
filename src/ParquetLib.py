@@ -324,6 +324,9 @@ def postProcessParquetResults(config, df, fac):
     logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
     emissInstEquipDFParq = processInstantEquipEmissions(df)
     #Check for abnormal condition
+    toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
+    toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
+    toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
 
     if not config['abnormal']:
         sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
@@ -346,9 +349,6 @@ def postProcessParquetResults(config, df, fac):
         raise(ValueError("abnormal value should be on or off"))
 
    
-    toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
-    toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
-    toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
 
     avg_data = pd.DataFrame({
         'facilityID': df['facilityID'].unique(),
