@@ -331,6 +331,12 @@ def postProcessParquetResults(config, df, fac):
     toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
     toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
     toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
+    avg_data = pd.DataFrame({
+        'facilityID': df['facilityID'].unique(),
+        'average_duration_days': avg_duration,
+        'average_annual_frequency': avg_frequency
+    })
+    toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
 
     #Check for abnormal condition
     if not config['abnormal']:
@@ -353,14 +359,6 @@ def postProcessParquetResults(config, df, fac):
     else:
         raise(ValueError("abnormal value should be on or off"))
 
-   
-
-    avg_data = pd.DataFrame({
-        'facilityID': df['facilityID'].unique(),
-        'average_duration_days': avg_duration,
-        'average_annual_frequency': avg_frequency
-    })
-    toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
 
     return None  # to aggregate stats across sites
 

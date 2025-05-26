@@ -784,7 +784,7 @@ def compute_c2_c1_ratios(df_base):
     return pd.DataFrame(result_rows)
 
 
-def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRuns, all_species, output_folder, site):
+def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRuns, all_species, output_folder):
     """Processes and saves the summary emissions for a specific abnormal mode (ON/OFF)."""
     all_results = [
         compute_stats_per_mrn(species, all_mcRuns, df_all, mode)
@@ -796,10 +796,7 @@ def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRu
 
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
     
-    if site:
-        output_folder = os.path.join(output_folder, 'summaries', f'AggregatedSimulationEmissions/site={site}')
-    else:
-        output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
+    output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
         
     os.makedirs(output_folder, exist_ok=True)
     output_path = os.path.join(output_folder, f'aggregated_sim_emissions_by_modelReadableName_{suffix}')
@@ -810,14 +807,14 @@ def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRu
     print(output_path)
 
 
-def run_emissions_summary_pipeline_for_modelReadableName(folder, site):
+def run_emissions_summary_pipeline_for_modelReadableName(folder):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
     df_all = list_all_files_for_agg_modelReadbleName(folder)
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
-    summarize_emissions_by_mode_for_agg_modelReadableName('ON', df_all, all_mcRuns, all_species, folder, site)
-    summarize_emissions_by_mode_for_agg_modelReadableName('OFF', df_all, all_mcRuns, all_species, folder, site)
+    summarize_emissions_by_mode_for_agg_modelReadableName('ON', df_all, all_mcRuns, all_species, folder)
+    summarize_emissions_by_mode_for_agg_modelReadableName('OFF', df_all, all_mcRuns, all_species, folder)
 
 
 
@@ -945,13 +942,12 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
     return pd.DataFrame(results)
 
 
-def run_total_emissions_pipeline_for_category(folder, site):
+def run_total_emissions_pipeline_for_category(folder):
     """
     Runs the total emissions summary for both abnormal modes ("ON" and "OFF").
     """
     output_folder = os.path.join(folder, 'summaries', 'AggregatedSimulationEmissions')
-    if site:
-        output_folder = os.path.join(folder, 'summaries', f'AggregatedSimulationEmissions/site={site}')
+
     os.makedirs(output_folder, exist_ok=True)
     for mode in ['ON', 'OFF']:
         df_results = compute_total_emissions_stats_for_category(folder, mode)
@@ -1048,7 +1044,7 @@ def compute_c2_c1_ratios_for_metype(df_base):
     return pd.DataFrame(result_rows)
 
 
-def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, output_folder, site):
+def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, output_folder):
     """Processes and saves the summary emissions for a specific abnormal mode (ON/OFF)."""
     all_results = [
         compute_stats_per_METype(species, all_mcRuns, df_all, mode)
@@ -1059,10 +1055,8 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
     summary_df = pd.concat(all_results, ignore_index=True)
 
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
-    if site:
-        output_folder = os.path.join(output_folder, 'summaries', f'AggregatedSimulationEmissions/site={site}')
-    else:
-        output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
+
+    output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
     os.makedirs(output_folder, exist_ok=True)
     output_path = os.path.join(output_folder + '', f'aggregated_sim_emissions_by_METype_{suffix}')
 
@@ -1072,14 +1066,14 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
     print(output_path)
 
 
-def run_emissions_summary_pipeline_for_metype(folder, site):
+def run_emissions_summary_pipeline_for_metype(folder):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
     df_all = list_all_metype_files(folder)
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
-    summarize_metype_emissions_by_mode('ON', df_all, all_mcRuns, all_species, folder, site)
-    summarize_metype_emissions_by_mode('OFF', df_all, all_mcRuns, all_species, folder, site)
+    summarize_metype_emissions_by_mode('ON', df_all, all_mcRuns, all_species, folder)
+    summarize_metype_emissions_by_mode('OFF', df_all, all_mcRuns, all_species, folder)
 
 def getAverageEventCountPerMcRun(df: pd.DataFrame, unitID_name: str, model_name: str, species_name: str) -> float:
     """
@@ -1695,9 +1689,9 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         simulationEmissions = config['simulationEmissions']
         
 
-        all_false = all(not x for x in [siteEmissions, meType, unitID, simulationEmissions])
+        all_false = all(not x for x in [siteEmissions, meType, unitID])
         if all_false:
-            siteEmissions = meType = unitID = simulationEmissions =True
+            siteEmissions = meType = unitID =True
 
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
@@ -1728,9 +1722,9 @@ def generatedCsvSummaries(config, df, fac, abnormal):
                     plot_annual_emissions_for_metype(metype_summary_path, sp, plot_by="file")
                     
         if simulationEmissions:
-            run_emissions_summary_pipeline_for_modelReadableName(folder=config['simulationRoot'], site=fac)
-            run_total_emissions_pipeline_for_category(folder=config['simulationRoot'], site=fac)
-            run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'], site=fac)
+            run_emissions_summary_pipeline_for_modelReadableName(folder=config['simulationRoot'])
+            run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
+            run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
 
     if statesAndTsPloting:
         siteEVDF, siteEndSimDF = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=True, additionalEventFilters=[('command', '=', 'EMISSION')])
