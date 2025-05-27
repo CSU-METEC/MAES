@@ -751,30 +751,32 @@ def compute_stats_per_mrn(species, all_mcRuns, df_base, mode):
     return pd.DataFrame(result_rows)
 
 
-def compute_c2_c1_ratios(df_base):
+def compute_c2_c1_ratios(df_base, mode):
     """Computes C2 to C1 emission ratios per METype."""
+    if mode == "OFF":
+        df_base = df_base[df_base['modelEmissionCategory'] != 'FUGITIVE']
     df_ethane = df_base[df_base['species'].str.upper() == 'ETHANE'].copy()
     df_methane = df_base[df_base['species'].str.upper() == 'METHANE'].copy()
 
     df_ethane['emissions_mtPerYear'] = df_ethane['emissions_USTonsPerYear'] * 0.907185
     df_methane['emissions_mtPerYear'] = df_methane['emissions_USTonsPerYear'] * 0.907185
 
-    all_me_types = sorted(set(df_base['modelReadableName'].unique()))
+    all_md_names = sorted(set(df_base['modelReadableName'].unique()))
     result_rows = []
 
-    for mrn_type in all_me_types:
-        ethane_grp = df_ethane[df_ethane['modelReadableName'] == mrn_type].groupby('mcRun')['emissions_mtPerYear'].sum()
-        methane_grp = df_methane[df_methane['modelReadableName'] == mrn_type].groupby('mcRun')['emissions_mtPerYear'].sum()
+    for md_name in all_md_names:
+        ethane_grp = df_ethane[df_ethane['modelReadableName'] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
+        methane_grp = df_methane[df_methane['modelReadableName'] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
 
         common_mcRuns = ethane_grp.index.intersection(methane_grp.index)
         ratio = ethane_grp.loc[common_mcRuns] / methane_grp.loc[common_mcRuns]
 
-        ratio = ratio.replace([np.inf, -np.inf], np.nan).dropna()
+        ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
 
         if not ratio.empty:
             result_rows.append({
                 'species': 'C2/C1',
-                'modelReadableName': mrn_type,
+                'modelReadableName': md_name,
                 'unit': 'unitless',
                 'mean_emissions': ratio.mean(),
                 '95%_ci_lower': np.percentile(ratio, 2.5),
@@ -790,10 +792,11 @@ def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRu
         compute_stats_per_mrn(species, all_mcRuns, df_all, mode)
         for species in all_species
     ]
-    all_results.append(compute_c2_c1_ratios(df_all))
+    all_results.append(compute_c2_c1_ratios(df_all,mode=mode))
 
     summary_df = pd.concat(all_results, ignore_index=True)
-
+    summary_df = summary_df.drop(summary_df[summary_df["mean_emissions"] ==0 ].index)
+    
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
     
     output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
@@ -809,7 +812,7 @@ def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRu
 
 def run_emissions_summary_pipeline_for_modelReadableName(folder):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
-    df_all = list_all_files_for_agg_modelReadbleName(folder)
+    df_all = fillEmptyDataWithZero(df=list_all_metype_files(folder), emissionCol='emissions_USTonsPerYear')
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
@@ -1011,8 +1014,12 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
     return pd.DataFrame(result_rows)
 
 
-def compute_c2_c1_ratios_for_metype(df_base):
+def compute_c2_c1_ratios_for_metype(df_base, mode):
     """Computes C2 to C1 emission ratios per METype."""
+
+    if mode == "OFF":
+        df_base = df_base[df_base['modelEmissionCategory'] != 'FUGITIVE']
+
     df_ethane = df_base[df_base['species'].str.upper() == 'ETHANE'].copy()
     df_methane = df_base[df_base['species'].str.upper() == 'METHANE'].copy()
 
@@ -1029,7 +1036,7 @@ def compute_c2_c1_ratios_for_metype(df_base):
         common_mcRuns = ethane_grp.index.intersection(methane_grp.index)
         ratio = ethane_grp.loc[common_mcRuns] / methane_grp.loc[common_mcRuns]
 
-        ratio = ratio.replace([np.inf, -np.inf], np.nan).dropna()
+        ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
 
         if not ratio.empty:
             result_rows.append({
@@ -1050,9 +1057,10 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
         compute_stats_per_METype(species, all_mcRuns, df_all, mode)
         for species in all_species
     ]
-    all_results.append(compute_c2_c1_ratios_for_metype(df_all))
+    all_results.append(compute_c2_c1_ratios_for_metype(df_all, mode=mode))
 
     summary_df = pd.concat(all_results, ignore_index=True)
+    summary_df = summary_df.drop(summary_df[summary_df["mean_emissions"] ==0 ].index)
 
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
 
@@ -1068,7 +1076,7 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
 
 def run_emissions_summary_pipeline_for_metype(folder):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
-    df_all = list_all_metype_files(folder)
+    df_all = fillEmptyDataWithZero(df=list_all_metype_files(folder), emissionCol='emissions_USTonsPerYear')
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
