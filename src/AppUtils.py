@@ -68,10 +68,17 @@ def getParser(defaultConfig):
     parser.add_argument("-is", "--instantaneousSummaries", help="Generate instantaneous emissions summaries", default=False)
     parser.add_argument("-ps", "--pdfSummaries", help="Generate PDF emissions summaries", default=False)
     parser.add_argument("-ad", "--avgDurSummaries", help="Generate Average Emission Rates and Durations table summary", default=False)
+    parser.add_argument("-se", "--siteEmiss", help="Generate site level emissions summary", default=False)
+    parser.add_argument("-sl", "--simulationEmissions", help="Generate simulation emissions summary", default=False)
+    parser.add_argument("-st", "--statesAndTsPloting", help="Generate plots for Timeseries and State transistions", default=False)
+    parser.add_argument("-mcs", "--mcRunStates", help="Specify which mcrun to plot in the state transition plot", default=None)
+    parser.add_argument("-mt", "--miiEmiss", help="Generate MII emissions thresholds summary", default=False)
+    parser.add_argument("-pt", "--plot", help="Generate plots from summaries", default=False)
 
-    parser.add_argument("-ab", "--abnormal", help="include abnormal emittions or not", default=None)
-    parser.add_argument("-me", "--METype", help="Choose a METype to calculate its pdf", default=None)
-    parser.add_argument("-ui", "--unitID", help="Choose a unitID to calculate its pdf", default=None)
+
+    parser.add_argument("-ab", "--abnormal", help="include abnormal emittions or not", default=False)
+    parser.add_argument("-me", "--METype", help="Choose to generate only METype summaries", default=False)
+    parser.add_argument("-ui", "--unitID", help="Choose to generate only unitID summaries", default=False)
 
     return parser
 

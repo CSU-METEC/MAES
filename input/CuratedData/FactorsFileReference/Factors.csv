@@ -71,7 +71,6 @@ Flares,Flare_component_leak,appalachian,LeakProduction,20,Common/Allen/Rocky Mou
 Flares,Flare_component_leak,mid-continent,LeakProduction,20,Common/Allen/Mid Continent/Allen_MC_ALLPNM_EF.csv,allen ,no,Confirm EF. No Flare data for Mid Continent
 ,,,,,,,,
 Compressors,Blowdown_event,gef_comp,EmpiricalFlowImmediateProduction,,,,yes,
-Compressors,Crankcase_em,gef_comp,EmpiricalFlowFromMajorEquipment,,,,,
 Compressors,Comp_blowdown,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Blowdown Vent.csv,gef,yes,
 Compressors,Comp_component_leak,gef_comp,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,gef,yes,
 Compressors,Comp_pneumatic,gef_comp,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,yes,
@@ -86,7 +85,6 @@ Compressors,Comp_emp_wet_seal_vent,gef_comp,EmpiricalFlowProduction,,Midstream/T
 Compressors,Comp_single_unit_vent_large_emitter,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef,yes,
 Compressors,Comp_single_unit_vent_leak,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef,yes,
 Compressors,Comp_starter_vent_leak,gef_comp,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,yes,
-Compressors,Blowdown_event,ts_compressor,EmpiricalFlowImmediateProduction,,,,yes,
 Compressors,Comp_blowdown,ts_compressor,SpecificLeaksProduction,1,Midstream/TS/EmissionsData/TS_EF_BlowdownVent (OP & NOP).csv,ts,yes,
 Compressors,Comp_component_leak,ts_compressor,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,gef,no,Confirm EF
 Compressors,Comp_pneumatic,ts_compressor,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,Midstream/TS/EmissionsData/TS_EF_Pneumatic Any.csv,ts,yes,Confirm AF
@@ -101,7 +99,10 @@ Compressors,Comp_emp_wet_seal_vent,ts_compressor,EmpiricalFlowProduction,,Midstr
 Compressors,Comp_single_unit_vent_large_emitter,ts_compressor,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef,no,Confirm EF
 Compressors,Comp_single_unit_vent_leak,ts_compressor,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef,no,Confirm EF
 Compressors,Comp_starter_vent_leak,ts_compressor,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,no,Confirm EF
-Compressors,Crankcase_em,ts_compressor,EmpiricalFlowFromMajorEquipment,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,no,Confirm EF
+<<<<<<< HEAD
+Compressors,Crankcase_em,ts_compressor,EmpiricalFlowFromMajorEquipment,,,gef,no,Confirm EF
+=======
+>>>>>>> 0c525ae70356439ac7e655703ff31b96a4df5f47
 ,,,,,,,,
 YardPiping,YP_component_leak,gef_misc,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_YardPiping Component.csv,gef,yes,
 YardPiping,YP_pneumatic,gef_misc,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_YardPiping Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,yes,
@@ -154,6 +155,7 @@ Compressors,Comp_blowdown,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF 
 Compressors,Rod_packing_vent_nod,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS2_VV_50_HP_Stage2_ScaledEFRodPackingNOD.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_nop,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS2_VV_50_HP_Stage2_ScaledEFRodPackingNOP.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_op,50_PS2,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS2_VV_50_HP_Stage2_ScaledEFRodPackingOP.csv,gef_scaled,yes,
+Compressors,Crankcase_em,50_PS2,EmpiricalFlowFromMajorEquipment,,,,,
 Compressors,Blowdown_event,50_PS2,EmpiricalFlowImmediateProduction,,,,no,
 Compressors,Comp_component_leak,50_PS2,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,gef,no,
 Compressors,Comp_pneumatic,50_PS2,PneumaticEmitterProduction,Common/Allen/Rocky Mountain/Allen_RM_ALLPNM_AF.csv,Common/Allen/Rocky Mountain/Allen_RM_ALLPNM_EF.csv,allen,no,Confirm EF
@@ -551,6 +553,7 @@ Compressors,Comp_single_unit_vent_leak,VH_50_PS9_2stages,SpecificLeaksProduction
 Compressors,Comp_starter_vent_leak,VH_50_PS9_2stages,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,no,
 ,,,,,,,,
 Compressors,Comp_blowdown,VH_50_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_50_HP_Stage3_ScaledEFBlowdown.csv,gef_scaled,yes,
+Compressors,Crankcase_em,VH_50_PS9_3stages,EmpiricalFlowFromMajorEquipment,,,,,
 Compressors,Rod_packing_vent_nod,VH_50_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_50_HP_Stage3_ScaledEFRodPackingNOD.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_nop,VH_50_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_50_HP_Stage3_ScaledEFRodPackingNOP.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_op,VH_50_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_50_HP_Stage3_ScaledEFRodPackingOP.csv,gef_scaled,yes,
@@ -647,6 +650,7 @@ Compressors,Comp_single_unit_vent_leak,VH_200_PS9_2stages,SpecificLeaksProductio
 Compressors,Comp_starter_vent_leak,VH_200_PS9_2stages,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,no,
 ,,,,,,,,
 Compressors,Comp_blowdown,VH_200_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_200_HP_Stage3_ScaledEFBlowdown.csv,gef_scaled,yes,
+Compressors,Crankcase_em,VH_200_PS9_3stages,EmpiricalFlowFromMajorEquipment,,,,,
 Compressors,Rod_packing_vent_nod,VH_200_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_200_HP_Stage3_ScaledEFRodPackingNOD.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_nop,VH_200_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_200_HP_Stage3_ScaledEFRodPackingNOP.csv,gef_scaled,yes,
 Compressors,Rod_packing_vent_op,VH_200_PS9_3stages,SpecificLeaksProduction,1,Production/Scaled EF for Small Compressors/PS9_VH_200_HP_Stage3_ScaledEFRodPackingOP.csv,gef_scaled,yes,
@@ -5227,3 +5231,31 @@ TankBattery,Tank_thief_hatch_large,gef_tank_controlled,SpecificLeaksProduction,1
 TankBattery,Tank_battery_vent_leak,gef_tank_controlled,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Tank Common Multi-Unit Vent - Controlled.csv,gef,,
 TankBattery,Tank_battery_vent_large,gef_tank_controlled,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Tank Multi-Unit Vent Large Emitter.csv,gef,,
 TankBattery,Tank_pneumatic,gef_tank_controlled,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_Tank Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,,
+,,,,,,,,
+TankBattery,Tank_component_leak,AMI_2023,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,,,
+TankBattery,Tank_thief_hatch_leak,AMI_2023,SpecificLeaksProduction,1,Midstream/AMI_2023/AMI_2023_Tanks_EF.csv,,,
+TankBattery,Tank_thief_hatch_large,AMI_2023,SpecificLeaksProduction,1,Midstream/AMI_2023/AMI_2023_Tanks_Zero_Emissions.csv,,,
+TankBattery,Tank_battery_vent_leak,AMI_2023,SpecificLeaksProduction,1,Midstream/AMI_2023/AMI_2023_Tanks_Zero_Emissions.csv,,,
+TankBattery,Tank_battery_vent_large,AMI_2023,SpecificLeaksProduction,1,Midstream/AMI_2023/AMI_2023_Tanks_Zero_Emissions.csv,,,
+TankBattery,Tank_pneumatic,AMI_2023,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_Tank Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,yes,
+YardPiping,YP_component_leak,AMI_2023,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_YardPiping Component.csv,gef,yes,
+YardPiping,YP_pneumatic,AMI_2023,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_YardPiping Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,yes,
+YardPiping,Stn_common_vent_leak,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Station Common Station Vent.csv,gef,yes,
+YardPiping,Stn_common_vent_large_emitter,AMI_2023,SpecificLeaksProduction,1,Midstream/AMI_2023/AMI_2023_Common_Vent_LE_EF.csv,gef,yes,
+YardPiping,Stn_components_large_emitter,AMI_2023,SpecificLeaksProduction,1,Midstream/AMI_2023/AMI_2023_Components_LE_EF.csv,gef,yes,
+Compressors,Blowdown_event,AMI_2023,EmpiricalFlowImmediateProduction,,,,yes,
+Compressors,Comp_blowdown,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Blowdown Vent.csv,gef,yes,
+Compressors,Comp_component_leak,AMI_2023,LeakProduction,20,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Component.csv,gef,yes,
+Compressors,Comp_pneumatic,AMI_2023,PneumaticEmitterProduction,Midstream/GEFCombinedMidstream/ActivityData/GEFC_AF_Compressor Pneumatic Controller.csv,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Pneumatic Any.csv,gef,yes,
+Compressors,Dry_seal_large_emitter,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef,yes,
+Compressors,Comp_emp_dry_seal_vent,AMI_2023,EmpiricalFlowProduction,,Midstream/TS/EmissionsData/TS_EF_Centrifugal DrySealVent (OP).csv,ts,no,
+Compressors,Rod_packing_large_emitter,AMI_2023,SpecificLeaksProduction,1,Midstream/AMI_2023/AMI_2023_Compressor Rod Packing Vent Large Emitter_EF.csv,gef,yes,
+Compressors,Rod_packing_vent_nod,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOD).csv,gef,yes,
+Compressors,Rod_packing_vent_nop,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (NOP).csv,gef,yes,
+Compressors,Rod_packing_vent_op,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Rod Packing Vent (OP).csv,gef,yes,
+Compressors,Comp_wet_seal_large_emitter,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Rod Packing Vent Large Emitter.csv,gef,yes,
+Compressors,Comp_emp_wet_seal_vent,AMI_2023,EmpiricalFlowProduction,,Midstream/TS/EmissionsData/TS_EF_Centrifugal WetSealVent (OP).csv,ts,no,
+Compressors,Comp_single_unit_vent_large_emitter,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Single-Unit Vent Large Emitter.csv,gef,yes,
+Compressors,Comp_single_unit_vent_leak,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Common Single-Unit Vent.csv,gef,yes,
+Compressors,Comp_starter_vent_leak,AMI_2023,SpecificLeaksProduction,1,Midstream/GEFCombinedMidstream/EmissionsData/GEFC_EF_Compressor Starter Vent.csv,gef,yes,
+Compressors,Crankcase_em,gef_comp,EmpiricalFlowFromMajorEquipment,,,,,

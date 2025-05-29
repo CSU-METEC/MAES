@@ -62,6 +62,10 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
         self.afName = afName
         self.afValue = afValue
 
+    def overrideLeaks(self, leakList, simdm,
+                      mcRunNum):
+        return leakList
+
     def instantiateMultiple(self,
                             simdm,
                             mcRunNum=-1,
@@ -79,6 +83,7 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
             # pick leaking components and timing
             tmax = simdm.config['simDurationSeconds']  # get max sim time
             leakList = self.calcLeakList(tMax=tmax, pLeak=self.pLeak, MTBF_hours=self.MTBF, MTTR_hours=self.MTTR, EFTag=self.emitterModelFactorTag)  # determine if and when this component will leak
+            leakList = self.overrideLeaks(leakList, simdm, mcRunNum) #MM edit
             # If you return with no leaks, make sure you return *before* you cal super.instantiateFromTemplate()
             if not leakList:  # if leakList is empty return empty list
                 continue

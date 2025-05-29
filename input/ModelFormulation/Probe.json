@@ -13,5 +13,14 @@
 	],
 	
   "Emitters": [
+
+	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Separator PRV", "Category": "SEPARATOR PRV", "Emission Category": "FUGITIVE",
+	  "Model Parameters": [
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_sep_prv_{serialNo}"},
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "overload_flow"}
+	  ]
+	}
+  
   ]
 }

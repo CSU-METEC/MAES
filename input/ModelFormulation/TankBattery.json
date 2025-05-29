@@ -40,10 +40,18 @@
 	],
 	
   "Emitters": [
-       {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents Large Emitter", "Category": "OVERPRESSURE EMITTER", "Emission Category": "FUGITIVE",
+       {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents PRV", "Category": "TANK VENT", "Emission Category": "VENTED",
 	  "Model Parameters": [
-	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "MECHANISTIC_THIEF_HATCH,PRV"},
-	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_overpressure_{serialNo}"},
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "PRV"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_prv_{serialNo}"},
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"}
+	  ]
+	},
+	
+	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Tank Vents Thief Hatch", "Category": "LEAK", "Emission Category": "FUGITIVE",
+	  "Model Parameters": [
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "MECHANISTIC_THIEF_HATCH"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_thief_hatch_{serialNo}"},
 	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"}
 	  ]
 	},
