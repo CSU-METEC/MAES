@@ -22,7 +22,7 @@
       "disableSummary": false,
       "METype": false,
       "unitID": false,
-      "abnormal": false,
+      "abnormal": null,
       "fullSummaries": false,
       "annualSummaries": false,
       "instantaneousSummaries": false,

@@ -1,6 +1,7 @@
 import pandas as pd
 import AppUtils as au
 import os
+import glob
 import json
 import logging
 import numpy as np
@@ -9,6 +10,7 @@ import ParquetLib as Pl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
+from matplotlib.ticker import FuncFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +20,129 @@ US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 SPECIES = ['METHANE','ETHANE']
 
+def compute_cdf_for_plot(df: pd.DataFrame) -> pd.DataFrame:
+    df_sorted = df.sort_values(by="CH4_EmissionRate_kg/h").reset_index(drop=True)
+    df_sorted["cdf"] = df_sorted["probability"].cumsum()
+    return df_sorted
 
-def list_all_files_for_metype_plot(folder_path):
+
+def get_threshold_stats(df_sorted: pd.DataFrame, thresholds: list[int]):
+    percentages = {}
+    coords      = []
+    for t in thresholds:
+        below = df_sorted[df_sorted["CH4_EmissionRate_kg/h"] < t]
+        pct   = below["probability"].sum() * 100
+        y_val = below["cdf"].iloc[-1] if not below.empty else 0
+        percentages[t] = pct
+        coords.append((t, y_val))
+    return percentages, coords
+
+
+def plot_cdf(df_sorted: pd.DataFrame, percentages: dict, threshold_coords: list[tuple], cdf_output_dir):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(df_sorted["CH4_EmissionRate_kg/h"], df_sorted["cdf"],
+            color="black", label="CDF")
+    ax.set_xscale("log")
+
+    # how many points to offset text (controls arrow length)
+    OFFSET = 60
+
+    for i, (threshold, y_val) in enumerate(threshold_coords):
+        label = f"{percentages[threshold]:.1f}% (< {threshold} kg/h)"
+
+        # even → position below & to the right, arrow at –45°
+        # odd  → position above & to the left, arrow at +135°
+        if i % 2 == 0:
+            dx, dy =  OFFSET, -OFFSET
+        else:
+            dx, dy = -OFFSET,  OFFSET
+
+        ax.axvline(x=threshold, color="gray", linestyle="--", linewidth=1)
+        ax.plot(threshold, y_val, "o", color="black", markersize=5)
+        ax.annotate(
+            label,
+            xy=(threshold, y_val),
+            xytext=(dx, dy),
+            textcoords="offset points",
+            ha="center", va="center",
+            fontsize=16,
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", lw=0.5),
+            arrowprops=dict(
+                arrowstyle="->",
+                color="gray",
+                lw=0.8
+            )
+        )
+
+    ax.margins(x=0.05, y=0.15)
+
+    ax.set_xlabel("CH4 Emission Rate (kg/h, log scale)", fontsize=16)
+    ax.set_ylabel("Cumulative Probability", fontsize=16)
+    ax.set_title("Simulation Level CDF of CH4 Emission Rates Estimated by MAES MII",
+                 fontsize=16)
+    ax.tick_params(axis="both", labelsize=16)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.7)
+
+    fig.tight_layout()
+    os.makedirs(cdf_output_dir, exist_ok=True)
+    plt.savefig(f"{cdf_output_dir}/combinedCdf.png")
+    plt.close()
+
+def generate_comnbined_cdf_plot(config):
+    try:
+        df= pd.read_csv(f"{config['simulationRoot']}/summaries/PDFs/combined_pdf.csv")
+    except Exception as e:
+        logger.warning("please generate combined pdf first")
+        return
+    df_sorted  = compute_cdf_for_plot(df)
+    percentages, coords = get_threshold_stats(df_sorted, [2, 10, 15, 25, 50, 100])
+    plot_cdf(df_sorted, percentages, coords, cdf_output_dir=f"{config['simulationRoot']}/summaries/cdfPlots")
+
+def find_files(root_dir: str, pattern: str) -> list[str]:
+    """Return every file under *root_dir* whose *basename* matches *pattern*."""
+    return glob.glob(os.path.join(root_dir, "**", pattern), recursive=True)
+
+
+def load_pdf(path: str) -> pd.DataFrame:
+    """Read one CSV and return only the two relevant columns."""
+    return pd.read_csv(path, usecols=["CH4_EmissionRate_kg/h", "probability"])
+
+
+def combine_pdfs(paths: list[str], round_decimals=6) -> pd.DataFrame:
+    """Stack, merge duplicate emission-rate rows, and normalize probabilities."""
+    if not paths:
+        raise ValueError("No matching files were found.")
+
+    df = pd.concat([load_pdf(p) for p in paths], ignore_index=True)
+
+    if round_decimals is not None:
+        df["CH4_EmissionRate_kg/h"] = df["CH4_EmissionRate_kg/h"].round(round_decimals)
+
+    df = (
+        df.groupby("CH4_EmissionRate_kg/h", as_index=False)["probability"]
+          .sum()                          # add probabilities of identical rates
+    )
+    df["probability"] = df["probability"] / df["probability"].sum()  # normalize so Σprob = 1
+    return df
+
+def generate_site_level_pdfs(root_dir):
+    files = find_files(root_dir, "PDF_for_site_*.csv")
+
+    if not files:
+        logger.warning("No PDFs were found")
+        return
+    
+    logger.info(f"Found {len(files)} file(s).")
+
+    combined = combine_pdfs(files)
+    output_dir = f"{root_dir}/combined_pdf.csv"
+    combined.to_csv(output_dir, index=False)
+
+    logger.info(f"Combined PDF written to {output_dir} ({len(combined)} rows).")
+
+
+def list_all_files_by(folder_path, by):
     pdfs_path = os.path.join(folder_path, 'AnnualEmissions')
     base_depth = pdfs_path.rstrip(os.sep).count(os.sep)
     all_files = []
@@ -30,10 +153,9 @@ def list_all_files_for_metype_plot(folder_path):
             dirs.clear()
             continue
         for file in files:
-            if file.endswith('.csv') and 'by_METype' in file:
+            if file.endswith('.csv') and by in file:
                 all_files.append(os.path.join(root, file))
     return all_files
-
 
 def generate_annual_emissions_plot_for_metype(file, species):
     """
@@ -51,18 +173,18 @@ def generate_annual_emissions_plot_for_metype(file, species):
 
     try:
         df = pd.read_csv(file)
-        print(file)
+        logger.info(file)
     except Exception as e:
-        print(f"Error reading {file}: {e}")
+        logger.info(f"Error reading {file}: {e}")
         return
 
     df = df[df['species'] == species]
     if df.empty:
-        print(f"No data for species {species} in {file}")
+        logger.info(f"No data for species {species} in {file}")
         return
 
     if 'METype' not in df.columns:
-        print(f"Column 'METype' not found in {file}")
+        logger.info(f"Column 'METype' not found in {file}")
         return
 
     unit = df['unit'].values[0]
@@ -70,7 +192,7 @@ def generate_annual_emissions_plot_for_metype(file, species):
     df = df[df['METype'] != 'summed_METype']
 
     if df.empty:
-        print(f"No METype entries to plot in {file}")
+        logger.info(f"No METype entries to plot in {file}")
         return
 
     df = df.sort_values('METype')
@@ -158,28 +280,13 @@ def plot_annual_emissions_for_metype(path, species, plot_by=None):
     - plot_by: 'file' to process a single file, or 'folder' to process all matching CSV files.
     """
     if plot_by == "folder":
-        files = list_all_files_for_metype_plot(path)
+        files = list_all_files_by(path, by="by_METype")
         for file in files:
             generate_annual_emissions_plot_for_metype(file, species)
     elif plot_by == "file":
         generate_annual_emissions_plot_for_metype(path, species)
     else:
-        print("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
-
-def list_all_files_site_level_plot(folder_path):
-    pdfs_path = os.path.join(folder_path, 'AnnualEmissions')
-    base_depth = pdfs_path.rstrip(os.sep).count(os.sep)
-    all_files = []
-
-    for root, dirs, files in os.walk(pdfs_path):
-        if root.rstrip(os.sep).count(os.sep) > base_depth + 1:
-            dirs.clear()
-            continue
-        for file in files:
-            if file.endswith('.csv') and 'by_site_abnormal' in file:
-                all_files.append(os.path.join(root, file))
-    return all_files
-
+        logger.info("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
 
 def generate_annual_emissions_plot__site_level(file, species):
     """
@@ -201,14 +308,14 @@ def generate_annual_emissions_plot__site_level(file, species):
 
     try:
         df = pd.read_csv(file)
-        print(file)
+        logger.info(file)
     except Exception as e:
-        print(f"Error reading {file}: {e}")
+        logger.info(f"Error reading {file}: {e}")
         return
 
     df = df[df['species'] == species]
     if df.empty:
-        print(f"No data for species {species} in {file}")
+        logger.info(f"No data for species {species} in {file}")
         return
 
     unit = df['unit'].values[0]
@@ -222,7 +329,7 @@ def generate_annual_emissions_plot__site_level(file, species):
 
     available_stack = [cat for cat in stack_categories if cat in df['modelEmissionCategory'].values]
     if not available_stack:
-        print(f"No stack categories available in {file}. Skipping.")
+        logger.info(f"No stack categories available in {file}. Skipping.")
         return
 
     df_stack = df[df['modelEmissionCategory'].isin(available_stack)]
@@ -231,7 +338,7 @@ def generate_annual_emissions_plot__site_level(file, species):
 
     df_total = df[df['modelEmissionCategory'] == 'TOTAL']
     if df_total.empty:
-        print(f"No TOTAL row found in {file}")
+        logger.info(f"No TOTAL row found in {file}")
         return
     total_row = df_total.iloc[0]
     total_emissions = total_row['mean_emissions']
@@ -289,30 +396,13 @@ def plot_annual_emissions_site_level(path, species, plot_by=None):
     - plot_by: 'file' to process a single file, or 'folder' to process all matching CSV files.
     """
     if plot_by == "folder":
-        files = list_all_files_site_level_plot(path)
+        files = list_all_files_by(path, by="by_site_abnormal")
         for file in files:
             generate_annual_emissions_plot__site_level(file, species)
     elif plot_by == "file":
         generate_annual_emissions_plot__site_level(path, species)
     else:
-        print("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
-
-
-def list_all_files_for_modelReadableName_plot(folder_path):
-    pdfs_path = os.path.join(folder_path, 'AnnualEmissions')
-    base_depth = pdfs_path.rstrip(os.sep).count(os.sep)
-    all_files = []
-
-    for root, dirs, files in os.walk(pdfs_path):
-        # Stop recursion beyond immediate subfolders
-        if root.rstrip(os.sep).count(os.sep) > base_depth + 1:
-            dirs.clear()
-            continue
-        for file in files:
-            if file.endswith('.csv') and 'by_modelReadableName' in file:
-                all_files.append(os.path.join(root, file))
-    return all_files
-
+        logger.info("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
 
 def generate_annual_emissions_plot_for_modelReadableName(file, species):
     """
@@ -334,26 +424,26 @@ def generate_annual_emissions_plot_for_modelReadableName(file, species):
 
     try:
         df = pd.read_csv(file)
-        print(file)
+        logger.info(file)
     except Exception as e:
-        print(f"Error reading {file}: {e}")
+        logger.info(f"Error reading {file}: {e}")
         return
 
     df = df[df['species'] == species]
     if df.empty:
-        print(f"No data for species {species} in {file}")
+        logger.info(f"No data for species {species} in {file}")
         return
 
     # Remove rows where mean_emissions is 0
     df = df[df['mean_emissions'] != 0]
     if df.empty:
-        print(f"All entries have 0 emissions in {file}")
+        logger.info(f"All entries have 0 emissions in {file}")
         return
 
     # Exclude rows where modelReadableName contains 'summed' anywhere
     df = df[~df['modelReadableName'].str.contains('summed', case=False, na=False)]
     if df.empty:
-        print(f"No valid rows for plotting in {file}")
+        logger.info(f"No valid rows for plotting in {file}")
         return
 
     # Generate unique labels: "{unitID} - {modelReadableName}"
@@ -450,28 +540,13 @@ def plot_annual_emissions_for_modelReadableName(path, species, plot_by=None):
     - plot_by: 'file' to process a single file, or 'folder' to process all matching CSV files.
     """
     if plot_by == "folder":
-        files = list_all_files_for_modelReadableName_plot(path)
+        files = list_all_files_by(path, by="by_modelReadableName")
         for file in files:
             generate_annual_emissions_plot_for_modelReadableName(file, species)
     elif plot_by == "file":
         generate_annual_emissions_plot_for_modelReadableName(path, species)
     else:
-        print("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
-
-def list_all_unitid_files_for_plot(folder_path):
-    pdfs_path = os.path.join(folder_path, 'AnnualEmissions')
-    base_depth = pdfs_path.rstrip(os.sep).count(os.sep)
-    all_files = []
-
-    for root, dirs, files in os.walk(pdfs_path):
-        if root.rstrip(os.sep).count(os.sep) > base_depth + 1:
-            dirs.clear()
-            continue
-        for file in files:
-            if file.endswith('.csv') and 'by_modelReadableName' in file:
-                all_files.append(os.path.join(root, file))
-    return all_files
-
+        logger.info("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
 
 def generate_annual_emissions_plot_unitid_level(file, species):
     """
@@ -495,20 +570,20 @@ def generate_annual_emissions_plot_unitid_level(file, species):
 
     try:
         df = pd.read_csv(file)
-        print(file)
+        logger.info(file)
     except Exception as e:
-        print(f"Error reading {file}: {e}")
+        logger.info(f"Error reading {file}: {e}")
         return
 
     df = df[df['species'] == species]
     if df.empty:
-        print(f"No data for species {species} in {file}")
+        logger.info(f"No data for species {species} in {file}")
         return
 
     # Remove rows where mean_emissions is 0
     df = df[df['mean_emissions'] != 0]
     if df.empty:
-        print(f"All entries have 0 emissions in {file}")
+        logger.info(f"All entries have 0 emissions in {file}")
         return
 
     # Keep only rows where modelReadableName == 'summed_modelReadableName'
@@ -518,7 +593,7 @@ def generate_annual_emissions_plot_unitid_level(file, species):
     df = df[df['unitID'] != 'summed_unitID']
 
     if df.empty:
-        print(f"No valid rows for plotting in {file}")
+        logger.info(f"No valid rows for plotting in {file}")
         return
 
     unit = df['unit'].values[0]
@@ -598,13 +673,13 @@ def plot_annual_emissions_unitid_level(path, species, plot_by=None):
     - plot_by: 'file' to process a single file, or 'folder' to process all matching CSV files.
     """
     if plot_by == "folder":
-        files = list_all_unitid_files_for_plot(path)
+        files = list_all_files_by(path, by="by_modelReadableName")
         for file in files:
             generate_annual_emissions_plot_unitid_level(file, species)
     elif plot_by == "file":
         generate_annual_emissions_plot_unitid_level(path, species)
     else:
-        print("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
+        logger.info("Missing or invalid 'plot_by' argument.\nPlease specify 'file' or 'folder'.")
 
 
 
@@ -638,7 +713,7 @@ def process_site_for_mii(site_folder):
     computes the emission threshold at 95% cumulative probability for each file,
     and saves the results in a CSV file within a new folder called 'MIIEmissionThresholds' in the site folder.
     """
-    print(f"Processing site: {os.path.basename(site_folder)}")
+    logger.info(f"Processing site: {os.path.basename(site_folder)}")
     files = list_all_files_in_folder_for_mii(site_folder)
     thresholds = {}
 
@@ -648,7 +723,7 @@ def process_site_for_mii(site_folder):
         try:
             df = pd.read_csv(file)
         except Exception as e:
-            print(f"Error reading {file}: {e}")
+            logger.info(f"Error reading {file}: {e}")
             continue
 
         # Extract emissions (assumed to be the 2nd column) and probabilities
@@ -806,8 +881,8 @@ def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRu
 
     summary_df.to_csv(output_path, index=False)
 
-    print(f"\nSaved METype emissions summary for ABNORMAL = {mode} to:")
-    print(output_path)
+    logger.info(f"\nSaved METype emissions summary for ABNORMAL = {mode} to:")
+    logger.info(output_path)
 
 
 def run_emissions_summary_pipeline_for_modelReadableName(folder):
@@ -957,8 +1032,8 @@ def run_total_emissions_pipeline_for_category(folder):
         suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
         output_path = os.path.join(output_folder, f'aggregated_sim_emissions_by_category_{suffix}')
         df_results.to_csv(output_path, index=False)
-        print(f"Saved emissions summary for ABNORMAL = {mode} to:")
-        print(output_path)
+        logger.info(f"Saved emissions summary for ABNORMAL = {mode} to:")
+        logger.info(output_path)
 
 
 def list_all_metype_files(folder_path):
@@ -1070,8 +1145,8 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
 
     summary_df.to_csv(output_path, index=False)
 
-    print(f"\nSaved METype emissions summary for ABNORMAL = {mode} to:")
-    print(output_path)
+    logger.info(f"\nSaved METype emissions summary for ABNORMAL = {mode} to:")
+    logger.info(output_path)
 
 
 def run_emissions_summary_pipeline_for_metype(folder):
@@ -1485,7 +1560,7 @@ def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupO
     mcRunStates = int(mcRunStates) if mcRunStates else 0
 
     if mcRunStates not in AllMCruns_states:
-        print(f"MC Run {mcRunStates} not found in AllMCruns_states")
+        logger.info(f"MC Run {mcRunStates} not found in AllMCruns_states")
         return
 
     tsf = [t.toFullTimeseries() for t in AllMCruns.values()]
@@ -1562,6 +1637,8 @@ def generatePDFs(config, df, abnormal, fac):
             pdf = calcProbabilitiesAllMCs(allMCruns)
             pdf['CH4_EmissionRate_kg/h'] = pdf['tsValue']
             pdf.drop(columns=['tsValue', 'count'], inplace=True)
+            if pdf.empty:
+                continue
             dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/site={fac}/", abnormal=abnormal)
 
         if meType:
@@ -1570,6 +1647,8 @@ def generatePDFs(config, df, abnormal, fac):
                 meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns)
                 meTypepdf['CH4_EmissionRate_kg/h'] = meTypepdf['tsValue']
                 meTypepdf.drop(columns=['tsValue', 'count'], inplace=True)
+                if meTypepdf.empty:
+                    continue
                 dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={fac}/PDF_for_all_{siMeType}", abnormal=abnormal)
 
         
@@ -1579,6 +1658,8 @@ def generatePDFs(config, df, abnormal, fac):
                 unitPDF = calcProbabilitiesAllMCs(unitAllMCruns)
                 unitPDF['CH4_EmissionRate_kg/h'] = unitPDF['tsValue']
                 unitPDF.drop(columns=['tsValue', 'count'], inplace=True)
+                if unitPDF.empty:
+                    continue
                 dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={fac}/PDF_for_{unitID}", abnormal=abnormal)
 
         if miiEmiss:
@@ -1673,12 +1754,7 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     fac = str(fac).capitalize()
      # Get DFs for emissions for the summaries
     zerosDF = fillEmptyDataWithZero(df.copy(), emissionCol="emissions_USTonsPerYear")
-    # zerosDF = zerosDF[zerosDF['METype']=='Compressor']
-    # logging.info("Creating dataframes for Emission by Categories...")
     emissCatDF = Pl.processEmissionsCat(zerosDF.copy())
-    # logging.info("Creating dataframes for Emission by Equipment...")
-    # emissEquipDF = processEquipEmissions(zerosDF)
-    # logging.info("Creating dataframes for Instantaneous Emissions by Equipment...")
     emissInstEquipDF = Pl.processInstantEquipEmissions(df)
 
     annualSummaries = config['annualSummaries']
@@ -1686,54 +1762,46 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     pdfSummaries = config['pdfSummaries']
     avgDurSummaries = config['avgDurSummaries']
     statesAndTsPloting = config['statesAndTsPloting']
+    simulationEmissions = config['simulationEmissions']
+    gen_plots = config['plot']
     
     if config['fullSummaries']:
-        annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = True
+        annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = simulationEmissions = True
 
     if annualSummaries:
         siteEmissions = config['siteEmiss']
         meType = config['METype']
         unitID = config['unitID']
-        simulationEmissions = config['simulationEmissions']
         
-
         all_false = all(not x for x in [siteEmissions, meType, unitID])
-        if all_false:
+        if all_false or gen_plots:
             siteEmissions = meType = unitID =True
 
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
             detailed_emissionsDF = pd.concat([detailed_emissionsDF, calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE")])
             unit_summary_path = dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
-            if config['plot']:
-                for sp in SPECIES:
-                    plot_annual_emissions_unitid_level(unit_summary_path, sp, plot_by="file")
-                    plot_annual_emissions_for_modelReadableName(unit_summary_path, sp, plot_by="file")
                 
-
+                
         if siteEmissions:
             CategorySummaryDF = calcSiteLevelSummary(emissCatDF.copy(), species='METHANE', confidence_level=95)
             CategorySummaryDF = pd.concat([CategorySummaryDF, calcSiteLevelSummary(emissCatDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
             site_summary_path = dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
-            if config['plot']:
-                # pts.main(file=)
-                for sp in SPECIES:
-                    plot_annual_emissions_site_level(site_summary_path, sp, plot_by="file")
 
         if meType:
             equipEmissSummaryDF = calcEmissSummaryByMEType(zerosDF.copy(), species='METHANE', confidence_level=95)
             equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(zerosDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
             metype_summary_path = dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
-            if config['plot']:
-                # ptm.main(file=metype_summary_path)
-                for sp in SPECIES:
-                    plot_annual_emissions_for_metype(metype_summary_path, sp, plot_by="file")
-                    
-        if simulationEmissions:
-            run_emissions_summary_pipeline_for_modelReadableName(folder=config['simulationRoot'])
-            run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
-            run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
 
+                    
+        if gen_plots:
+            for sp in SPECIES:
+                plot_annual_emissions_unitid_level(unit_summary_path, sp, plot_by="file")
+                plot_annual_emissions_for_modelReadableName(unit_summary_path, sp, plot_by="file")
+                plot_annual_emissions_site_level(site_summary_path, sp, plot_by="file")
+                plot_annual_emissions_for_metype(metype_summary_path, sp, plot_by="file")
+
+    
     if statesAndTsPloting:
         siteEVDF, siteEndSimDF = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=True, additionalEventFilters=[('command', '=', 'EMISSION')])
         AllMCruns = grouping(dfToGroup=siteEVDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
@@ -1754,11 +1822,19 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     if pdfSummaries: 
         # Get PDF at Site Level for CH4 Emissions
         generatePDFs(config=config, df=df.copy(), abnormal=abnormal, fac=fac)
-
+    
     if avgDurSummaries:
         avgERandDur = createSummaryTable(emissInstEquipDF.copy(), species="METHANE")
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF.copy(),species="ETHANE")])
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={fac}/", abnormal=abnormal)
+
+    if simulationEmissions:
+        run_emissions_summary_pipeline_for_modelReadableName(folder=config['simulationRoot'])
+        run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
+        run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
+        generate_site_level_pdfs(root_dir=f"{config['simulationRoot']}/summaries/PDFs")
+        if gen_plots:
+            generate_comnbined_cdf_plot(config)
 
     return None
    
