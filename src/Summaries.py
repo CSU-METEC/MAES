@@ -1762,55 +1762,46 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     pdfSummaries = config['pdfSummaries']
     avgDurSummaries = config['avgDurSummaries']
     statesAndTsPloting = config['statesAndTsPloting']
+    simulationEmissions = config['simulationEmissions']
+    gen_plots = config['plot']
     
     if config['fullSummaries']:
-        annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = True
+        annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = simulationEmissions = True
 
     if annualSummaries:
         siteEmissions = config['siteEmiss']
         meType = config['METype']
         unitID = config['unitID']
-        simulationEmissions = config['simulationEmissions']
         
-
         all_false = all(not x for x in [siteEmissions, meType, unitID])
-        if all_false:
+        if all_false or gen_plots:
             siteEmissions = meType = unitID =True
 
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
             detailed_emissionsDF = pd.concat([detailed_emissionsDF, calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE")])
             unit_summary_path = dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
-            if config['plot']:
-                for sp in SPECIES:
-                    plot_annual_emissions_unitid_level(unit_summary_path, sp, plot_by="file")
-                    plot_annual_emissions_for_modelReadableName(unit_summary_path, sp, plot_by="file")
                 
-
+                
         if siteEmissions:
             CategorySummaryDF = calcSiteLevelSummary(emissCatDF.copy(), species='METHANE', confidence_level=95)
             CategorySummaryDF = pd.concat([CategorySummaryDF, calcSiteLevelSummary(emissCatDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
             site_summary_path = dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
-            if config['plot']:
-                for sp in SPECIES:
-                    plot_annual_emissions_site_level(site_summary_path, sp, plot_by="file")
 
         if meType:
             equipEmissSummaryDF = calcEmissSummaryByMEType(zerosDF.copy(), species='METHANE', confidence_level=95)
             equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(zerosDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
             metype_summary_path = dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
-            if config['plot']:
-                for sp in SPECIES:
-                    plot_annual_emissions_for_metype(metype_summary_path, sp, plot_by="file")
-                    
-        if simulationEmissions:
-            run_emissions_summary_pipeline_for_modelReadableName(folder=config['simulationRoot'])
-            run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
-            run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
-            generate_site_level_pdfs(root_dir=f"{config['simulationRoot']}/summaries/PDFs")
-            if config['plot']:
-                generate_comnbined_cdf_plot(config)
 
+                    
+        if gen_plots:
+            for sp in SPECIES:
+                plot_annual_emissions_unitid_level(unit_summary_path, sp, plot_by="file")
+                plot_annual_emissions_for_modelReadableName(unit_summary_path, sp, plot_by="file")
+                plot_annual_emissions_site_level(site_summary_path, sp, plot_by="file")
+                plot_annual_emissions_for_metype(metype_summary_path, sp, plot_by="file")
+
+    
     if statesAndTsPloting:
         siteEVDF, siteEndSimDF = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=True, additionalEventFilters=[('command', '=', 'EMISSION')])
         AllMCruns = grouping(dfToGroup=siteEVDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
@@ -1831,11 +1822,19 @@ def generatedCsvSummaries(config, df, fac, abnormal):
     if pdfSummaries: 
         # Get PDF at Site Level for CH4 Emissions
         generatePDFs(config=config, df=df.copy(), abnormal=abnormal, fac=fac)
-
+    
     if avgDurSummaries:
         avgERandDur = createSummaryTable(emissInstEquipDF.copy(), species="METHANE")
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF.copy(),species="ETHANE")])
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={fac}/", abnormal=abnormal)
+
+    if simulationEmissions:
+        run_emissions_summary_pipeline_for_modelReadableName(folder=config['simulationRoot'])
+        run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
+        run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
+        generate_site_level_pdfs(root_dir=f"{config['simulationRoot']}/summaries/PDFs")
+        if gen_plots:
+            generate_comnbined_cdf_plot(config)
 
     return None
    

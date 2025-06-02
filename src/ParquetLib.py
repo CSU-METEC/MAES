@@ -375,6 +375,9 @@ def postprocess(config):
         t0.setCount(len(eventDF2))
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
+            if df.empty:
+                logger.warning(f"Site: {fac} has zero emissions")
+                continue
             postProcessParquetResults(config, df, fac)
 
 def getParquetMetadata(parquetDir):
