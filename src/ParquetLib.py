@@ -190,6 +190,9 @@ def readParquetSummary(config, site=None, mcRun=None):
 
 def readParquetEvents(config, site=None, mcRun=None, mergeGC=False, species=None, additionalEventFilters=[('command', '=', 'EMISSION')]):
     eventDF = readParquetRawEvents(config, site=site, mcRun=mcRun, additionalFilters=additionalEventFilters)
+    if eventDF.empty:
+        logging.warning(f"No emissions recorded for site {site} at MC run {mcRun}")
+        return None
     tsDF = readParquetTimeseries(config, site=site, mcRun=mcRun)
     mdDF = readParquetMetadata(config, site=site, mcRun=mcRun)
 
@@ -371,8 +374,10 @@ def postprocess(config):
                                      mergeGC=True,
                                      species=['METHANE', 'ETHANE'],
                                      additionalEventFilters=[('command', '=', 'EMISSION')])
-        
+        if eventDF2 is None:
+            return
         t0.setCount(len(eventDF2))
+
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
             site = df['site'].unique()[0]
