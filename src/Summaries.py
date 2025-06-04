@@ -127,7 +127,7 @@ def combine_pdfs(paths: list[str], round_decimals=6) -> pd.DataFrame:
     return df
 
 def generate_site_level_pdfs(root_dir):
-    files = find_files(root_dir, "PDF_for_site_*.csv")
+    files = find_files(f"{root_dir}/summaries/PDFs", "PDF_for_site_*.csv")
 
     if not files:
         logger.warning("No PDFs were found")
@@ -137,7 +137,11 @@ def generate_site_level_pdfs(root_dir):
 
     combined = combine_pdfs(files)
     output_dir = f"{root_dir}/combined_pdf.csv"
-    combined.to_csv(output_dir, index=False)
+    output_folder = os.path.join(root_dir, 'summaries', 'AggregatedSimulationEmissions')
+    os.makedirs(output_folder, exist_ok=True)
+    output_path = os.path.join(output_folder + '', 'aggregated_sim_PDFs.csv')
+
+    combined.to_csv(output_path, index=False)
 
     logger.info(f"Combined PDF written to {output_dir} ({len(combined)} rows).")
 
@@ -777,9 +781,8 @@ def list_all_files_for_agg_modelReadbleName(folder_path):
     """Reads the site emissions parquet file from a given folder."""
     path = os.path.join(folder_path, 'parquet/siteEmissionsByEquip')
     return pd.read_parquet(path, engine='pyarrow')
-
-
-def compute_stats_per_mrn(species, all_mcRuns, df_base, mode):
+    
+def compute_stats_by(species, all_mcRuns, df_base, mode, by):
     """Computes statistics for a given species across Major Equipment Types."""
     df = df_base[df_base['species'] == species].copy()
 
@@ -797,9 +800,9 @@ def compute_stats_per_mrn(species, all_mcRuns, df_base, mode):
         .sum()
     )
 
-    for mrn_type in df['modelReadableName'].unique():
-        df_me = df[df['modelReadableName'] == mrn_type]
-        summed_by_mc = df_me.groupby('mcRun')['emissions_mtPerYear'].sum()
+    for by_type in df[by].unique():
+        df_grouped = df[df[by] == by_type]
+        summed_by_mc = df_grouped.groupby('mcRun')['emissions_mtPerYear'].sum()
         summed_by_mc = summed_by_mc.reindex(all_mcRuns, fill_value=0)
 
         mean_val = np.mean(summed_by_mc)
@@ -814,7 +817,7 @@ def compute_stats_per_mrn(species, all_mcRuns, df_base, mode):
 
         result_rows.append({
             'species': species.upper(),
-            'modelReadableName': mrn_type,
+             by: by_type,
             'unit': 'mt/year',
             'mean_emissions': mean_val,
             '95%_ci_lower': ci_lower,
@@ -826,7 +829,7 @@ def compute_stats_per_mrn(species, all_mcRuns, df_base, mode):
     return pd.DataFrame(result_rows)
 
 
-def compute_c2_c1_ratios(df_base, mode):
+def compute_c2_c1_ratios_by(df_base, mode, by):
     """Computes C2 to C1 emission ratios per METype."""
     if mode == "OFF":
         df_base = df_base[df_base['modelEmissionCategory'] != 'FUGITIVE']
@@ -836,24 +839,26 @@ def compute_c2_c1_ratios(df_base, mode):
     df_ethane['emissions_mtPerYear'] = df_ethane['emissions_USTonsPerYear'] * 0.907185
     df_methane['emissions_mtPerYear'] = df_methane['emissions_USTonsPerYear'] * 0.907185
 
-    all_md_names = sorted(set(df_base['modelReadableName'].unique()))
+    all_md_names = sorted(set(df_base[by].unique()))
     result_rows = []
 
     for md_name in all_md_names:
-        ethane_grp = df_ethane[df_ethane['modelReadableName'] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
-        methane_grp = df_methane[df_methane['modelReadableName'] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
+        ethane_grp = df_ethane[df_ethane[by] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
+        methane_grp = df_methane[df_methane[by] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
 
         common_mcRuns = ethane_grp.index.intersection(methane_grp.index)
         ratio = ethane_grp.loc[common_mcRuns] / methane_grp.loc[common_mcRuns]
 
         ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
 
-        if not ratio.empty:
+        mean_ratio = ethane_grp.mean() / methane_grp.mean()
+
+        if not ratio.empty and ratio.sum() != 0:
             result_rows.append({
                 'species': 'C2/C1',
-                'modelReadableName': md_name,
+                by: md_name,
                 'unit': 'unitless',
-                'mean_emissions': ratio.mean(),
+                'mean_emissions': mean_ratio,
                 '95%_ci_lower': np.percentile(ratio, 2.5),
                 '95%_ci_upper': np.percentile(ratio, 97.5)
             })
@@ -861,38 +866,49 @@ def compute_c2_c1_ratios(df_base, mode):
     return pd.DataFrame(result_rows)
 
 
-def summarize_emissions_by_mode_for_agg_modelReadableName(mode, df_all, all_mcRuns, all_species, output_folder):
+def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_all, all_mcRuns, all_species, output_folder):
     """Processes and saves the summary emissions for a specific abnormal mode (ON/OFF)."""
-    all_results = [
-        compute_stats_per_mrn(species, all_mcRuns, df_all, mode)
+    all_results_md_name = [
+        compute_stats_by(species, all_mcRuns, df_all, mode, by='modelReadableName')
         for species in all_species
     ]
-    all_results.append(compute_c2_c1_ratios(df_all,mode=mode))
+    all_results_unitID = [
+        compute_stats_by(species, all_mcRuns, df_all, mode, by='unitID')
+        for species in all_species
+    ]
 
-    summary_df = pd.concat(all_results, ignore_index=True)
-    summary_df = summary_df.drop(summary_df[summary_df["mean_emissions"] ==0 ].index)
+    all_results_md_name.append(compute_c2_c1_ratios_by(df_all,mode=mode,by='modelReadableName'))
+    all_results_unitID.append(compute_c2_c1_ratios_by(df_all,mode=mode,by='unitID'))
+
+    summary_df_md_name = pd.concat(all_results_md_name, ignore_index=True)
+    summary_df_md_name = summary_df_md_name.drop(summary_df_md_name[summary_df_md_name["mean_emissions"] == 0 ].index)
+    
+    summary_df_unitID = pd.concat(all_results_unitID, ignore_index=True)
+    summary_df_unitID = summary_df_unitID.drop(summary_df_unitID[summary_df_unitID["mean_emissions"] == 0 ].index)
     
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
     
     output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
         
     os.makedirs(output_folder, exist_ok=True)
-    output_path = os.path.join(output_folder, f'aggregated_sim_emissions_by_modelReadableName_{suffix}')
+    output_path_md_name = os.path.join(output_folder, f'aggregated_sim_emissions_by_modelReadableName_{suffix}')
+    output_path_unitID = os.path.join(output_folder, f'aggregated_sim_emissions_by_unitID_{suffix}')
 
-    summary_df.to_csv(output_path, index=False)
+    summary_df_md_name.to_csv(output_path_md_name, index=False)
+    summary_df_unitID.to_csv(output_path_unitID, index=False)
 
-    logger.info(f"\nSaved METype emissions summary for ABNORMAL = {mode} to:")
-    logger.info(output_path)
+    logger.info(f"\nSaved modelReadableName & unitID emissions summary for ABNORMAL = {mode} to:")
+    logger.info(f"{output_path_md_name} \n {output_path_unitID}")
 
 
-def run_emissions_summary_pipeline_for_modelReadableName(folder):
+def run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
     df_all = fillEmptyDataWithZero(df=list_all_metype_files(folder), emissionCol='emissions_USTonsPerYear')
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
-    summarize_emissions_by_mode_for_agg_modelReadableName('ON', df_all, all_mcRuns, all_species, folder)
-    summarize_emissions_by_mode_for_agg_modelReadableName('OFF', df_all, all_mcRuns, all_species, folder)
+    summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID('ON', df_all, all_mcRuns, all_species, folder)
+    summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID('OFF', df_all, all_mcRuns, all_species, folder)
 
 
 
@@ -1113,12 +1129,14 @@ def compute_c2_c1_ratios_for_metype(df_base, mode):
 
         ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
 
-        if not ratio.empty:
+        mean_ratio = ethane_grp.mean() / methane_grp.mean()
+
+        if not ratio.empty and ratio.sum() != 0:
             result_rows.append({
                 'species': 'C2/C1',
                 'METype': me_type,
                 'unit': 'unitless',
-                'mean_emissions': ratio.mean(),
+                'mean_emissions': mean_ratio,
                 '95%_ci_lower': np.percentile(ratio, 2.5),
                 '95%_ci_upper': np.percentile(ratio, 97.5)
             })
@@ -1556,18 +1574,25 @@ def plotTs(allTSs, site, pdf, abnormal, config):
 
 def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupOptions=None):
     """Plots one figure per unitID in each state transition: top = time series, bottom = unitID's state transitions."""
-    mcRunStates = config.get('mcRunStates', 0)
+    mcRunStates = config['mcRunStates']
+    mcRunTS = config['mcRunTS']
     mcRunStates = int(mcRunStates) if mcRunStates else 0
+    mcRunTS = int(mcRunTS) if mcRunTS else 0
 
     if mcRunStates not in AllMCruns_states:
         logger.info(f"MC Run {mcRunStates} not found in AllMCruns_states")
         return
+    
+    if mcRunTS not in AllMCruns:
+        logger.info(f"MC Run {mcRunTS} not found in AllMCruns")
+        return
 
-    tsf = [t.toFullTimeseries() for t in AllMCruns.values()]
+    # tsf = [t.toFullTimeseries() for t in AllMCruns.values()]
     allStateTS = AllMCruns_states[mcRunStates]
+    tsf = AllMCruns[mcRunTS]
     fac = config['site']
-    min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
-    mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
+    # min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
+    # mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
 
     for state_ts in allStateTS:
         meType = state_ts.df["METype"].unique()[0]
@@ -1577,14 +1602,23 @@ def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupO
             ts_ax, state_ax = axes
 
             # Plot time series on top
-            for df in [t.df for t in tsf]:
-                start_time = df["timestamp"].min() / SECONDSINDAY
-                end_time = df["timestamp"].max() / SECONDSINDAY
-                ts_ax.set_xlim(left=start_time, right=end_time)
-                ts_ax.plot((df['timestamp'] - df['timestamp'].min()) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
 
-            plotMeanEmissions(ts_ax, mean_emissions, fac, abnormal)
-            ts_ax.set_title("Time Series with Mean Emissions", fontsize=14)
+            # for df in [t.df for t in tsf]:
+            #     start_time = df["timestamp"].min() / SECONDSINDAY
+            #     end_time = df["timestamp"].max() / SECONDSINDAY
+            #     ts_ax.set_xlim(left=start_time, right=end_time)
+            #     ts_ax.plot((df['timestamp'] - df['timestamp'].min()) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
+
+            start_time = tsf.df["timestamp"].min() / SECONDSINDAY
+            end_time = tsf.df["timestamp"].max() / SECONDSINDAY
+
+            ts_ax.set_xlim(left=start_time, right=end_time)
+            ts_ax.plot((tsf.df['timestamp'] - tsf.df['timestamp'].min()) / SECONDSINDAY, tsf.df['tsValue'], alpha=0.2, color='royalblue')
+            ts_ax.set_xlabel('Time (days)', fontsize=14)
+            ts_ax.set_ylabel('CH4 Emissions (kg/h)', fontsize=14)
+
+            # plotMeanEmissions(ts_ax, mean_emissions, fac, abnormal)
+            ts_ax.set_title(f"Time Series with Mean Emissions \n mcRun = {mcRunTS}", fontsize=14)
 
             # Plot state transitions for this unitID only
             unitts = ts.TimeseriesCategorical(unitidDF, valueColName="state").toFullTimeseries().df
@@ -1614,9 +1648,9 @@ def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupO
 
     return
 
-def generatePDFs(config, df, abnormal, fac):
+def generatePDFs(config, df, abnormal, site):
     df = df[df['modelReadableName'] != 'Blowdown Event']    # exclude maintenance emissions
-    facilityDF = df[df['species'] == 'METHANE']
+    df = df[df['species'] == 'METHANE']
 
     siteEmissions = config['siteEmiss']
     meType = config['METype']
@@ -1628,43 +1662,39 @@ def generatePDFs(config, df, abnormal, fac):
     if all_false or miiEmiss:
         siteEmissions = meType = unitID = miiEmiss = True
 
-    for site, Sdf in facilityDF.groupby('site'):
-        siteDF = Sdf[Sdf['site'] == site]
-        siteEndSimDF = Pl.readParquetSummary(config, site=site)
+    siteEndSimDF = Pl.readParquetSummary(config, site=site)
 
-        if siteEmissions:
-            allMCruns = grouping(dfToGroup=siteDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
-            pdf = calcProbabilitiesAllMCs(allMCruns)
-            pdf['CH4_EmissionRate_kg/h'] = pdf['tsValue']
-            pdf.drop(columns=['tsValue', 'count'], inplace=True)
-            if pdf.empty:
+    if siteEmissions:
+        allMCruns = grouping(dfToGroup=df, siteEndSimDF=siteEndSimDF, valueColName="emission")
+        pdf = calcProbabilitiesAllMCs(allMCruns)
+        pdf['CH4_EmissionRate_kg/h'] = pdf['tsValue']
+        pdf.drop(columns=['tsValue', 'count'], inplace=True)
+        if not pdf.empty:
+            dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/site={site}/", abnormal=abnormal)
+
+    if meType:
+        for siMeType, meTyDF in df.groupby('METype'):
+            meTypeAllMCruns = grouping(dfToGroup=meTyDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
+            meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns)
+            meTypepdf['CH4_EmissionRate_kg/h'] = meTypepdf['tsValue']
+            meTypepdf.drop(columns=['tsValue', 'count'], inplace=True)
+            if meTypepdf.empty:
                 continue
-            dumpEmissions(pdf, config, "pdf_site_aggregate", facID=f"PDFs/site={fac}/", abnormal=abnormal)
+            dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={site}/PDF_for_all_{siMeType}", abnormal=abnormal)
 
-        if meType:
-            for siMeType, meTyDF in siteDF.groupby('METype'):
-                meTypeAllMCruns = grouping(dfToGroup=meTyDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
-                meTypepdf = calcProbabilitiesAllMCs(meTypeAllMCruns)
-                meTypepdf['CH4_EmissionRate_kg/h'] = meTypepdf['tsValue']
-                meTypepdf.drop(columns=['tsValue', 'count'], inplace=True)
-                if meTypepdf.empty:
-                    continue
-                dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={fac}/PDF_for_all_{siMeType}", abnormal=abnormal)
+    
+    if unitID:
+        for unitID, unitIDDF in df.groupby('unitID'):
+            unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
+            unitPDF = calcProbabilitiesAllMCs(unitAllMCruns)
+            unitPDF['CH4_EmissionRate_kg/h'] = unitPDF['tsValue']
+            unitPDF.drop(columns=['tsValue', 'count'], inplace=True)
+            if unitPDF.empty:
+                continue
+            dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={site}/PDF_for_{unitID}", abnormal=abnormal)
 
-        
-        if unitID:
-            for unitID, unitIDDF in siteDF.groupby('unitID'):
-                unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
-                unitPDF = calcProbabilitiesAllMCs(unitAllMCruns)
-                unitPDF['CH4_EmissionRate_kg/h'] = unitPDF['tsValue']
-                unitPDF.drop(columns=['tsValue', 'count'], inplace=True)
-                if unitPDF.empty:
-                    continue
-                dumpEmissions(unitPDF, config, "unit_level", facID=f"PDFs/site={fac}/PDF_for_{unitID}", abnormal=abnormal)
-
-        if miiEmiss:
-            # gmt.main(folder=)
-            process_all_sites_mii(base_folder=f"{config['simulationRoot']}/summaries")
+    if miiEmiss:
+        process_all_sites_mii(base_folder=f"{config['simulationRoot']}/summaries")
 
 
 def allModelReadableNamesDict():
@@ -1750,8 +1780,7 @@ def fillEmptyDataWithZero(df,emissionCol):
     df_complete[emissionCol] = df_complete[emissionCol].fillna(0)
     return df_complete
 
-def generatedCsvSummaries(config, df, fac, abnormal):
-    fac = str(fac).capitalize()
+def generatedCsvSummaries(config, df, site, abnormal):
      # Get DFs for emissions for the summaries
     zerosDF = fillEmptyDataWithZero(df.copy(), emissionCol="emissions_USTonsPerYear")
     emissCatDF = Pl.processEmissionsCat(zerosDF.copy())
@@ -1780,18 +1809,18 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="METHANE")
             detailed_emissionsDF = pd.concat([detailed_emissionsDF, calcMdReadbleNameEmissionsSummary(zerosDF.copy(), emissions_colmn="emissions_USTonsPerYear", species="ETHANE")])
-            unit_summary_path = dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
+            unit_summary_path = dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
                 
                 
         if siteEmissions:
             CategorySummaryDF = calcSiteLevelSummary(emissCatDF.copy(), species='METHANE', confidence_level=95)
             CategorySummaryDF = pd.concat([CategorySummaryDF, calcSiteLevelSummary(emissCatDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
-            site_summary_path = dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
+            site_summary_path = dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
 
         if meType:
             equipEmissSummaryDF = calcEmissSummaryByMEType(zerosDF.copy(), species='METHANE', confidence_level=95)
             equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcEmissSummaryByMEType(zerosDF.copy(), species='ETHANE', confidence_level=95)])  # add ethane summary
-            metype_summary_path = dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={fac}/", abnormal=abnormal)
+            metype_summary_path = dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
 
                     
         if gen_plots:
@@ -1806,33 +1835,33 @@ def generatedCsvSummaries(config, df, fac, abnormal):
         siteEVDF, siteEndSimDF = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=True, additionalEventFilters=[('command', '=', 'EMISSION')])
         AllMCruns = grouping(dfToGroup=siteEVDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
         pdf = calcProbabilitiesAllMCs(AllMCruns)
-        plotTs(AllMCruns, config=config, site=fac, pdf=pdf, abnormal=abnormal)
+        plotTs(AllMCruns, config=config, site=site, pdf=pdf, abnormal=abnormal)
         # Get state transitions
         siteEVDF_state, siteEndSimDF_state = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=False, additionalEventFilters=[('command', '=', 'STATE_TRANSITION')])
         AllMCruns_states = grouping(dfToGroup=siteEVDF_state, siteEndSimDF=siteEndSimDF_state, valueColName="state")
 
         # Plot state transitions with mean emissions
-        plotStateTS(config, AllMCruns_states, AllMCruns, abnormal=abnormal, site=fac) 
+        plotStateTS(config, AllMCruns_states, AllMCruns, abnormal=abnormal, site=site) 
 
     if instantaneousSummaries:
         # Get instantaneous emissions summary by modelReadableName
         instEmissByModelReadName = calcInstEmissModelReadableName(emissInstEquipDF.copy())
-        dumpEmissions(instEmissByModelReadName, config, "instantEmissions_emissions_summary", facID=f"InstantaneousEmissions/site={fac}/", abnormal=abnormal)
+        dumpEmissions(instEmissByModelReadName, config, "instantEmissions_emissions_summary", facID=f"InstantaneousEmissions/site={site}/", abnormal=abnormal)
      
     if pdfSummaries: 
         # Get PDF at Site Level for CH4 Emissions
-        generatePDFs(config=config, df=df.copy(), abnormal=abnormal, fac=fac)
+        generatePDFs(config=config, df=df.copy(), abnormal=abnormal, site=site)
     
     if avgDurSummaries:
         avgERandDur = createSummaryTable(emissInstEquipDF.copy(), species="METHANE")
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF.copy(),species="ETHANE")])
-        dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={fac}/", abnormal=abnormal)
+        dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={site}/", abnormal=abnormal)
 
     if simulationEmissions:
-        run_emissions_summary_pipeline_for_modelReadableName(folder=config['simulationRoot'])
+        run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'])
         run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
         run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
-        generate_site_level_pdfs(root_dir=f"{config['simulationRoot']}/summaries/PDFs")
+        generate_site_level_pdfs(root_dir=config['simulationRoot'])
         if gen_plots:
             generate_comnbined_cdf_plot(config)
 

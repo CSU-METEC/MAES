@@ -312,7 +312,7 @@ def filterAbnormalEmissions(df):
     df = df[df['emitterID'].isin(valid_emitter_ids)]
     return df
 
-def postProcessParquetResults(config, df, fac):
+def postProcessParquetResults(config, df, site):
     simDuration = config['simDurationDays']
     df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
 
@@ -340,21 +340,21 @@ def postProcessParquetResults(config, df, fac):
 
     #Check for abnormal condition
     if not config['abnormal']:
-        sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
+        sm.generatedCsvSummaries(config, df, site, abnormal="ON")
         dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
-            logger.info("No non fugitive emissions where found")
+            logger.info(f"No non-fugitive emissions where found for site {site}")
         else:    
-            sm.generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+            sm.generatedCsvSummaries(config, dfAbnormalOFF, site, abnormal="OFF")
        
     elif config['abnormal'].upper() == "OFF":
         dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
-            logger.info("No non fugitive emissions where found")
+            logger.info(f"No non-fugitive emissions where found for site {site}")
         else:    
-            sm.generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+            sm.generatedCsvSummaries(config, dfAbnormalOFF, site, abnormal="OFF")
     elif config['abnormal'].upper() == "ON":
-        sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
+        sm.generatedCsvSummaries(config, df, site, abnormal="ON")
 
     else:
         raise(ValueError("abnormal value should be on or off"))
@@ -375,10 +375,8 @@ def postprocess(config):
         t0.setCount(len(eventDF2))
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
-            if df.empty:
-                logger.warning(f"Site: {fac} has zero emissions")
-                continue
-            postProcessParquetResults(config, df, fac)
+            site = df['site'].unique()[0]
+            postProcessParquetResults(config, df, site)
 
 def getParquetMetadata(parquetDir):
     PARQUET_RE = re.compile(r'events\/site=(?P<site>.*)\/mcRun=(?P<mcRun>.*)')
