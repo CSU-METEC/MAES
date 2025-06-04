@@ -38,7 +38,7 @@ def get_threshold_stats(df_sorted: pd.DataFrame, thresholds: list[int]):
     return percentages, coords
 
 
-def plot_cdf(df_sorted: pd.DataFrame, percentages: dict, threshold_coords: list[tuple], cdf_output_dir):
+def plot_cdf(df_sorted: pd.DataFrame, percentages: dict, threshold_coords: list[tuple], abnormal,cdf_output_dir):
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(df_sorted["CH4_EmissionRate_kg/h"], df_sorted["cdf"],
             color="black", label="CDF")
@@ -86,18 +86,19 @@ def plot_cdf(df_sorted: pd.DataFrame, percentages: dict, threshold_coords: list[
 
     fig.tight_layout()
     os.makedirs(cdf_output_dir, exist_ok=True)
-    plt.savefig(f"{cdf_output_dir}/combinedCdf.png")
+    plt.savefig(f"{cdf_output_dir}/combinedCdf_abnormal_{abnormal}.png")
     plt.close()
 
 def generate_comnbined_cdf_plot(config):
-    try:
-        df= pd.read_csv(f"{config['simulationRoot']}/summaries/PDFs/combined_pdf.csv")
-    except Exception as e:
-        logger.warning("please generate combined pdf first")
-        return
-    df_sorted  = compute_cdf_for_plot(df)
-    percentages, coords = get_threshold_stats(df_sorted, [2, 10, 15, 25, 50, 100])
-    plot_cdf(df_sorted, percentages, coords, cdf_output_dir=f"{config['simulationRoot']}/summaries/cdfPlots")
+    for abnormal in ['on','off']:
+        try:
+            df= pd.read_csv(f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions/aggregated_sim_PDFs_abnormal_{abnormal}.csv")
+        except Exception as e:
+            logger.warning("please generate combined pdf first")
+            return
+        df_sorted  = compute_cdf_for_plot(df)
+        percentages, coords = get_threshold_stats(df_sorted, [2, 10, 15, 25, 50, 100])
+        plot_cdf(df_sorted, percentages, coords, abnormal=abnormal, cdf_output_dir=f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions/CDF_Plots")
 
 def find_files(root_dir: str, pattern: str) -> list[str]:
     """Return every file under *root_dir* whose *basename* matches *pattern*."""
@@ -126,24 +127,24 @@ def combine_pdfs(paths: list[str], round_decimals=6) -> pd.DataFrame:
     df["probability"] = df["probability"] / df["probability"].sum()  # normalize so Σprob = 1
     return df
 
-def generate_site_level_pdfs(root_dir, site):
-    for abnormal in ["on","off"]:
-        files = find_files(f"{root_dir}/summaries/PDFs", f"PDF_for_site_abnormal_{abnormal}*.csv")
+def generate_site_level_pdfs(root_dir, site, abnormal):
+    abnormal = abnormal.lower()
+    files = find_files(f"{root_dir}/summaries/PDFs", f"PDF_for_site_abnormal_{abnormal}*.csv")
 
-        if not files:
-            logger.warning(f"Site: {site} does not have PDF_for_site_abnormal_{abnormal}")
-            return
-        
-        logger.info(f"Found {len(files)} file(s).")
+    if not files:
+        logger.warning(f"Site: {site} does not have PDF_for_site_abnormal_{abnormal}")
+        return
+    
+    logger.info(f"Found {len(files)} file(s).")
 
-        combined = combine_pdfs(files)
-        output_folder = os.path.join(root_dir, 'summaries', 'AggregatedSimulationEmissions')
-        os.makedirs(output_folder, exist_ok=True)
-        output_path = os.path.join(output_folder + '', f'aggregated_sim_PDFs_abnormal_{abnormal}.csv')
+    combined = combine_pdfs(files)
+    output_folder = os.path.join(root_dir, 'summaries', 'AggregatedSimulationEmissions')
+    os.makedirs(output_folder, exist_ok=True)
+    output_path = os.path.join(output_folder + '', f'aggregated_sim_PDFs_abnormal_{abnormal}.csv')
 
-        combined.to_csv(output_path, index=False)
+    combined.to_csv(output_path, index=False)
 
-        logger.info(f"Combined PDF written to {output_path} ({len(combined)} rows).")
+    logger.info(f"Combined PDF written to {output_path} ({len(combined)} rows).")
 
 
 def list_all_files_by(folder_path, by):
@@ -901,14 +902,13 @@ def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_al
     logger.info(f"{output_path_md_name} \n {output_path_unitID}")
 
 
-def run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder):
+def run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder, abnormal):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
     df_all = fillEmptyDataWithZero(df=list_all_metype_files(folder), emissionCol='emissions_USTonsPerYear')
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
-    summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID('ON', df_all, all_mcRuns, all_species, folder)
-    summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID('OFF', df_all, all_mcRuns, all_species, folder)
+    summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(abnormal, df_all, all_mcRuns, all_species, folder)
 
 
 
@@ -1036,20 +1036,20 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
     return pd.DataFrame(results)
 
 
-def run_total_emissions_pipeline_for_category(folder):
+def run_total_emissions_pipeline_for_category(folder, abnormal):
     """
     Runs the total emissions summary for both abnormal modes ("ON" and "OFF").
     """
     output_folder = os.path.join(folder, 'summaries', 'AggregatedSimulationEmissions')
 
     os.makedirs(output_folder, exist_ok=True)
-    for mode in ['ON', 'OFF']:
-        df_results = compute_total_emissions_stats_for_category(folder, mode)
-        suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
-        output_path = os.path.join(output_folder, f'aggregated_sim_emissions_by_category_{suffix}')
-        df_results.to_csv(output_path, index=False)
-        logger.info(f"Saved emissions summary for ABNORMAL = {mode} to:")
-        logger.info(output_path)
+
+    df_results = compute_total_emissions_stats_for_category(folder, abnormal)
+    suffix = 'abnormal_on.csv' if abnormal == 'ON' else 'abnormal_off.csv'
+    output_path = os.path.join(output_folder, f'aggregated_sim_emissions_by_category_{suffix}')
+    df_results.to_csv(output_path, index=False)
+    logger.info(f"Saved emissions summary for ABNORMAL = {abnormal} to:")
+    logger.info(output_path)
 
 
 def list_all_metype_files(folder_path):
@@ -1167,14 +1167,13 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
     logger.info(output_path)
 
 
-def run_emissions_summary_pipeline_for_metype(folder):
+def run_emissions_summary_pipeline_for_metype(folder, abnormal):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
     df_all = fillEmptyDataWithZero(df=list_all_metype_files(folder), emissionCol='emissions_USTonsPerYear')
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
-    summarize_metype_emissions_by_mode('ON', df_all, all_mcRuns, all_species, folder)
-    summarize_metype_emissions_by_mode('OFF', df_all, all_mcRuns, all_species, folder)
+    summarize_metype_emissions_by_mode(abnormal, df_all, all_mcRuns, all_species, folder)
 
 def getAverageEventCountPerMcRun(df: pd.DataFrame, unitID_name: str, model_name: str, species_name: str) -> float:
     """
@@ -1565,7 +1564,7 @@ def plotTs(allTSs, site, pdf, abnormal, config):
         plot_dir = os.path.join(config['simulationRoot'], "summaries/TimeSeriesPlots")
 
     os.makedirs(plot_dir, exist_ok=True)
-    output_image_path = os.path.join(plot_dir, "CH4_Emissions_Time_Series.png")
+    output_image_path = os.path.join(plot_dir, f"CH4_Emissions_Time_Series_abnormal_{abnormal}.png")
     plt.tight_layout()
     plt.savefig(output_image_path)
     plt.close()
@@ -1639,7 +1638,7 @@ def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupO
             os.makedirs(plot_dir, exist_ok=True)
             output_image_path = os.path.join(
                 plot_dir,
-                f"state_transition_mcRun={mcRunStates}_unitID={unitid}.png"
+                f"state_transition_mcRun={mcRunStates}_unitID={unitid}_abnormal_{abnormal}.png"
             )
 
             plt.tight_layout(pad=3.0)
@@ -1858,10 +1857,10 @@ def generatedCsvSummaries(config, df, site, abnormal):
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={site}/", abnormal=abnormal)
 
     if simulationEmissions:
-        run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'])
-        run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
-        run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
-        generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site)
+        run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'], abnormal=abnormal)
+        run_total_emissions_pipeline_for_category(folder=config['simulationRoot'], abnormal=abnormal)
+        run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'], abnormal=abnormal)
+        generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site, abnormal=abnormal)
         if gen_plots:
             generate_comnbined_cdf_plot(config)
 
