@@ -126,24 +126,24 @@ def combine_pdfs(paths: list[str], round_decimals=6) -> pd.DataFrame:
     df["probability"] = df["probability"] / df["probability"].sum()  # normalize so Σprob = 1
     return df
 
-def generate_site_level_pdfs(root_dir):
-    files = find_files(f"{root_dir}/summaries/PDFs", "PDF_for_site_*.csv")
+def generate_site_level_pdfs(root_dir, site):
+    for abnormal in ["on","off"]:
+        files = find_files(f"{root_dir}/summaries/PDFs", f"PDF_for_site_abnormal_{abnormal}*.csv")
 
-    if not files:
-        logger.warning("No PDFs were found")
-        return
-    
-    logger.info(f"Found {len(files)} file(s).")
+        if not files:
+            logger.warning(f"Site: {site} does not have PDF_for_site_abnormal_{abnormal}")
+            return
+        
+        logger.info(f"Found {len(files)} file(s).")
 
-    combined = combine_pdfs(files)
-    output_dir = f"{root_dir}/combined_pdf.csv"
-    output_folder = os.path.join(root_dir, 'summaries', 'AggregatedSimulationEmissions')
-    os.makedirs(output_folder, exist_ok=True)
-    output_path = os.path.join(output_folder + '', 'aggregated_sim_PDFs.csv')
+        combined = combine_pdfs(files)
+        output_folder = os.path.join(root_dir, 'summaries', 'AggregatedSimulationEmissions')
+        os.makedirs(output_folder, exist_ok=True)
+        output_path = os.path.join(output_folder + '', f'aggregated_sim_PDFs_abnormal_{abnormal}.csv')
 
-    combined.to_csv(output_path, index=False)
+        combined.to_csv(output_path, index=False)
 
-    logger.info(f"Combined PDF written to {output_dir} ({len(combined)} rows).")
+        logger.info(f"Combined PDF written to {output_path} ({len(combined)} rows).")
 
 
 def list_all_files_by(folder_path, by):
@@ -1861,7 +1861,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
         run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'])
         run_total_emissions_pipeline_for_category(folder=config['simulationRoot'])
         run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'])
-        generate_site_level_pdfs(root_dir=config['simulationRoot'])
+        generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site)
         if gen_plots:
             generate_comnbined_cdf_plot(config)
 
