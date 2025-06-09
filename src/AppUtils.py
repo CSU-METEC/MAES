@@ -80,6 +80,7 @@ def getParser(defaultConfig):
     parser.add_argument("-ab", "--abnormal", help="include abnormal emittions or not", default=None)
     parser.add_argument("-me", "--METype", help="Choose to generate only METype summaries", default=False)
     parser.add_argument("-ui", "--unitID", help="Choose to generate only unitID summaries", default=False)
+    parser.add_argument("-pn", "--Pneumatics", help="Choose to generate only Pneumatic summaries", default=False)
 
     return parser
 

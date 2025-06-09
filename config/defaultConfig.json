@@ -22,6 +22,7 @@
       "disableSummary": false,
       "METype": false,
       "unitID": false,
+      "Pneumatics": false,
       "abnormal": null,
       "fullSummaries": false,
       "annualSummaries": false,
