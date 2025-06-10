@@ -790,9 +790,7 @@ def compute_stats_by(species, all_mcRuns, df_base, mode, by):
     if mode == "OFF":
         df = df[df['modelEmissionCategory'] != 'FUGITIVE']
 
-    df['emissions_mtPerYear'] = df['emissions_USTonsPerYear'] * 0.907185
-
-
+    df['emissions_mtPerYear'] = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
     result_rows = []
 
     total_species_emissions = (
@@ -837,8 +835,8 @@ def compute_c2_c1_ratios_by(df_base, mode, by):
     df_ethane = df_base[df_base['species'].str.upper() == 'ETHANE']
     df_methane = df_base[df_base['species'].str.upper() == 'METHANE']
 
-    df_ethane['emissions_mtPerYear'] = df_ethane['emissions_USTonsPerYear'] * 0.907185
-    df_methane['emissions_mtPerYear'] = df_methane['emissions_USTonsPerYear'] * 0.907185
+    df_ethane['emissions_mtPerYear'] = df_ethane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
+    df_methane['emissions_mtPerYear'] = df_methane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
 
     all_md_names = sorted(set(df_base[by].unique()))
     result_rows = []
@@ -940,7 +938,7 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
     # Read the full dataset
     df_full = list_all_files_for_annual_emissions_categories(folder)
     # Convert emissions from USTons to metric tons
-    df_full['emissions_mtPerYear'] = df_full['emissions_USTonsPerYear'] * 0.907185
+    df_full= df_full.assign(emissions_mtPerYear = df_full['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
     # Compute species totals based on the abnormal mode.
     if abnormal == "OFF":
@@ -965,7 +963,7 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
         df = df[(df['modelEmissionCategory'] == 'COMBUSTION') | (df['modelEmissionCategory'] == 'VENTED')]
         # Aggregate the data at the mcRun level per species and modelEmissionCategory.
         df = df.groupby(['mcRun', 'species', 'modelEmissionCategory'], as_index=False)['emissions_USTonsPerYear'].sum()
-        df['emissions_mtPerYear'] = df['emissions_USTonsPerYear'] * 0.907185
+        df  = df.assign(emissions_mtPerYear = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
     # For abnormal "ON", we assume the file already contains rows where modelEmissionCategory is 'TOTAL'.
 
     results = []
@@ -1065,9 +1063,7 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
     if mode == "OFF":
         df = df[df['modelEmissionCategory'] != 'FUGITIVE']
 
-    df['emissions_mtPerYear'] = df['emissions_USTonsPerYear'] * 0.907185
-
-
+    df = df.assign(emissions_mtPerYear = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
     result_rows = []
 
     total_species_emissions = (
@@ -1114,8 +1110,8 @@ def compute_c2_c1_ratios_for_metype(df_base, mode):
     df_ethane = df_base[df_base['species'].str.upper() == 'ETHANE']
     df_methane = df_base[df_base['species'].str.upper() == 'METHANE']
 
-    df_ethane['emissions_mtPerYear'] = df_ethane['emissions_USTonsPerYear'] * 0.907185
-    df_methane['emissions_mtPerYear'] = df_methane['emissions_USTonsPerYear'] * 0.907185
+    df_ethane = df_ethane.assign(emissions_mtPerYear = df_ethane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
+    df_methane = df_methane.assign(emissions_mtPerYear = df_methane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
     all_me_types = sorted(set(df_base['METype'].unique()))
     result_rows = []
@@ -1281,8 +1277,9 @@ def calcInstEmissModelReadableName(df):
 
 def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
     
-    emissions_colmn="emissions_USTonsPerYear"
-    emissionsDf[emissions_colmn] = emissionsDf[emissions_colmn] / US_TO_PER_METRIC_TON
+    emissions_colmn="emissions_MetricTonsPerYear"
+    emissionsDf = emissionsDf.assign(emissions_MetricTonsPerYear= emissionsDf['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
+
     ci = float(95)
     mean_header= "mean_emissions"
     ci_lower_header = f"{int(ci)}%_ci_lower"
@@ -1329,7 +1326,7 @@ def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
 def calcSiteLevelSummary(emissCatDF, species, confidence_level=95):
 
     emissionsColumn = "emissions_MetricTonsPerYear"
-    emissCatDF[emissionsColumn] = emissCatDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON # convert from US tons to metric tons
+    emissCatDF = emissCatDF.assign(emissions_MetricTonsPerYear= emissCatDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
  
     alpha = 100 - float(confidence_level)
 
@@ -1367,7 +1364,7 @@ def calcSiteLevelSummary(emissCatDF, species, confidence_level=95):
 def calcAnnualEmissSummaryByMEType(emissEquipDF, species, confidence_level=95):
 
     emissionsColumn = "emissions_MetricTonsPerYear"
-    emissEquipDF[emissionsColumn] = emissEquipDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
+    emissEquipDF = emissEquipDF.assign(emissions_MetricTonsPerYear= emissEquipDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
     emissEquipDF = emissEquipDF[emissEquipDF["species"] == species]
     alpha = 100 - float(confidence_level)
