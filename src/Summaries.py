@@ -850,9 +850,8 @@ def compute_c2_c1_ratios_by(df_base, mode, by):
 
         ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
 
-        mean_ratio = ethane_grp.mean() / methane_grp.mean()
-
         if not ratio.empty and ratio.sum() != 0:
+            mean_ratio = ethane_grp.mean() / methane_grp.mean()
             result_rows.append({
                 'species': 'C2/C1',
                 by: md_name,
@@ -1125,9 +1124,8 @@ def compute_c2_c1_ratios_for_metype(df_base, mode):
 
         ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
 
-        mean_ratio = ethane_grp.mean() / methane_grp.mean()
-
         if not ratio.empty and ratio.sum() != 0:
+            mean_ratio = ethane_grp.mean() / methane_grp.mean()
             result_rows.append({
                 'species': 'C2/C1',
                 'METype': me_type,
