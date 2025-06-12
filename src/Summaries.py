@@ -1063,7 +1063,6 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
         df = df[df['modelEmissionCategory'] != 'FUGITIVE']
 
     df = df.assign(emissions_mtPerYear = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
-    result_rows = []
 
     total_species_emissions = (
         df.groupby('mcRun')['emissions_mtPerYear'].sum()
@@ -1071,33 +1070,25 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
         .sum()
     )
 
-    for me_type in df['METype'].unique():
-        df_me = df[df['METype'] == me_type]
-        summed_by_mc = df_me.groupby('mcRun')['emissions_mtPerYear'].sum()
-        summed_by_mc = summed_by_mc.reindex(all_mcRuns, fill_value=0)
+    mcdf = df.groupby(["mcRun", "METype"], as_index=False)['emissions_mtPerYear'].sum()
+    meandf = mcdf.groupby("METype", as_index=False)['emissions_mtPerYear'].mean()
+    sumdf = mcdf.groupby("METype")['emissions_mtPerYear'].sum()
 
-        mean_val = np.mean(summed_by_mc)
-        ci_lower = np.percentile(summed_by_mc, 2.5)
-        ci_upper = np.percentile(summed_by_mc, 97.5)
-        total_sum = summed_by_mc.sum()
+    ci_lower = mcdf.groupby("METype")['emissions_mtPerYear'].apply(lambda x : np.percentile(x, 2.5))
+    ci_upper = mcdf.groupby("METype")['emissions_mtPerYear'].apply(lambda x : np.percentile(x, 97.5))
 
-        percentage_of_total = (
-            (total_sum / total_species_emissions) * 100
-            if total_species_emissions > 0 else np.nan
-        )
+    percentage_of_total = (sumdf / total_species_emissions) * 100
 
-        result_rows.append({
-            'species': species.upper(),
-            'METype': me_type,
-            'unit': 'mt/year',
-            'mean_emissions': mean_val,
-            '95%_ci_lower': ci_lower,
-            '95%_ci_upper': ci_upper,
-            'emissions_sum_across_mcRuns': total_sum,
-            'percentage_of_total_emissions': percentage_of_total
-        })
+    meandf = meandf.merge(ci_lower.rename('95%_ci_lower'), on=['METype'], how='left')
+    meandf = meandf.merge(ci_upper.rename('95%_ci_upper'), on=['METype'], how='left')
+    meandf = meandf.merge(sumdf.rename('emissions_sum_across_mcRuns'), on=['METype'], how='left')
+    meandf = meandf.merge(percentage_of_total.rename('percentage_of_total_emissions'), on=['METype'], how='left')
 
-    return pd.DataFrame(result_rows)
+    meandf['unit'] = 'mt/year'
+    meandf['species'] = species.upper()
+    meandf = meandf.rename(columns={'emissions_mtPerYear':'mean_emissions'})
+
+    return meandf
 
 
 def compute_c2_c1_ratios_for_metype(df_base, mode):
