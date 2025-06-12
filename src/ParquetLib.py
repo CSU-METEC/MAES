@@ -190,6 +190,9 @@ def readParquetSummary(config, site=None, mcRun=None):
 
 def readParquetEvents(config, site=None, mcRun=None, mergeGC=False, species=None, additionalEventFilters=[('command', '=', 'EMISSION')]):
     eventDF = readParquetRawEvents(config, site=site, mcRun=mcRun, additionalFilters=additionalEventFilters)
+    if eventDF.empty:
+        logging.warning(f"No emissions recorded for site {site} at MC run {mcRun}")
+        return None
     tsDF = readParquetTimeseries(config, site=site, mcRun=mcRun)
     mdDF = readParquetMetadata(config, site=site, mcRun=mcRun)
 
@@ -331,6 +334,12 @@ def postProcessParquetResults(config, df, fac):
     toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
     toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
     toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
+    avg_data = pd.DataFrame({
+        'facilityID': df['facilityID'].unique(),
+        'average_duration_days': avg_duration,
+        'average_annual_frequency': avg_frequency
+    })
+    toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
 
     #Check for abnormal condition
     if not config['abnormal']:
@@ -353,14 +362,6 @@ def postProcessParquetResults(config, df, fac):
     else:
         raise(ValueError("abnormal value should be on or off"))
 
-   
-
-    avg_data = pd.DataFrame({
-        'facilityID': df['facilityID'].unique(),
-        'average_duration_days': avg_duration,
-        'average_annual_frequency': avg_frequency
-    })
-    toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
 
     return None  # to aggregate stats across sites
 
@@ -373,8 +374,10 @@ def postprocess(config):
                                      mergeGC=True,
                                      species=['METHANE', 'ETHANE'],
                                      additionalEventFilters=[('command', '=', 'EMISSION')])
-        
+        if eventDF2 is None:
+            return
         t0.setCount(len(eventDF2))
+
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
             postProcessParquetResults(config, df, fac)
