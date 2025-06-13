@@ -2139,6 +2139,7 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
                  multipleInstances=None,
                  instanceFormat=None,
                  stuckDumpValveCC=None,
+                 downTankMechFlag=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.multipleInstances = multipleInstances
@@ -2178,6 +2179,7 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         self.waterFlowUnits = waterFlowUnits or 'bbl'
         self.vaporFlowUnits = vaporFlowUnits or 'scf'
         self.trackingTime = 0
+        self.downTankMechFlag = downTankMechFlag
         # OPERATING state = all valves operating normally
         # subStateMachine = phases with super state sdv
         # OVERPRESSURE = overpressure prv pops open, what happens to valves at this time?
@@ -2185,6 +2187,7 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
             'OPERATING': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateOP},
             'STUCK_DUMP_VALVE': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateSDV}
         }
+
         # self.subStateMachine = {
         #     'GAS': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateOP},
         #     'CONDENSATE': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateSDV},
@@ -4178,6 +4181,8 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
             'VENT_ACC': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
             'VENT_REL': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState}
         }
+        # REL = pressure release
+        # ACC = accidental or uncontrolled
         self.consolidatedFlowTable = {}
         self.consolidatedFlowTableVapor = {}
         self.consolidatedTankFlash = {}
@@ -4321,7 +4326,17 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         sumOfFlashes = sum(self.consolidatedTankFlash[gc].driverRate for gc in self.consolidatedTankFlash)
         return sumOfFlashes
 
+    def initialStateTimesTrad(self):
+        delay = u.getSimDuration()
+        self.currentYIntercept = 0
+        self.currentPrimaryEqRatio = 1
+        self.prvSwitch = 0
+        ret = {'OPERATING': delay}
+        return ret 
+
     def initialStateTimes(self):
+        if not self.tankMode:
+            return self.initialStateTimesTrad()
         if self.vaporFF in self.inletFluidFlows:
             self.sumOfVaporOutletFlows = self.sumOfVapors()
 
@@ -5155,7 +5170,8 @@ class MEETFFEmitter(mc.EmissionManager):
             return
         if stateInfo.stateName not in self.activeStatesList:
             return
-
+        
+        a = self.majorEquipment.unitID
         deltat = min(map(lambda x: x.changeTimeAbsolute, self.majorEquipment.outletFluidFlows['Vapor'])) - currentTime
 
         for singleFlow in self.majorEquipment.outletFluidFlows.get('Vapor', []):

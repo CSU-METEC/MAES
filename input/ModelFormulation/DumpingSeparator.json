@@ -39,7 +39,9 @@
 	{"Model Parameter": "Stuck Dump Valve Failure Duration Min",      "Python Parameter": "stuckDumpValveDurMinDays",                     "Parameter Type": "Sheet"},
 	{"Model Parameter": "Stuck Dump Valve Failure Duration Max",      "Python Parameter": "stuckDumpValveDurMaxDays",                     "Parameter Type": "Sheet"},
 	{"Model Parameter": "Fraction of Flash Released",                 "Python Parameter": "gasFractionDistFileName",                              "Parameter Type": "Sheet"},
-	{"Model Parameter": "Leak GC Name",                         "Python Parameter": "productionGC",                             "Parameter Type": "Sheet"}
+	{"Model Parameter": "Leak GC Name",                         "Python Parameter": "productionGC",                             "Parameter Type": "Sheet"},
+	{"Model Parameter": "Downstream Tank Mechanistic Flag",                               "Python Parameter": "downTankMechFlag",                             "Parameter Type": "Sheet"}
+
 	],
   "Emitters": [
   	{"Python Category": "Emitter", "Python Class": "LeakProduction", "Readable Name": "Separator Component Leak", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
@@ -65,6 +67,15 @@
 			{"Model Parameter": "Actuator Type",     		  "Python Parameter": "instantiationVal", 	     "Parameter Type": "Sheet"},
 			{                                                 "Python Parameter": "valsForInstantiation",    "Parameter Type": "Constant",   "Value": "Gas"}
 			]
-		}
+		},
+	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Separator Stuck Dump Valve", "Category": "SEPARATOR SDV", "Emission Category": "FUGITIVE",
+	  "Model Parameters": [
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "STUCK_DUMP_VALVE"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_sep_sdv_{serialNo}"},
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "condensate_flash,water_flash,stuck_dump_valve_vapor"},
+	  {"Model Parameter": "Downstream Tank Mechanistic Flag",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+	  ]
+	}
 	]
 }
