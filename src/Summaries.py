@@ -784,84 +784,74 @@ def list_all_files_for_agg_modelReadbleName(folder_path):
     return pd.read_parquet(path, engine='pyarrow')
     
 def compute_stats_by(species, all_mcRuns, df_base, mode, by):
-    """Computes statistics for a given species across Major Equipment Types."""
     df = df_base[df_base['species'] == species]
-
     if mode == "OFF":
         df = df[df['modelEmissionCategory'] != 'FUGITIVE']
 
-    df['emissions_mtPerYear'] = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
-    result_rows = []
+    df = df.assign(emissions_mtPerYear = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
-    total_species_emissions = (
-        df.groupby('mcRun')['emissions_mtPerYear'].sum()
-        .reindex(all_mcRuns, fill_value=0)
-        .sum()
-    )
+    grouped = df.groupby([by, 'mcRun'])['emissions_mtPerYear'].sum().reset_index()
+    full_idx = pd.MultiIndex.from_product([grouped[by].unique(), all_mcRuns], names=[by, 'mcRun'])
+    filled = grouped.set_index([by, 'mcRun']).reindex(full_idx, fill_value=0).reset_index()
 
-    for by_type in df[by].unique():
-        df_grouped = df[df[by] == by_type]
-        summed_by_mc = df_grouped.groupby('mcRun')['emissions_mtPerYear'].sum()
-        summed_by_mc = summed_by_mc.reindex(all_mcRuns, fill_value=0)
+    stats = filled.groupby(by)['emissions_mtPerYear'].agg(
+        mean_emissions='mean',
+        emissions_list=lambda x: list(x),
+        emissions_sum_across_mcRuns='sum',
+        ci_lower=lambda x: np.percentile(x, 2.5),
+        ci_upper=lambda x: np.percentile(x, 97.5)
+    ).reset_index()
 
-        mean_val = np.mean(summed_by_mc)
-        ci_lower = np.percentile(summed_by_mc, 2.5)
-        ci_upper = np.percentile(summed_by_mc, 97.5)
-        total_sum = summed_by_mc.sum()
+    total_species_emissions = filled.groupby('mcRun')['emissions_mtPerYear'].sum().sum()
 
-        percentage_of_total = (
-            (total_sum / total_species_emissions) * 100
-            if total_species_emissions > 0 else np.nan
-        )
+    stats = stats.assign(percentage_of_total_emissions = stats['emissions_sum_across_mcRuns'] / total_species_emissions * 100)
+    stats = stats.rename(columns={
+        'ci_lower': '95%_ci_lower',
+        'ci_upper': '95%_ci_upper'
+    })
+    stats['species'] = species.upper()
+    stats['unit'] = 'mt/year'
 
-        result_rows.append({
-            'species': species.upper(),
-             by: by_type,
-            'unit': 'mt/year',
-            'mean_emissions': mean_val,
-            '95%_ci_lower': ci_lower,
-            '95%_ci_upper': ci_upper,
-            'emissions_sum_across_mcRuns': total_sum,
-            'percentage_of_total_emissions': percentage_of_total
-        })
-
-    return pd.DataFrame(result_rows)
+    return stats[[
+        'species', by, 'unit', 'mean_emissions', '95%_ci_lower',
+        '95%_ci_upper', 'emissions_sum_across_mcRuns', 'percentage_of_total_emissions'
+    ]]
 
 
 def compute_c2_c1_ratios_by(df_base, mode, by):
-    """Computes C2 to C1 emission ratios per METype."""
     if mode == "OFF":
         df_base = df_base[df_base['modelEmissionCategory'] != 'FUGITIVE']
-    df_ethane = df_base[df_base['species'].str.upper() == 'ETHANE']
-    df_methane = df_base[df_base['species'].str.upper() == 'METHANE']
 
-    df_ethane['emissions_mtPerYear'] = df_ethane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
-    df_methane['emissions_mtPerYear'] = df_methane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON
+    df = df_base[df_base['species'].str.upper().isin(['ETHANE', 'METHANE'])]
+    df['species'] = df['species'].str.upper()
+    df = df.assign(emissions_mtPerYear = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
-    all_md_names = sorted(set(df_base[by].unique()))
-    result_rows = []
+    pivot = df.pivot_table(
+        index=['mcRun', by],
+        columns='species',
+        values='emissions_mtPerYear',
+        aggfunc='sum'
+    ).dropna()
 
-    for md_name in all_md_names:
-        ethane_grp = df_ethane[df_ethane[by] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
-        methane_grp = df_methane[df_methane[by] == md_name].groupby('mcRun')['emissions_mtPerYear'].sum()
+    pivot['ratio'] = pivot['ETHANE'] / pivot['METHANE']
+    pivot = pivot[np.isfinite(pivot['ratio'])]
 
-        common_mcRuns = ethane_grp.index.intersection(methane_grp.index)
-        ratio = ethane_grp.loc[common_mcRuns] / methane_grp.loc[common_mcRuns]
+    c2c1_stats = (
+        pivot.groupby(by)['ratio']
+        .agg(mean_emissions='mean',
+             ci_lower=lambda x: np.percentile(x, 2.5),
+             ci_upper=lambda x: np.percentile(x, 97.5))
+        .reset_index()
+    )
+    c2c1_stats = c2c1_stats.rename(columns={
+        'ci_lower': '95%_ci_lower',
+        'ci_upper': '95%_ci_upper'
+    }).assign(
+        species='C2/C1',
+        unit='unitless'
+    )
 
-        ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
-
-        if not ratio.empty and ratio.sum() != 0:
-            mean_ratio = ethane_grp.mean() / methane_grp.mean()
-            result_rows.append({
-                'species': 'C2/C1',
-                by: md_name,
-                'unit': 'unitless',
-                'mean_emissions': mean_ratio,
-                '95%_ci_lower': np.percentile(ratio, 2.5),
-                '95%_ci_upper': np.percentile(ratio, 97.5)
-            })
-
-    return pd.DataFrame(result_rows)
+    return c2c1_stats[['species', by, 'unit', 'mean_emissions', '95%_ci_lower', '95%_ci_upper']]
 
 
 def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_all, all_mcRuns, all_species, output_folder):
@@ -934,104 +924,95 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
         total is computed using only these two categories, so that the percentages for each species
         sum to 100%.
     """
-    # Read the full dataset
     df_full = list_all_files_for_annual_emissions_categories(folder)
-    # Convert emissions from USTons to metric tons
-    df_full= df_full.assign(emissions_mtPerYear = df_full['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
+    df_full = df_full.assign(emissions_mtPerYear = df_full['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
-    # Compute species totals based on the abnormal mode.
-    if abnormal == "OFF":
-        # For OFF mode, only COMBUSTION and VENTED contribute to the species total.
-        categories_total = ['COMBUSTION', 'VENTED']
-    else:
-        # For ON mode, the species total is computed from COMBUSTION, VENTED, and FUGITIVE.
-        categories_total = ['COMBUSTION', 'VENTED', 'FUGITIVE']
-
+    # Define which categories contribute to species totals
+    categories_total = ['COMBUSTION', 'VENTED'] if abnormal == "OFF" else ['COMBUSTION', 'VENTED', 'FUGITIVE']
     df_total = df_full[df_full['modelEmissionCategory'].isin(categories_total)]
-    species_totals = {}
-    for species in df_total['species'].unique():
-        # Sum the emissions over all Monte Carlo runs for this species,
-        # using only the categories defined in categories_total.
-        total = df_total[df_total['species'] == species].groupby('mcRun')['emissions_mtPerYear'].sum().sum()
-        species_totals[species] = total
 
-    # Now proceed with the abnormal filtering for computing statistics.
-    df = df_full
+    # Species totals over all Monte Carlo runs
+    species_totals = (
+        df_total.groupby(['species', 'mcRun'])['emissions_mtPerYear'].sum()
+        .groupby('species').sum().reset_index(name='species_total_emissions')
+    )
+
     if abnormal == "OFF":
-        # Only COMBUSTION and VENTED are available in OFF mode.
-        df = df[(df['modelEmissionCategory'] == 'COMBUSTION') | (df['modelEmissionCategory'] == 'VENTED')]
-        # Aggregate the data at the mcRun level per species and modelEmissionCategory.
-        df = df.groupby(['mcRun', 'species', 'modelEmissionCategory'], as_index=False)['emissions_USTonsPerYear'].sum()
-        df  = df.assign(emissions_mtPerYear = df['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
-    # For abnormal "ON", we assume the file already contains rows where modelEmissionCategory is 'TOTAL'.
+        df_full = df_full[df_full['modelEmissionCategory'].isin(['COMBUSTION', 'VENTED'])]
+        df_full = (
+            df_full.groupby(['mcRun', 'species', 'modelEmissionCategory'], as_index=False)['emissions_USTonsPerYear'].sum()
+        )
+        df_full = df_full.assign(emissions_mtPerYear = df_full['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
-    results = []
 
-    # Compute statistics for each combination of species and modelEmissionCategory.
-    unique_combinations = df[['species', 'modelEmissionCategory']].drop_duplicates()
-    for species, mec in unique_combinations.itertuples(index=False, name=None):
-        df_subset = df[(df['species'] == species) & (df['modelEmissionCategory'] == mec)]
-        # Group by mcRun to get one emission value per Monte Carlo run.
-        grouped = df_subset.groupby('mcRun')['emissions_mtPerYear'].sum()
-        total_emissions = grouped.sum()  # Emissions summed over all mcRuns for this species/category
-        total_emissions_list = grouped.tolist()
+    # Group emissions by species/category/mcRun
+    group = df_full.groupby(['species', 'modelEmissionCategory', 'mcRun'])['emissions_mtPerYear'].sum()
+    emissions_stats = group.reset_index().groupby(['species', 'modelEmissionCategory'])['emissions_mtPerYear'].agg(
+        emissions_list=lambda x: list(x),
+        mean_emissions='mean',
+        ci_lower=lambda x: np.percentile(x, 2.5),
+        ci_upper=lambda x: np.percentile(x, 97.5),
+        emissions_sum='sum'
+    ).reset_index()
 
-        mean_emissions = np.mean(total_emissions_list)
-        ci_lower = np.percentile(total_emissions_list, 2.5)
-        ci_upper = np.percentile(total_emissions_list, 97.5)
+    # Merge with species totals for percentage calculation
+    emissions_stats = emissions_stats.merge(species_totals, how='left', on='species')
+    emissions_stats = emissions_stats.assign(percentage_of_total_emissions = np.where(
+        emissions_stats['modelEmissionCategory'] == 'TOTAL',
+        100.0,
+        emissions_stats['emissions_sum'] / emissions_stats['species_total_emissions'] * 100
+    ))
 
-        # For rows where modelEmissionCategory is 'TOTAL', the percentage is by definition 100%.
-        # Otherwise, compute the percentage relative to the species total computed above.
-        if mec == 'TOTAL':
-            percentage_of_total = 100.0
-        else:
-            sp_total = species_totals.get(species, 0)
-            percentage_of_total = (total_emissions / sp_total * 100) if sp_total > 0 else np.nan
+    # Final formatting
+    emissions_stats = emissions_stats.assign(
+        Species=emissions_stats['species'].str.upper(),
+        unit='mt/year'
+    )
+    emissions_stats = emissions_stats.rename(columns={
+        'modelEmissionCategory': 'modelEmissionCategory',
+        'mean_emissions': 'mean_emissions',
+        'ci_lower': '95%_ci_lower',
+        'ci_upper': '95%_ci_upper',
+        'emissions_sum': 'emissions_sum_across_mcRuns'
+    })
 
-        results.append({
-            'Species': species.upper(),
-            'modelEmissionCategory': mec,
-            'unit': 'mt/year',
-            'mean_emissions': mean_emissions,
-            '95%_ci_lower': ci_lower,
-            '95%_ci_upper': ci_upper,
-            'emissions_sum_across_mcRuns': total_emissions,
-            'percentage_of_total_emissions': percentage_of_total
-        })
+    final = emissions_stats[[
+        'Species', 'modelEmissionCategory', 'unit', 'mean_emissions',
+        '95%_ci_lower', '95%_ci_upper', 'emissions_sum_across_mcRuns',
+        'percentage_of_total_emissions']]
 
-    # Compute C2/C1 ratio row for each modelEmissionCategory.
-    for mec in df['modelEmissionCategory'].unique():
-        # Filter the dataframe for ETHANE and METHANE within the current category.
-        df_ethane = df[(df['species'].str.upper() == 'ETHANE') & (df['modelEmissionCategory'] == mec)]
-        df_methane = df[(df['species'].str.upper() == 'METHANE') & (df['modelEmissionCategory'] == mec)]
+    # --- Compute C2/C1 ratio ---
+    df_ratio = df_full[df_full['species'].str.upper().isin(['METHANE', 'ETHANE'])]
+    df_ratio['species'] = df_ratio['species'].str.upper()
+    pivot = df_ratio.pivot_table(
+        index=['mcRun', 'modelEmissionCategory'],
+        columns='species',
+        values='emissions_mtPerYear',
+        aggfunc='sum'
+    ).dropna()
 
-        # Group by mcRun to compute emissions for each run.
-        ethane_group = df_ethane.groupby('mcRun')['emissions_mtPerYear'].sum()
-        methane_group = df_methane.groupby('mcRun')['emissions_mtPerYear'].sum()
+    pivot['ratio'] = pivot['ETHANE'] / pivot['METHANE']
+    pivot = pivot[np.isfinite(pivot['ratio'])]
 
-        common_mcRuns = ethane_group.index.intersection(methane_group.index)
-        if not common_mcRuns.empty:
-            ratio_series = ethane_group.loc[common_mcRuns] / methane_group.loc[common_mcRuns]
-            ratio_series = ratio_series.replace([np.inf, -np.inf], np.nan).dropna()
+    c2c1_stats = (
+        pivot.groupby('modelEmissionCategory')['ratio']
+        .agg(mean_emissions='mean',
+             ci_lower=lambda x: np.percentile(x, 2.5),
+             ci_upper=lambda x: np.percentile(x, 97.5))
+        .reset_index()
+    )
+    c2c1_stats = c2c1_stats.rename(columns={
+        'ci_lower': '95%_ci_lower',
+        'ci_upper': '95%_ci_upper'
+    }).assign(
+        Species='C2/C1',
+        unit='unitless',
+        emissions_sum_across_mcRuns=np.nan,
+        percentage_of_total_emissions=np.nan
+    )
 
-            if not ratio_series.empty and ratio_series.sum() != 0:
-                mean_ratio = ethane_group.mean() / methane_group.mean()
-                ci_lower_ratio = np.percentile(ratio_series, 2.5)
-                ci_upper_ratio = np.percentile(ratio_series, 97.5)
-
-                results.append({
-                    'Species': 'C2/C1',
-                    'modelEmissionCategory': mec,
-                    'unit': 'unitless',
-                    'mean_emissions': mean_ratio,
-                    '95%_ci_lower': ci_lower_ratio,
-                    '95%_ci_upper': ci_upper_ratio,
-                    'emissions_sum_across_mcRuns': np.nan,
-                    'percentage_of_total_emissions': np.nan
-                })
-
-    return pd.DataFrame(results)
-
+    final = pd.concat([final, c2c1_stats[final.columns]], ignore_index=True)
+    return final
 
 def run_total_emissions_pipeline_for_category(folder, abnormal):
     """
@@ -1097,36 +1078,32 @@ def compute_c2_c1_ratios_for_metype(df_base, mode):
     if mode == "OFF":
         df_base = df_base[df_base['modelEmissionCategory'] != 'FUGITIVE']
 
+    df_base = df_base.assign(emissions_mtPerYear = df_base['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
+
     df_ethane = df_base[df_base['species'].str.upper() == 'ETHANE']
     df_methane = df_base[df_base['species'].str.upper() == 'METHANE']
 
-    df_ethane = df_ethane.assign(emissions_mtPerYear = df_ethane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
-    df_methane = df_methane.assign(emissions_mtPerYear = df_methane['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
+    ethane_grouped = df_ethane.groupby(['METype', 'mcRun'])['emissions_mtPerYear'].sum().reset_index()
+    methane_grouped = df_methane.groupby(['METype', 'mcRun'])['emissions_mtPerYear'].sum().reset_index()
 
-    all_me_types = sorted(set(df_base['METype'].unique()))
-    result_rows = []
+    merged = pd.merge(ethane_grouped, methane_grouped, on=['METype', 'mcRun'], how='inner', suffixes=('_ethane', '_methane'))
 
-    for me_type in all_me_types:
-        ethane_grp = df_ethane[df_ethane['METype'] == me_type].groupby('mcRun')['emissions_mtPerYear'].sum()
-        methane_grp = df_methane[df_methane['METype'] == me_type].groupby('mcRun')['emissions_mtPerYear'].sum()
+    merged['ratio'] = merged['emissions_mtPerYear_ethane'] / merged['emissions_mtPerYear_methane']
+    merged['ratio'] = merged['ratio'].replace([np.inf, -np.inf, np.nan], 0)
 
-        common_mcRuns = ethane_grp.index.intersection(methane_grp.index)
-        ratio = ethane_grp.loc[common_mcRuns] / methane_grp.loc[common_mcRuns]
+    summary = merged.groupby('METype').agg(
+        mean_emissions=('ratio', lambda r: merged.loc[r.index, 'emissions_mtPerYear_ethane'].mean() / merged.loc[r.index, 'emissions_mtPerYear_methane'].mean()),
+        ci_lower=('ratio', lambda r: np.percentile(r, 2.5)),
+        ci_upper=('ratio', lambda r: np.percentile(r, 97.5))
+    ).reset_index()
 
-        ratio = ratio.replace([np.inf, -np.inf,  np.nan],0)
+    summary.insert(0, 'species', 'C2/C1')
+    summary.insert(2, 'unit', 'unitless')
 
-        if not ratio.empty and ratio.sum() != 0:
-            mean_ratio = ethane_grp.mean() / methane_grp.mean()
-            result_rows.append({
-                'species': 'C2/C1',
-                'METype': me_type,
-                'unit': 'unitless',
-                'mean_emissions': mean_ratio,
-                '95%_ci_lower': np.percentile(ratio, 2.5),
-                '95%_ci_upper': np.percentile(ratio, 97.5)
-            })
-
-    return pd.DataFrame(result_rows)
+    return summary.rename(columns={
+        'ci_lower': '95%_ci_lower',
+        'ci_upper': '95%_ci_upper'
+    })
 
 
 def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, output_folder):
