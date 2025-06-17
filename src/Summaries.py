@@ -1090,6 +1090,7 @@ def compute_c2_c1_ratios_for_metype(df_base, mode):
 
     merged['ratio'] = merged['emissions_mtPerYear_ethane'] / merged['emissions_mtPerYear_methane']
     merged['ratio'] = merged['ratio'].replace([np.inf, -np.inf, np.nan], 0)
+    merged = merged.drop(merged[merged["ratio"] == 0 ].index)
 
     summary = merged.groupby('METype').agg(
         mean_emissions=('ratio', lambda r: merged.loc[r.index, 'emissions_mtPerYear_ethane'].mean() / merged.loc[r.index, 'emissions_mtPerYear_methane'].mean()),
@@ -1115,8 +1116,6 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
     all_results.append(compute_c2_c1_ratios_for_metype(df_all, mode=mode))
 
     summary_df = pd.concat(all_results, ignore_index=True)
-    summary_df = summary_df.drop(summary_df[summary_df["mean_emissions"] ==0 ].index)
-
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
 
     output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
