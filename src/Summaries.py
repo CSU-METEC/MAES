@@ -796,7 +796,7 @@ def compute_stats_by(species, all_mcRuns, df_base, mode, by):
 
     stats = filled.groupby(by)['emissions_mtPerYear'].agg(
         mean_emissions='mean',
-        emissions_list=lambda x: list(x),
+        MCRuns_emission_list=lambda x: list(x),
         emissions_sum_across_mcRuns='sum',
         ci_lower=lambda x: np.percentile(x, 2.5),
         ci_upper=lambda x: np.percentile(x, 97.5)
@@ -814,7 +814,8 @@ def compute_stats_by(species, all_mcRuns, df_base, mode, by):
 
     return stats[[
         'species', by, 'unit', 'mean_emissions', '95%_ci_lower',
-        '95%_ci_upper', 'emissions_sum_across_mcRuns', 'percentage_of_total_emissions'
+        '95%_ci_upper','MCRuns_emission_list',
+        'emissions_sum_across_mcRuns', 'percentage_of_total_emissions'
     ]]
 
 
@@ -948,7 +949,7 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
     # Group emissions by species/category/mcRun
     group = df_full.groupby(['species', 'modelEmissionCategory', 'mcRun'])['emissions_mtPerYear'].sum()
     emissions_stats = group.reset_index().groupby(['species', 'modelEmissionCategory'])['emissions_mtPerYear'].agg(
-        emissions_list=lambda x: list(x),
+        MCRuns_emission_list=lambda x: list(x),
         mean_emissions='mean',
         ci_lower=lambda x: np.percentile(x, 2.5),
         ci_upper=lambda x: np.percentile(x, 97.5),
@@ -978,8 +979,8 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
 
     final = emissions_stats[[
         'Species', 'modelEmissionCategory', 'unit', 'mean_emissions',
-        '95%_ci_lower', '95%_ci_upper', 'emissions_sum_across_mcRuns',
-        'percentage_of_total_emissions']]
+        '95%_ci_lower', '95%_ci_upper',  'MCRuns_emission_list',
+        'emissions_sum_across_mcRuns', 'percentage_of_total_emissions']]
 
     # --- Compute C2/C1 ratio ---
     df_ratio = df_full[df_full['species'].str.upper().isin(['METHANE', 'ETHANE'])]
@@ -1008,7 +1009,8 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
         Species='C2/C1',
         unit='unitless',
         emissions_sum_across_mcRuns=np.nan,
-        percentage_of_total_emissions=np.nan
+        percentage_of_total_emissions=np.nan,
+        MCRuns_emission_list=np.nan
     )
 
     final = pd.concat([final, c2c1_stats[final.columns]], ignore_index=True)
@@ -1053,6 +1055,14 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
 
     mcdf = df.groupby(["mcRun", "METype"], as_index=False)['emissions_mtPerYear'].sum()
     meandf = mcdf.groupby("METype", as_index=False)['emissions_mtPerYear'].mean()
+
+    emission_lists = (
+        mcdf.groupby("METype")['emissions_mtPerYear']
+        .apply(list)
+        .rename("MCRuns_emission_list")
+        .reset_index()
+    )
+
     sumdf = mcdf.groupby("METype")['emissions_mtPerYear'].sum()
 
     ci_lower = mcdf.groupby("METype")['emissions_mtPerYear'].apply(lambda x : np.percentile(x, 2.5))
@@ -1064,6 +1074,8 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
     meandf = meandf.merge(ci_upper.rename('95%_ci_upper'), on=['METype'], how='left')
     meandf = meandf.merge(sumdf.rename('emissions_sum_across_mcRuns'), on=['METype'], how='left')
     meandf = meandf.merge(percentage_of_total.rename('percentage_of_total_emissions'), on=['METype'], how='left')
+
+    meandf = meandf.merge(emission_lists, on='METype', how='left')
 
     meandf['unit'] = 'mt/year'
     meandf['species'] = species.upper()
@@ -1253,6 +1265,15 @@ def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
     emissionsDf = emissionsDf[emissionsDf['species'] == species]
 
     mcNameDf = emissionsDf.groupby(["mcRun","METype", "unitID", "modelReadableName"], as_index=False)[emissions_colmn].sum()
+
+    # Store list of emissions per MC run
+    mc_emission_lists = (
+        mcNameDf.groupby(["METype", "unitID", "modelReadableName"])[emissions_colmn]
+        .apply(list)
+        .rename("MCRuns_emission_list")
+        .reset_index()
+    )
+
     mdNameDf = mcNameDf.groupby(["METype","unitID", "modelReadableName"], as_index=False)[emissions_colmn].mean()
 
     mdNameDf.rename(columns={emissions_colmn: mean_header}, inplace=True)
@@ -1262,8 +1283,19 @@ def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
     mdNameDf = mdNameDf.merge(ci_lower.rename(ci_lower_header), on=["METype", "unitID", "modelReadableName"], how="left")
     mdNameDf = mdNameDf.merge(ci_upper.rename(ci_upper_header), on=["METype", "unitID", "modelReadableName"], how="left")
 
+    # Merge MCRuns_emission_list into main df
+    mdNameDf = mdNameDf.merge(mc_emission_lists, on=["METype", "unitID", "modelReadableName"], how="left")
+
     unitIDDF = mdNameDf.groupby(["METype", "unitID"], as_index=False)[[mean_header,ci_lower_header,ci_upper_header]].sum()
     unitIDDF["modelReadableName"] = "summed_modelReadableName"
+
+    # Sum emission lists per METype+unitID
+    unit_lists = (
+        mdNameDf.groupby(["METype", "unitID"])["MCRuns_emission_list"]
+        .apply(lambda lists: list(np.sum(lists, axis=0)))
+        .reset_index()
+    )
+    unitIDDF = unitIDDF.merge(unit_lists, on=["METype", "unitID"], how="left")
 
     uniDF = emissionsDf.groupby(["mcRun","METype"], as_index=False)[emissions_colmn].sum()
     uni_ci_lower = uniDF.groupby(["METype"])[emissions_colmn].apply(lambda x: np.percentile(x, alpha / 2))
@@ -1274,12 +1306,23 @@ def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
     meTypeDf = meTypeDf.merge(uni_ci_lower.rename(ci_lower_header), on=["METype"], how="left")
     meTypeDf = meTypeDf.merge(uni_ci_upper.rename(ci_upper_header), on=["METype"], how="left")
 
+    # Sum emission lists across METype level
+    meType_lists = (
+        unitIDDF.groupby("METype")["MCRuns_emission_list"]
+        .apply(lambda lists: list(np.sum(lists, axis=0)))
+        .reset_index()
+    )
+    meTypeDf = meTypeDf.merge(meType_lists, on="METype", how="left")
+
     final_df = pd.concat([mdNameDf,unitIDDF,meTypeDf], ignore_index=True)
     
     total = meTypeDf.sum(numeric_only=True, axis=0)
     total["METype"] = "summed_METype"
     total["unitID"] = "summed_unitID"
     total["modelReadableName"] = "summed_modelReadableName"
+
+    # Sum the full emission list element-wise
+    total["MCRuns_emission_list"] = list(np.sum(meTypeDf["MCRuns_emission_list"].dropna(), axis=0))
 
     final_df = pd.concat([final_df, total.to_frame().T], ignore_index=True)
     final_df["species"] = species
@@ -1299,6 +1342,18 @@ def calcSiteLevelSummary(emissCatDF, species, confidence_level=95):
     ci_upper_col = f"{confidence_level}%_ci_upper"
 
     emissCatDF = emissCatDF[emissCatDF.species == species]
+
+    # Group by modelEmissionCategory and mcRun to prepare for list aggregation
+    mcCat = emissCatDF.groupby(["mcRun", "modelEmissionCategory"], as_index=False)[emissionsColumn].sum()
+
+    # Get list of emissions per MC run for each category
+    mc_emission_lists = (
+        mcCat.groupby("modelEmissionCategory")[emissionsColumn]
+        .apply(list)
+        .rename("MCRuns_emission_list")
+        .reset_index()
+    )
+
     mdCat = emissCatDF.groupby(["modelEmissionCategory"], as_index=False)[emissionsColumn].mean()
 
     min = emissCatDF.groupby(["modelEmissionCategory"])[emissionsColumn].min()
@@ -1319,6 +1374,9 @@ def calcSiteLevelSummary(emissCatDF, species, confidence_level=95):
     mdCat = mdCat.merge(ci_lower.rename(ci_lower_col), on=["modelEmissionCategory"], how="left")
     mdCat = mdCat.merge(ci_upper.rename(ci_upper_col), on=["modelEmissionCategory"], how="left")
 
+    # Merge emission list into final dataframe
+    mdCat = mdCat.merge(mc_emission_lists, on="modelEmissionCategory", how="left")
+
     mdCat.rename(columns={emissionsColumn:'mean_emissions'}, inplace=True)
     mdCat["species"] = species
     mdCat["unit"] = "mt/year"
@@ -1335,6 +1393,14 @@ def calcAnnualEmissSummaryByMEType(emissEquipDF, species, confidence_level=95):
     alpha = 100 - float(confidence_level)
 
     mcEq = emissEquipDF.groupby(["mcRun", "METype"], as_index=False)[emissionsColumn].sum()
+
+    # Store list of emissions per METype across all mcRuns
+    mc_emission_lists = (
+        mcEq.groupby("METype")[emissionsColumn]
+        .apply(list)
+        .rename("MCRuns_emission_list")
+        .reset_index()
+    )
 
     medf = mcEq.groupby("METype", as_index=False)[emissionsColumn].mean()
 
@@ -1354,8 +1420,15 @@ def calcAnnualEmissSummaryByMEType(emissEquipDF, species, confidence_level=95):
     medf = medf.merge(ci_lower.rename(f"{confidence_level}%_ci_lower"), on=["METype"], how="left")
     medf = medf.merge(ci_upper.rename(f"{confidence_level}%_ci_upper"), on=["METype"], how="left")
 
+    # Merge list of MCrun emissions per METype
+    medf = medf.merge(mc_emission_lists, on="METype", how="left")
+
     total = medf.sum(numeric_only=True, axis=0)
     total["METype"] = "summed_METype"
+
+    # Sum MCrun_emission_list element-wise for the summed row
+    total["MCRuns_emission_list"] = np.sum(medf["MCRuns_emission_list"].dropna(), axis=0)
+
     total = pd.concat([medf, total.to_frame().T], ignore_index=True)
     total.rename(columns={emissionsColumn:'mean_emissions'}, inplace=True)
 
