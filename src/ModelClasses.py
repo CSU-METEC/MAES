@@ -4178,11 +4178,11 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         #     raise NotImplementedError(msg)
         self.stateMachine = {
             'OPERATING': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
-            'VENT_ACC': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
-            'VENT_REL': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState}
+            'FLASH': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
+            'OVERPRESSURE': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState}
         }
         # REL = pressure release
-        # ACC = accidental or uncontrolled
+        # FLASH = accidental or uncontrolled
         self.consolidatedFlowTable = {}
         self.consolidatedFlowTableVapor = {}
         self.consolidatedTankFlash = {}
@@ -4210,7 +4210,7 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         return slope
 
     def overPressureVars(self, rateChangeDelay):
-        nextState = 'VENT_REL'
+        nextState = 'OVERPRESSURE'
         self.currentPrimaryEqRatio = 0
         self.currentYIntercept = self.maxPrimaryOutletFlowScfs  # implies outlet to flares is at max flow
         self.overpressureDur = rateChangeDelay
@@ -4219,7 +4219,7 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
     
     # someone left that thing open for no reason / malfunction
     def overPressureVarsAccidental(self, rateChangeDelay):
-        nextState = 'VENT_ACC'
+        nextState = 'FLASH'
         self.currentPrimaryEqRatio = 0   # slope = 1. So all input gas goes to output as it is (y=x+c)
         self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
         self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
@@ -4292,10 +4292,10 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         if cs == 'OPERATING':
             delay = self.opDur
             self.overpressureTimeTracker += delay
-        elif cs == 'VENT_ACC':
+        elif cs == 'FLASH':
             delay = int(self.tankOverpressureDurDist.pick())
             self.overpressureTimeTracker = 0  # reset time tracking to start mtbf tracking after this state
-        elif cs == 'VENT_REL':
+        elif cs == 'OVERPRESSURE':
             delay = self.overpressureDur
             self.overpressureTimeTracker += delay
         else:
