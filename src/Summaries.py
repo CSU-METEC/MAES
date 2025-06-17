@@ -833,7 +833,7 @@ def compute_c2_c1_ratios_by(df_base, mode, by):
         aggfunc='sum'
     ).dropna()
 
-    pivot['ratio'] = pivot['ETHANE'] / pivot['METHANE']
+    pivot = pivot.assign(ratio = pivot['ETHANE'] / pivot['METHANE'])
     pivot = pivot[np.isfinite(pivot['ratio'])]
 
     c2c1_stats = (
@@ -1546,6 +1546,7 @@ def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupO
 
     # tsf = [t.toFullTimeseries() for t in AllMCruns.values()]
     allStateTS = AllMCruns_states[mcRunStates]
+    AllMCruns = [t.toFullTimeseries() for t in AllMCruns.values()]
     tsf = AllMCruns[mcRunTS]
     fac = config['site']
     # min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
