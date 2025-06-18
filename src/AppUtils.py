@@ -71,7 +71,6 @@ def getParser(defaultConfig):
     parser.add_argument("-se", "--siteEmiss", help="Generate site level emissions summary", default=False)
     parser.add_argument("-sl", "--simulationEmissions", help="Generate simulation emissions summary", default=False)
     parser.add_argument("-st", "--statesAndTsPloting", help="Generate plots for Timeseries and State transistions", default=False)
-    parser.add_argument("-mcs", "--mcRunStates", help="Specify which mcrun to plot in the state transition plot", default=None)
     parser.add_argument("-mct", "--mcRunTS", help="Specify which mcrun to plot in the time series plot on states plot", default=None)
     parser.add_argument("-mt", "--miiEmiss", help="Generate MII emissions thresholds summary", default=False)
     parser.add_argument("-pt", "--plot", help="Generate plots from summaries", default=False)

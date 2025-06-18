@@ -1603,16 +1603,15 @@ def plotTs(allTSs, site, pdf, abnormal, config):
 
 def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=None):
     """Plots one figure per unitID in each state transition: top = time series, bottom = unitID's state transitions."""
-    mcRunStates = config['mcRunStates']
-    mcRunTS = config['mcRunTS']
-    mcRunStates = int(mcRunStates) if mcRunStates else 0
-    mcRunTS = int(mcRunTS) if mcRunTS else 0
+
+    mcRunSelected = config['mcRunTS']
+    mcRunSelected = int(mcRunSelected) if mcRunSelected else 0
     
-    if mcRunStates not in AllMCruns_states:
-        logger.info(f"MC Run {mcRunStates} not found in AllMCruns_states")
+    if mcRunSelected not in AllMCruns_states:
+        logger.info(f"MC Run {mcRunSelected} not found in AllMCruns_states")
         return
 
-    allStateTS = AllMCruns_states[mcRunStates]
+    allStateTS = AllMCruns_states[mcRunSelected]
     fac = config['site']
     for state_ts in allStateTS:
         meType = state_ts.df["METype"].unique()[0]
@@ -1620,11 +1619,11 @@ def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=
         for unitid, unitidDF in state_ts.df.groupby("unitID"):
             AllMCruns = grouping(dfToGroup=siteEVDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("unitID",unitid))
 
-            if mcRunTS not in AllMCruns:
-                logger.info(f"MC Run {mcRunTS} not found in AllMCruns")
+            if mcRunSelected not in AllMCruns:
+                logger.info(f"MC Run {mcRunSelected} not found in AllMCruns")
                 return
             
-            tsf = AllMCruns[mcRunTS]
+            tsf = AllMCruns[mcRunSelected]
             tsf = tsf.toFullTimeseries()
 
             if tsf.df.empty:
@@ -1638,9 +1637,10 @@ def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=
 
             ts_ax.set_xlim(left=start_time, right=end_time)
             ts_ax.plot((tsf.df['timestamp'] - tsf.df['timestamp'].min()) / SECONDSINDAY, tsf.df['tsValue'], alpha=0.2, color='royalblue')
+            ts_ax.grid(True, alpha=0.3)
             ts_ax.set_xlabel('Time (days)', fontsize=14)
             ts_ax.set_ylabel('CH4 Emissions (kg/h)', fontsize=14)
-            ts_ax.set_title(f"Time Series with Mean Emissions \n mcRun = {mcRunTS}", fontsize=14)
+            ts_ax.set_title(f"Time Series with for {unitid} \n mcRun = {mcRunSelected}", fontsize=14)
 
             # Plot state transitions for this unitID only
             unitts = ts.TimeseriesCategorical(unitidDF, valueColName="state").toFullTimeseries().df
@@ -1648,7 +1648,7 @@ def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=
             state_ax.set_xlim(left=start_time, right=end_time)
             state_ax.set_xlabel('Time (days)', fontsize=12)
             state_ax.set_ylabel('State', fontsize=12)
-            state_ax.set_title(f'State Transitions for unitID: {unitid}\nMEType: {meType}, MCrun: {mcRunStates}, Site: {fac}', fontsize=14)
+            state_ax.set_title(f'State Transitions for unitID: {unitid}\nMEType: {meType}, MCrun: {mcRunSelected}, Site: {fac}', fontsize=14)
             state_ax.legend()
             state_ax.grid(alpha=0.3)
 
@@ -1661,7 +1661,7 @@ def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=
             os.makedirs(plot_dir, exist_ok=True)
             output_image_path = os.path.join(
                 plot_dir,
-                f"state_transition_mcRun={mcRunStates}_unitID={unitid}_abnormal_{abnormal}.png"
+                f"state_transition_mcRun={mcRunSelected}_unitID={unitid}_abnormal_{abnormal}.png"
             )
 
             plt.tight_layout(pad=3.0)

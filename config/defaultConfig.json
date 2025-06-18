@@ -32,7 +32,6 @@
       "siteEmiss":false,
       "simulationEmissions":false,
       "statesAndTsPloting":false,
-      "mcRunStates":null,
       "mcRunTS":null,
       "miiEmiss":false,
       "plot":false,
