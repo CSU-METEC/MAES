@@ -1496,7 +1496,7 @@ def aggrSet(input_df, value_column, group_options=None):
     grouping_cols = ['facilityID', 'METype'] if value_column == "state" else ['facilityID', 'unitID', 'emitterID']
     TimeseriesClass = ts.TimeseriesCategorical if value_column == "state" else ts.TimeseriesRLE
     if input_df.empty:
-        logger.warning(f"Where {group_options[0]} = {group_options[1]} and the selected abnormal emissions options do not match input data")
+        logger.info(f"Where {group_options[0]} = {group_options[1]}, no timeseries data were found")
         pass
     for _, subset_df in input_df.groupby(grouping_cols):
         timeseries_set.append(TimeseriesClass(subset_df, valueColName=value_column))
@@ -1601,43 +1601,37 @@ def plotTs(allTSs, site, pdf, abnormal, config):
 
     return
 
-def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupOptions=None):
+def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=None):
     """Plots one figure per unitID in each state transition: top = time series, bottom = unitID's state transitions."""
     mcRunStates = config['mcRunStates']
     mcRunTS = config['mcRunTS']
     mcRunStates = int(mcRunStates) if mcRunStates else 0
     mcRunTS = int(mcRunTS) if mcRunTS else 0
-
+    
     if mcRunStates not in AllMCruns_states:
         logger.info(f"MC Run {mcRunStates} not found in AllMCruns_states")
         return
-    
-    if mcRunTS not in AllMCruns:
-        logger.info(f"MC Run {mcRunTS} not found in AllMCruns")
-        return
 
-    # tsf = [t.toFullTimeseries() for t in AllMCruns.values()]
     allStateTS = AllMCruns_states[mcRunStates]
-    AllMCruns = [t.toFullTimeseries() for t in AllMCruns.values()]
-    tsf = AllMCruns[mcRunTS]
     fac = config['site']
-    # min_timestamp = min(df['timestamp'].min() for df in [ts.df for ts in tsf])
-    # mean_emissions = calculateMeanEmissions(tsf, min_timestamp)
-
     for state_ts in allStateTS:
         meType = state_ts.df["METype"].unique()[0]
 
         for unitid, unitidDF in state_ts.df.groupby("unitID"):
+            AllMCruns = grouping(dfToGroup=siteEVDF, siteEndSimDF=siteEndSimDF, valueColName="emission", groupOptions=("unitID",unitid))
+
+            if mcRunTS not in AllMCruns:
+                logger.info(f"MC Run {mcRunTS} not found in AllMCruns")
+                return
+            
+            tsf = AllMCruns[mcRunTS]
+            tsf = tsf.toFullTimeseries()
+
+            if tsf.df.empty:
+                # logger.info(f"no emissions for {unitid} on stat plots, abnormal = {abnormal}, mcrun = {mcRunTS}")
+                continue
             _, axes = plt.subplots(2, 1, figsize=(15, 10))
             ts_ax, state_ax = axes
-
-            # Plot time series on top
-
-            # for df in [t.df for t in tsf]:
-            #     start_time = df["timestamp"].min() / SECONDSINDAY
-            #     end_time = df["timestamp"].max() / SECONDSINDAY
-            #     ts_ax.set_xlim(left=start_time, right=end_time)
-            #     ts_ax.plot((df['timestamp'] - df['timestamp'].min()) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
 
             start_time = tsf.df["timestamp"].min() / SECONDSINDAY
             end_time = tsf.df["timestamp"].max() / SECONDSINDAY
@@ -1646,8 +1640,6 @@ def plotStateTS(config, AllMCruns_states, AllMCruns, abnormal, site=None, groupO
             ts_ax.plot((tsf.df['timestamp'] - tsf.df['timestamp'].min()) / SECONDSINDAY, tsf.df['tsValue'], alpha=0.2, color='royalblue')
             ts_ax.set_xlabel('Time (days)', fontsize=14)
             ts_ax.set_ylabel('CH4 Emissions (kg/h)', fontsize=14)
-
-            # plotMeanEmissions(ts_ax, mean_emissions, fac, abnormal)
             ts_ax.set_title(f"Time Series with Mean Emissions \n mcRun = {mcRunTS}", fontsize=14)
 
             # Plot state transitions for this unitID only
@@ -1874,7 +1866,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
         AllMCruns_states = grouping(dfToGroup=siteEVDF_state, siteEndSimDF=siteEndSimDF_state, valueColName="state")
 
         # Plot state transitions with mean emissions
-        plotStateTS(config, AllMCruns_states, AllMCruns, abnormal=abnormal, site=site) 
+        plotStateTS(config, AllMCruns_states, abnormal=abnormal, site=site, siteEVDF=siteEVDF, siteEndSimDF=siteEndSimDF) 
 
     if instantaneousSummaries:
         # Get instantaneous emissions summary by modelReadableName
