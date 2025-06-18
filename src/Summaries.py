@@ -1819,7 +1819,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
     if config['fullSummaries']:
         annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = simulationEmissions = True
 
-    if annualSummaries:
+    if annualSummaries or gen_plots:
         siteEmissions = config['siteEmiss']
         meType = config['METype']
         unitID = config['unitID']
@@ -1882,7 +1882,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF,species="ETHANE")])
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={site}/", abnormal=abnormal)
 
-    if simulationEmissions:
+    if simulationEmissions or gen_plots:
         run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'], abnormal=abnormal)
         run_total_emissions_pipeline_for_category(folder=config['simulationRoot'], abnormal=abnormal)
         run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'], abnormal=abnormal)
