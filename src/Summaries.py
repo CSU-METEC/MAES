@@ -86,7 +86,7 @@ def plot_cdf(df_sorted: pd.DataFrame, percentages: dict, threshold_coords: list[
 
     fig.tight_layout()
     os.makedirs(cdf_output_dir, exist_ok=True)
-    plt.savefig(f"{cdf_output_dir}/combinedCdf_abnormal_{abnormal}.png")
+    plt.savefig(f"{cdf_output_dir}/combined_CDF_abnormal_{abnormal}.png")
     plt.close()
 
 def generate_comnbined_cdf_plot(config):
