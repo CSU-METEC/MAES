@@ -1439,9 +1439,11 @@ def calcAnnualEmissSummaryByMEType(emissEquipDF, species, confidence_level=95):
 
 def calcVirtualPneumaticMetypeSummaries(df):
     pneumaticDF = df[df['modelReadableName'].str.contains('Pneumatic')]
-    summarydf = calcAnnualEmissSummaryByMEType(pneumaticDF, species="METHANE", confidence_level=95)
-    summarydf = pd.concat([summarydf, calcAnnualEmissSummaryByMEType(pneumaticDF, species='ETHANE', confidence_level=95)])
-    summarydf['METype'] = summarydf['METype'].str.replace('summed_METype','Pneumatics')
+    nonPneumaticDF = df[~df['modelReadableName'].str.contains('Pneumatic')]
+    pneumaticDF['METype'] = 'Pneumatics'
+    combined_df = pd.concat([pneumaticDF, nonPneumaticDF], ignore_index=True)
+    summarydf = calcAnnualEmissSummaryByMEType(combined_df, species="METHANE", confidence_level=95)
+    summarydf = pd.concat([summarydf, calcAnnualEmissSummaryByMEType(combined_df, species='ETHANE', confidence_level=95)])
     summarydf = summarydf.drop(summarydf[(summarydf["mean_emissions"] ==0 ) & (summarydf["max"] == 0)].index)
     return summarydf
 
