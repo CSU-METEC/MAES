@@ -92,9 +92,13 @@ def plot_cdf(df_sorted: pd.DataFrame, percentages: dict, threshold_coords: list[
 def generate_comnbined_cdf_plot(config):
     for abnormal in ['on','off']:
         try:
-            df= pd.read_csv(f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions/aggregated_sim_PDFs_abnormal_{abnormal}.csv")
+            file = f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions/aggregated_sim_PDFs_abnormal_{abnormal}.csv"
+            df= pd.read_csv(file)
+        except FileNotFoundError:
+            logger.info(f"please generate combined pdf first")
+            return
         except Exception as e:
-            logger.warning("please generate combined pdf first")
+            logger.warning(f"run into an error({e}), reading {file}")
             return
         df_sorted  = compute_cdf_for_plot(df)
         percentages, coords = get_threshold_stats(df_sorted, [2, 10, 15, 25, 50, 100])
@@ -179,6 +183,11 @@ def generate_annual_emissions_plot_for_metype(file, species):
     try:
         df = pd.read_csv(file)
         logger.info(file)
+
+    except FileNotFoundError:
+        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        return
+    
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
         return
@@ -314,6 +323,11 @@ def generate_annual_emissions_plot__site_level(file, species):
     try:
         df = pd.read_csv(file)
         logger.info(file)
+
+    except FileNotFoundError:
+        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        return
+    
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
         return
@@ -430,6 +444,9 @@ def generate_annual_emissions_plot_for_modelReadableName(file, species):
     try:
         df = pd.read_csv(file)
         logger.info(file)
+    except FileNotFoundError:
+        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        return
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
         return
@@ -576,6 +593,10 @@ def generate_annual_emissions_plot_unitid_level(file, species):
     try:
         df = pd.read_csv(file)
         logger.info(file)
+
+    except FileNotFoundError:
+        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        return
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
         return
@@ -662,7 +683,7 @@ def generate_annual_emissions_plot_unitid_level(file, species):
 
     ax.legend(handles=legend_handles, fontsize=label_fontsize, loc='best')
 
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(output_image_path)
     plt.close()
 
@@ -1488,7 +1509,7 @@ def dumpEmissions(summaryDF, config, summaryType, facID=None, abnormal=None):
     summaryDF.to_csv(outFile, index=False)
     logger.info(f"Wrote {outFile}")
 
-    return outFile
+    return None
 
 def aggrSet(input_df, value_column, group_options=None):
     """Aggregates a DataFrame by specified options, creating Timeseries objects."""
@@ -1821,43 +1842,35 @@ def generatedCsvSummaries(config, df, site, abnormal):
     if config['fullSummaries']:
         annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = simulationEmissions = True
 
-    if annualSummaries or gen_plots:
+    if annualSummaries:
         siteEmissions = config['siteEmiss']
         meType = config['METype']
         unitID = config['unitID']
         pneumatics = config['Pneumatics']
         
         all_false = all(not x for x in [siteEmissions, meType, unitID, pneumatics])
-        if all_false or gen_plots:
+        if all_false:
             siteEmissions = meType = unitID = pneumatics = True
 
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF, species="METHANE")
             detailed_emissionsDF = pd.concat([detailed_emissionsDF, calcMdReadbleNameEmissionsSummary(zerosDF, species="ETHANE")])
-            unit_summary_path = dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
+            dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
                                
         if siteEmissions:
             CategorySummaryDF = calcSiteLevelSummary(emissCatDF, species='METHANE', confidence_level=95)
             CategorySummaryDF = pd.concat([CategorySummaryDF, calcSiteLevelSummary(emissCatDF, species='ETHANE', confidence_level=95)])  # add ethane summary
-            site_summary_path = dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
+            dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
 
         if meType:
             equipEmissSummaryDF = calcAnnualEmissSummaryByMEType(zerosDF, species='METHANE', confidence_level=95)
             equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcAnnualEmissSummaryByMEType(zerosDF, species='ETHANE', confidence_level=95)])  # add ethane summary
-            metype_summary_path = dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
+            dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
 
         if pneumatics:
             pneumaticSummaryDF = calcVirtualPneumaticMetypeSummaries(df=zerosDF)
             dumpEmissions(pneumaticSummaryDF, config, "pneumatics", facID=f"AnnualEmissions/site={site}/ONGAEIR-GHGRPFormat/", abnormal=abnormal)
 
-        if gen_plots:
-            for sp in SPECIES:
-                plot_annual_emissions_unitid_level(unit_summary_path, sp, plot_by="file")
-                plot_annual_emissions_for_modelReadableName(unit_summary_path, sp, plot_by="file")
-                plot_annual_emissions_site_level(site_summary_path, sp, plot_by="file")
-                plot_annual_emissions_for_metype(metype_summary_path, sp, plot_by="file")
-
-    
     if statesAndTsPloting:
         siteEVDF, siteEndSimDF = readParquetFiles(config=config, site=config['siteName'], abnormal=abnormal, mergeGC=True, additionalEventFilters=[('command', '=', 'EMISSION')])
         AllMCruns = grouping(dfToGroup=siteEVDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
@@ -1884,13 +1897,20 @@ def generatedCsvSummaries(config, df, site, abnormal):
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF,species="ETHANE")])
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={site}/", abnormal=abnormal)
 
-    if simulationEmissions or gen_plots:
+    if simulationEmissions:
         run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'], abnormal=abnormal)
         run_total_emissions_pipeline_for_category(folder=config['simulationRoot'], abnormal=abnormal)
         run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'], abnormal=abnormal)
         generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site, abnormal=abnormal)
-        if gen_plots:
-            generate_comnbined_cdf_plot(config)
+
+    if gen_plots:
+        summariesPath = f"{config['simulationRoot']}/summaries/AnnualEmissions/site={site}"
+        generate_comnbined_cdf_plot(config)
+        for sp in SPECIES:
+                plot_annual_emissions_unitid_level(f"{summariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_for_modelReadableName(f"{summariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_site_level(f"{summariesPath}/annualEmissions_by_site_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_for_metype(f"{summariesPath}/annualEmissions_by_METype_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
 
     return None
    
