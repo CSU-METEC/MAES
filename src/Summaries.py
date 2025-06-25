@@ -185,7 +185,7 @@ def generate_annual_emissions_plot_for_metype(file, species):
         logger.info(file)
 
     except FileNotFoundError:
-        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        logger.warning(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries for METypes.")
         return
     
     except Exception as e:
@@ -325,14 +325,15 @@ def generate_annual_emissions_plot__site_level(file, species):
         logger.info(file)
 
     except FileNotFoundError:
-        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        logger.warning(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries for categories.")
         return
     
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
         return
-
+    
     df = df[df['species'] == species]
+
     if df.empty:
         logger.info(f"No data for species {species} in {file}")
         return
@@ -445,7 +446,7 @@ def generate_annual_emissions_plot_for_modelReadableName(file, species):
         df = pd.read_csv(file)
         logger.info(file)
     except FileNotFoundError:
-        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        logger.warning(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries for modelReadbaleNames.")
         return
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
@@ -595,7 +596,7 @@ def generate_annual_emissions_plot_unitid_level(file, species):
         logger.info(file)
 
     except FileNotFoundError:
-        logger.info(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries.")
+        logger.warning(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries for unitIDs.")
         return
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
@@ -612,11 +613,14 @@ def generate_annual_emissions_plot_unitid_level(file, species):
         logger.info(f"All entries have 0 emissions in {file}")
         return
 
-    # Keep only rows where modelReadableName == 'summed_modelReadableName'
-    df = df[df['modelReadableName'] == 'summed_modelReadableName']
+    try:
+        # Keep only rows where modelReadableName == 'summed_modelReadableName'
+        df = df[df['modelReadableName'] == 'summed_modelReadableName']
 
-    # Exclude rows where modelReadableName contains 'summed' elsewhere
-    df = df[df['unitID'] != 'summed_unitID']
+        # Exclude rows where modelReadableName contains 'summed' elsewhere
+        df = df[df['unitID'] != 'summed_unitID']
+    except KeyError as e:
+        pass
 
     if df.empty:
         logger.info(f"No valid rows for plotting in {file}")
@@ -999,7 +1003,7 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
     })
 
     final = emissions_stats[[
-        'Species', 'modelEmissionCategory', 'unit', 'mean_emissions',
+        'species', 'modelEmissionCategory', 'unit', 'mean_emissions',
         '95%_ci_lower', '95%_ci_upper',  'MCRuns_emission_list',
         'emissions_sum_across_mcRuns', 'percentage_of_total_emissions']]
 
@@ -1027,7 +1031,7 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
         'ci_lower': '95%_ci_lower',
         'ci_upper': '95%_ci_upper'
     }).assign(
-        Species='C2/C1',
+        species='C2/C1',
         unit='unitless',
         emissions_sum_across_mcRuns=np.nan,
         percentage_of_total_emissions=np.nan,
@@ -1904,13 +1908,28 @@ def generatedCsvSummaries(config, df, site, abnormal):
         generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site, abnormal=abnormal)
 
     if gen_plots:
-        summariesPath = f"{config['simulationRoot']}/summaries/AnnualEmissions/site={site}"
-        generate_comnbined_cdf_plot(config)
-        for sp in SPECIES:
-                plot_annual_emissions_unitid_level(f"{summariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_for_modelReadableName(f"{summariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_site_level(f"{summariesPath}/annualEmissions_by_site_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_for_metype(f"{summariesPath}/annualEmissions_by_METype_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+        similationLevelSummariesPath = f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions"
+        annualSummariesPath = f"{config['simulationRoot']}/summaries/AnnualEmissions/site={site}"
+        if os.path.exists(annualSummariesPath):
+            for sp in SPECIES:
+                plot_annual_emissions_unitid_level(f"{annualSummariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_for_modelReadableName(f"{annualSummariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_site_level(f"{annualSummariesPath}/annualEmissions_by_site_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_for_metype(f"{annualSummariesPath}/annualEmissions_by_METype_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                
+        else:
+            logger.warning("Plots cannot be generated because MAES did not find any AnnualEmissions summaries")
+
+        if os.path.exists(similationLevelSummariesPath):
+            for sp in SPECIES:
+                plot_annual_emissions_unitid_level(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_unitID_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_for_modelReadableName(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_site_level(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_category_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+                plot_annual_emissions_for_metype(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_METype_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
+            generate_comnbined_cdf_plot(config)
+        else:
+            logger.warning("Plots cannot be generated because MAES did not find any  AggregatedSimulationEmissions summaries")
+
 
     return None
    

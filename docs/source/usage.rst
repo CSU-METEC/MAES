@@ -74,7 +74,5 @@ Options
                        Generate plots from summaries (Set it to True) (default: False)
   -st statesAndTsPloting,
                        Generate plots for Timeseries and State transistions (Set it to True) (default: False)
-  -mct mcRunTs,
-                       Specify which mcrun to plot in the timeseries plot if none is passed all mcruns will be plotted
-  -mcs mcRunStates,
-                       Specify which mcrun to plot in the state transition plot if none is passed the first mcrun will be the default
+  -mcs mcRunTs,
+                       Specify which mcrun to plot in both the timeseries subplot and the state transition subplot if none is passed the first mcrun will be the default
