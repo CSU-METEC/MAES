@@ -14,6 +14,12 @@ from matplotlib.ticker import FuncFormatter
 
 logger = logging.getLogger(__name__)
 
+# ------------------------------------------------------------------
+# Prevent running the expensive simulation-wide aggregation more
+# than once per (simulationRoot, abnormal) in a single MAES run.
+_SIM_AGG_DONE = set()          # holds tuples (simulationRoot, "ON"/"OFF")
+# ------------------------------------------------------------------
+
 SECONDSINHOUR = 3600
 SECONDSINDAY = 86400
 US_TO_PER_METRIC_TON = 1.10231
@@ -1901,11 +1907,24 @@ def generatedCsvSummaries(config, df, site, abnormal):
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF,species="ETHANE")])
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={site}/", abnormal=abnormal)
 
-    if simulationEmissions:
-        run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'], abnormal=abnormal)
-        run_total_emissions_pipeline_for_category(folder=config['simulationRoot'], abnormal=abnormal)
-        run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'], abnormal=abnormal)
-        generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site, abnormal=abnormal)
+    # if simulationEmissions:
+    #     run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder=config['simulationRoot'], abnormal=abnormal)
+    #     run_total_emissions_pipeline_for_category(folder=config['simulationRoot'], abnormal=abnormal)
+    #     run_emissions_summary_pipeline_for_metype(folder=config['simulationRoot'], abnormal=abnormal)
+    #     generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site, abnormal=abnormal)
+
+        # ── simulation-level summaries: run only once per run & mode ──
+    key = (config['simulationRoot'], abnormal)
+    if simulationEmissions and key not in _SIM_AGG_DONE:
+        run_emissions_summary_pipeline_for_modelReadableName_and_unitID(
+            folder=config['simulationRoot'], abnormal=abnormal)
+        run_total_emissions_pipeline_for_category(
+            folder=config['simulationRoot'], abnormal=abnormal)
+        run_emissions_summary_pipeline_for_metype(
+            folder=config['simulationRoot'], abnormal=abnormal)
+        generate_site_level_pdfs(
+            root_dir=config['simulationRoot'], site=None, abnormal=abnormal)
+        _SIM_AGG_DONE.add(key)
 
     if gen_plots:
         similationLevelSummariesPath = f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions"

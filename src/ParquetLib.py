@@ -34,6 +34,17 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
                   existing_data_behavior='overwrite_or_ignore')
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
+    # ── Skip any empty write ──────────────────────
+    if df is None or df.empty:
+        site_hint = None
+        if df is not None and 'site' in df.columns and df['site'].nunique() == 1:
+            site_hint = df['site'].iloc[0]
+        msg = f"Skip {dsName}: empty DataFrame"
+        if site_hint:
+            msg += f" (site = {site_hint})"
+        logger.info(msg)
+        return
+
     pqBase = config[dsName]
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
