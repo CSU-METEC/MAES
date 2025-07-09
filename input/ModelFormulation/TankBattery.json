@@ -40,7 +40,7 @@
   "Emitters": [
        {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Pressure Relief Vent", "Category": "TANK VENT", "Emission Category": "VENTED",
 	  "Model Parameters": [
-	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "VENT_REL"},
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OVERPRESSURE"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_pressure_vent_{serialNo}"},
 	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"}
 	  ]
@@ -48,7 +48,7 @@
 	
 	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Uncontrolled Tank Vent or Fugitive Vent", "Category": "LEAK", "Emission Category": "FUGITIVE",
 	  "Model Parameters": [
-	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "VENT_ACC"},
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "FLASH"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_acc_{serialNo}"},
 	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"}
 	  ]
@@ -56,7 +56,7 @@
 	
 	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Uncontrolled Vent From Tank Flash", "Category": "TANK VENT", "Emission Category": "FUGITIVE",
 	  "Model Parameters": [
-	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "VENT_ACC"},
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "FLASH"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_controlled_tank_{serialNo}"},
 	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "tank_gas_outlet,tank_flash"},
 	  {"Model Parameter": "Tank Controlled",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
