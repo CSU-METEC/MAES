@@ -22,6 +22,7 @@
       "disableSummary": false,
       "METype": false,
       "unitID": false,
+      "Pneumatics": false,
       "abnormal": null,
       "fullSummaries": false,
       "annualSummaries": false,
@@ -31,7 +32,7 @@
       "siteEmiss":false,
       "simulationEmissions":false,
       "statesAndTsPloting":false,
-      "mcRunStates":null,
+      "mcRunTS":null,
       "miiEmiss":false,
       "plot":false,
       
