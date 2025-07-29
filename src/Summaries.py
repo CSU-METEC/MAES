@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter
+from scipy.stats import lognorm, fisk, norm
+from scipy.optimize import minimize
 
 logger = logging.getLogger(__name__)
 
@@ -44,56 +46,87 @@ def get_threshold_stats(df_sorted: pd.DataFrame, thresholds: list[int]):
     return percentages, coords
 
 
-def plot_cdf(df_sorted: pd.DataFrame, percentages: dict, threshold_coords: list[tuple], abnormal,cdf_output_dir):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(df_sorted["CH4_EmissionRate_kg/h"], df_sorted["cdf"],
-            color="black", label="CDF")
-    ax.set_xscale("log")
 
-    # how many points to offset text (controls arrow length)
-    OFFSET = 60
+# logistic mixture CDF in log‑space
+def mix2_lognorm_cdf(x, w, mu1, s1, mu2, s2):
+    z1 = (np.log(x) - mu1) / s1
+    z2 = (np.log(x) - mu2) / s2
+    return w * norm.cdf(z1) + (1 - w) * norm.cdf(z2)
 
-    for i, (threshold, y_val) in enumerate(threshold_coords):
-        label = f"{percentages[threshold]:.1f}% (< {threshold} kg/h)"
+def plot_cdf(df_sorted, percentages, threshold_coords,
+             abnormal, out_dir):
+    # 1) Load & clean
+    x = df_sorted["CH4_EmissionRate_kg/h"].to_numpy(dtype=float)
+    F = df_sorted["cdf"].to_numpy(dtype=float)
+    mask = (x > 0) & np.concatenate([[True], np.diff(F) > 0])
+    xF, FF = x[mask], F[mask]
 
-        # even → position below & to the right, arrow at –45°
-        # odd  → position above & to the left, arrow at +135°
-        if i % 2 == 0:
-            dx, dy =  OFFSET, -OFFSET
-        else:
-            dx, dy = -OFFSET,  OFFSET
+    # 2) Sub‑sample 200 points for fitting SSE
+    idx = np.linspace(0, len(xF)-1, min(200, len(xF))).astype(int)
+    xS, FS = xF[idx], FF[idx]
 
-        ax.axvline(x=threshold, color="gray", linestyle="--", linewidth=1)
-        ax.plot(threshold, y_val, "o", color="black", markersize=5)
-        ax.annotate(
-            label,
-            xy=(threshold, y_val),
-            xytext=(dx, dy),
-            textcoords="offset points",
-            ha="center", va="center",
-            fontsize=16,
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", lw=0.5),
-            arrowprops=dict(
-                arrowstyle="->",
-                color="gray",
-                lw=0.8
-            )
-        )
+    # 3) Define SSE on subsample
+    def sse(p):
+        w, mu1, s1, mu2, s2 = p
+        if not (0< w<1 and s1>0 and s2>0):
+            return 1e9
+        return np.sum((mix2_lognorm_cdf(xS, *p) - FS)**2)
 
+    # 4) Initial guesses & bounds
+    init = [
+        0.8,
+        np.log(np.percentile(xS, 1)), 1.0,
+        np.log(np.percentile(xS, 50)), 1.0
+    ]
+    bnds = [
+        (1e-3, 0.999),
+        (None, None), (1e-3, 5.0),
+        (None, None), (1e-3, 5.0),
+    ]
+
+    # 5) Fit with L‑BFGS‑B
+    res = minimize(sse, init, bounds=bnds,
+                   method='L-BFGS-B',
+                   options={'maxiter':200, 'ftol':1e-6})
+    w, mu1, s1, mu2, s2 = res.x
+
+    # 6) Begin plot
+    fig, ax = plt.subplots(figsize=(10,6))
+    ax.set_xscale('log')
+    ax.plot(xF, FF, 'k', label="Empirical CDF")
+
+    # 7) Plot fitted mixture on a thinner grid
+    xg = np.logspace(np.log10(xF.min()), np.log10(xF.max()), 250)
+    ax.plot(xg, mix2_lognorm_cdf(xg, w, mu1, s1, mu2, s2),
+            'r--', lw=2,
+            label=(f"Mix2‑lognorm fit: w={w:.2f}, "
+                   f"μ₁={mu1:.2f}, σ₁={s1:.2f}, "
+                   f"μ₂={mu2:.2f}, σ₂={s2:.2f}"))
+
+    # 8) Threshold lines
+    cmap = plt.get_cmap('tab10')
+    for i, (thr, _) in enumerate(threshold_coords):
+        pct = percentages[thr]
+        ax.axvline(thr, color=cmap(i),
+                   ls='--', lw=1,
+                   label=f"{pct:.2f}% < {thr} kg/h")
+
+    # 9) Cosmetics
+    ax.legend(loc="upper left", fontsize=10, title="CDF & Thresholds")
+    ax.set_xlabel("CH₄ Emission Rate (kg/h, log scale)", fontsize=14)
+    ax.set_ylabel("Cumulative Probability", fontsize=14)
+    ax.set_title(f"CDF of CH₄ Emission Rates ({abnormal})", fontsize=16)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.tick_params(labelsize=12)
+    ax.grid(which='both', ls='--', lw=0.5, alpha=0.7)
     ax.margins(x=0.05, y=0.15)
 
-    ax.set_xlabel("CH4 Emission Rate (kg/h, log scale)", fontsize=16)
-    ax.set_ylabel("Cumulative Probability", fontsize=16)
-    ax.set_title("Simulation Level CDF of CH4 Emission Rates Estimated by MAES MII",
-                 fontsize=16)
-    ax.tick_params(axis="both", labelsize=16)
-    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0%}"))
-    ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.7)
-
+    # 10) Save
+    os.makedirs(out_dir, exist_ok=True)
     fig.tight_layout()
-    os.makedirs(cdf_output_dir, exist_ok=True)
-    plt.savefig(f"{cdf_output_dir}/combined_CDF_abnormal_{abnormal}.png")
+    fig.savefig(f"{out_dir}/combined_CDF_abnormal_{abnormal}.png", dpi=200)
     plt.close()
+
 
 def generate_comnbined_cdf_plot(config):
     for abnormal in ['on','off']:
@@ -107,8 +140,8 @@ def generate_comnbined_cdf_plot(config):
             logger.warning(f"run into an error({e}), reading {file}")
             return
         df_sorted  = compute_cdf_for_plot(df)
-        percentages, coords = get_threshold_stats(df_sorted, [2, 10, 15, 25, 50, 100])
-        plot_cdf(df_sorted, percentages, coords, abnormal=abnormal, cdf_output_dir=f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions/CDF_Plots")
+        percentages, coords = get_threshold_stats(df_sorted, [2, 10, 15, 25, 50, 100, 200])
+        plot_cdf(df_sorted, percentages, coords, abnormal=abnormal, out_dir=f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions/CDF_Plots")
 
 def find_files(root_dir: str, pattern: str) -> list[str]:
     """Return every file under *root_dir* whose *basename* matches *pattern*."""
@@ -144,7 +177,7 @@ def generate_site_level_pdfs(root_dir, site, abnormal):
     if not files:
         logger.warning(f"Site: {site} does not have PDF_for_site_abnormal_{abnormal}")
         return
-    
+
     logger.info(f"Found {len(files)} file(s).")
 
     combined = combine_pdfs(files)
@@ -193,7 +226,7 @@ def generate_annual_emissions_plot_for_metype(file, species):
     except FileNotFoundError:
         logger.warning(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries for METypes.")
         return
-    
+
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
         return
@@ -221,8 +254,8 @@ def generate_annual_emissions_plot_for_metype(file, species):
     ci_lowers = df['95%_ci_lower'].tolist()
     ci_uppers = df['95%_ci_upper'].tolist()
 
-    err_lower = [mean - low for mean, low in zip(mean_emissions, ci_lowers)]
-    err_upper = [up - mean for mean, up in zip(mean_emissions, ci_uppers)]
+    err_lower = [max(mean - low, 0) for mean, low in zip(mean_emissions, ci_lowers)]
+    err_upper = [max(up - mean, 0) for mean, up in zip(mean_emissions, ci_uppers)]
     yerr = [err_lower, err_upper]
 
     base_dir, csv_filename = os.path.split(file)
@@ -333,11 +366,11 @@ def generate_annual_emissions_plot__site_level(file, species):
     except FileNotFoundError:
         logger.warning(f"Plots cannot be generated because MAES did not find any AnnualEmissions or AggregatedSimulationEmissions summaries for categories.")
         return
-    
+
     except Exception as e:
         logger.info(f"Error reading {file}: {e}")
         return
-    
+
     df = df[df['species'] == species]
 
     if df.empty:
@@ -370,8 +403,8 @@ def generate_annual_emissions_plot__site_level(file, species):
     total_emissions = total_row['mean_emissions']
     ci_lower = total_row['95%_ci_lower']
     ci_upper = total_row['95%_ci_upper']
-    error_low = total_emissions - ci_lower
-    error_high = ci_upper - total_emissions
+    error_low = max(total_emissions - ci_lower, 0)
+    error_high = max(ci_upper - total_emissions, 0)
 
     base_dir, csv_filename = os.path.split(file)
     plot_dir = os.path.join(base_dir, "Plots")
@@ -486,8 +519,8 @@ def generate_annual_emissions_plot_for_modelReadableName(file, species):
     ci_lowers = df['95%_ci_lower'].tolist()
     ci_uppers = df['95%_ci_upper'].tolist()
 
-    err_lower = [mean - low for mean, low in zip(mean_emissions, ci_lowers)]
-    err_upper = [up - mean for mean, up in zip(mean_emissions, ci_uppers)]
+    err_lower = [max(mean - low, 0) for mean, low in zip(mean_emissions, ci_lowers)]
+    err_upper = [max(up - mean, 0) for mean, up in zip(mean_emissions, ci_uppers)]
     yerr = [err_lower, err_upper]
 
     unit = df['unit'].values[0]
@@ -596,7 +629,6 @@ def generate_annual_emissions_plot_unitid_level(file, species):
     # Adjustable Font Size Settings ===
     label_fontsize = 16  # For title, y-label, legend
     tick_fontsize = 16  # For x-ticks and y-ticks
-
     try:
         df = pd.read_csv(file)
         logger.info(file)
@@ -640,8 +672,8 @@ def generate_annual_emissions_plot_unitid_level(file, species):
     ci_lowers = df['95%_ci_lower'].tolist()
     ci_uppers = df['95%_ci_upper'].tolist()
 
-    err_lower = [mean - low for mean, low in zip(mean_emissions, ci_lowers)]
-    err_upper = [up - mean for mean, up in zip(mean_emissions, ci_uppers)]
+    err_lower = [max(mean - low, 0) for mean, low in zip(mean_emissions, ci_lowers)]
+    err_upper = [max(up - mean, 0) for mean, up in zip(mean_emissions, ci_uppers)]
     yerr = [err_lower, err_upper]
 
     # Compute total mean and CI range
@@ -813,7 +845,7 @@ def list_all_files_for_agg_modelReadbleName(folder_path):
     """Reads the site emissions parquet file from a given folder."""
     path = os.path.join(folder_path, 'parquet/siteEmissionsByEquip')
     return pd.read_parquet(path, engine='pyarrow')
-    
+
 def compute_stats_by(species, all_mcRuns, df_base, mode, by):
     df = df_base[df_base['species'] == species]
     if mode == "OFF":
@@ -902,14 +934,14 @@ def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_al
 
     summary_df_md_name = pd.concat(all_results_md_name, ignore_index=True)
     summary_df_md_name = summary_df_md_name.drop(summary_df_md_name[summary_df_md_name["mean_emissions"] == 0 ].index)
-    
+
     summary_df_unitID = pd.concat(all_results_unitID, ignore_index=True)
     summary_df_unitID = summary_df_unitID.drop(summary_df_unitID[summary_df_unitID["mean_emissions"] == 0 ].index)
-    
+
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
-    
+
     output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
-        
+
     os.makedirs(output_folder, exist_ok=True)
     output_path_md_name = os.path.join(output_folder, f'aggregated_sim_emissions_by_modelReadableName_{suffix}')
     output_path_unitID = os.path.join(output_folder, f'aggregated_sim_emissions_by_unitID_{suffix}')
@@ -1096,8 +1128,8 @@ def compute_stats_per_METype(species, all_mcRuns, df_base, mode):
 
     sumdf = mcdf.groupby("METype")['emissions_mtPerYear'].sum()
 
-    ci_lower = mcdf.groupby("METype")['emissions_mtPerYear'].apply(lambda x : np.percentile(x, 2.5))
-    ci_upper = mcdf.groupby("METype")['emissions_mtPerYear'].apply(lambda x : np.percentile(x, 97.5))
+    ci_lower = mcdf.groupby("METype")['emissions_mtPerYear'].apply(lambda x: np.percentile(x, 2.5))
+    ci_upper = mcdf.groupby("METype")['emissions_mtPerYear'].apply(lambda x: np.percentile(x, 97.5))
 
     percentage_of_total = (sumdf / total_species_emissions) * 100
 
@@ -1284,7 +1316,7 @@ def calcInstEmissModelReadableName(df):
 
 
 def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
-    
+
     emissions_colmn="emissions_MetricTonsPerYear"
     emissionsDf = emissionsDf.assign(emissions_MetricTonsPerYear= emissionsDf['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
 
@@ -1346,7 +1378,7 @@ def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
     meTypeDf = meTypeDf.merge(meType_lists, on="METype", how="left")
 
     final_df = pd.concat([mdNameDf,unitIDDF,meTypeDf], ignore_index=True)
-    
+
     total = meTypeDf.sum(numeric_only=True, axis=0)
     total["METype"] = "summed_METype"
     total["unitID"] = "summed_unitID"
@@ -1361,12 +1393,12 @@ def calcMdReadbleNameEmissionsSummary(emissionsDf, species):
     final_df = final_df.drop(final_df[(final_df[ci_lower_header] ==0) & (final_df[ci_upper_header] ==0) & (final_df[mean_header] ==0)].index)
     return final_df.sort_values(["METype"])
 
- 
+
 def calcSiteLevelSummary(emissCatDF, species, confidence_level=95):
 
     emissionsColumn = "emissions_MetricTonsPerYear"
     emissCatDF = emissCatDF.assign(emissions_MetricTonsPerYear= emissCatDF['emissions_USTonsPerYear'] / US_TO_PER_METRIC_TON)
- 
+
     alpha = 100 - float(confidence_level)
 
     ci_lower_col = f"{confidence_level}%_ci_lower"
@@ -1438,11 +1470,11 @@ def calcAnnualEmissSummaryByMEType(emissEquipDF, species, confidence_level=95):
     min = mcEq.groupby("METype")[emissionsColumn].min()
     max = mcEq.groupby("METype")[emissionsColumn].max()
 
-    lower = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, 25))
-    upper = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, 75))
+    lower = mcEq.groupby("METype")[emissionsColumn].apply(lambda x: np.percentile(x, 25))
+    upper = mcEq.groupby("METype")[emissionsColumn].apply(lambda x: np.percentile(x, 75))
 
-    ci_lower = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, alpha / 2))
-    ci_upper = mcEq.groupby("METype")[emissionsColumn].apply(lambda x : np.percentile(x, (100 - alpha / 2)))
+    ci_lower = mcEq.groupby("METype")[emissionsColumn].apply(lambda x: np.percentile(x, alpha / 2))
+    ci_upper = mcEq.groupby("METype")[emissionsColumn].apply(lambda x: np.percentile(x, (100 - alpha / 2)))
 
     medf = medf.merge(min.rename("min"), on=["METype"], how="left")
     medf = medf.merge(max.rename("max"), on=["METype"], how="left")
@@ -1611,10 +1643,10 @@ def plotTs(allTSs, site, pdf, abnormal, config):
     # Plot individual time series
     for df in [t.df for t in tsf]:
         ax[0].plot((df['timestamp'] - min_timestamp) / SECONDSINDAY, df['tsValue'], alpha=0.2, color='royalblue')
-    
+
     # Plot Mean Emissions on the first axis
     plotMeanEmissions(ax[0], mean_emissions, site, abnormal)
-    
+
     ax[1].hist(pdf["tsValue"], density=1, orientation='horizontal', color='royalblue')
     ax[1].set_xlabel('Probability', fontsize=14)
     ax[1].set_ylabel('CH4 kg/h', fontsize=14)
@@ -1639,7 +1671,7 @@ def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=
 
     mcRunSelected = config['mcRunTS']
     mcRunSelected = int(mcRunSelected) if mcRunSelected else 0
-    
+
     if mcRunSelected not in AllMCruns_states:
         logger.info(f"MC Run {mcRunSelected} not found in AllMCruns_states")
         return
@@ -1655,7 +1687,7 @@ def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=
             if mcRunSelected not in AllMCruns:
                 logger.info(f"MC Run {mcRunSelected} not found in AllMCruns")
                 return
-            
+
             tsf = AllMCruns[mcRunSelected]
             tsf = tsf.toFullTimeseries()
 
@@ -1713,7 +1745,7 @@ def generatePDFs(config, df, abnormal, site):
     miiEmiss = config['miiEmiss']
 
     all_false = all(not x for x in [siteEmissions, meType, unitID, miiEmiss])
-    
+
     if all_false or miiEmiss:
         siteEmissions = meType = unitID = miiEmiss = True
 
@@ -1737,7 +1769,7 @@ def generatePDFs(config, df, abnormal, site):
                 continue
             dumpEmissions(meTypepdf, config, "equip_group_level", facID=f"PDFs/site={site}/PDF_for_all_{siMeType}", abnormal=abnormal)
 
-    
+
     if unitID:
         for unitID, unitIDDF in df.groupby('unitID'):
             unitAllMCruns = grouping(dfToGroup=unitIDDF, siteEndSimDF=siteEndSimDF, valueColName="emission")
@@ -1848,7 +1880,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
     statesAndTsPloting = config['statesAndTsPloting']
     simulationEmissions = config['simulationEmissions']
     gen_plots = config['plot']
-    
+
     if config['fullSummaries']:
         annualSummaries = instantaneousSummaries = pdfSummaries = avgDurSummaries = simulationEmissions = True
 
@@ -1857,7 +1889,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
         meType = config['METype']
         unitID = config['unitID']
         pneumatics = config['Pneumatics']
-        
+
         all_false = all(not x for x in [siteEmissions, meType, unitID, pneumatics])
         if all_false:
             siteEmissions = meType = unitID = pneumatics = True
@@ -1866,7 +1898,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF, species="METHANE")
             detailed_emissionsDF = pd.concat([detailed_emissionsDF, calcMdReadbleNameEmissionsSummary(zerosDF, species="ETHANE")])
             dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
-                               
+
         if siteEmissions:
             CategorySummaryDF = calcSiteLevelSummary(emissCatDF, species='METHANE', confidence_level=95)
             CategorySummaryDF = pd.concat([CategorySummaryDF, calcSiteLevelSummary(emissCatDF, species='ETHANE', confidence_level=95)])  # add ethane summary
@@ -1891,17 +1923,17 @@ def generatedCsvSummaries(config, df, site, abnormal):
         AllMCruns_states = grouping(dfToGroup=siteEVDF_state, siteEndSimDF=siteEndSimDF_state, valueColName="state")
 
         # Plot state transitions with mean emissions
-        plotStateTS(config, AllMCruns_states, abnormal=abnormal, site=site, siteEVDF=siteEVDF, siteEndSimDF=siteEndSimDF) 
+        plotStateTS(config, AllMCruns_states, abnormal=abnormal, site=site, siteEVDF=siteEVDF, siteEndSimDF=siteEndSimDF)
 
     if instantaneousSummaries:
         # Get instantaneous emissions summary by modelReadableName
         instEmissByModelReadName = calcInstEmissModelReadableName(emissInstEquipDF)
         dumpEmissions(instEmissByModelReadName, config, "instantEmissions_emissions_summary", facID=f"InstantaneousEmissions/site={site}/", abnormal=abnormal)
-     
-    if pdfSummaries: 
+
+    if pdfSummaries:
         # Get PDF at Site Level for CH4 Emissions
         generatePDFs(config=config, df=df, abnormal=abnormal, site=site)
-    
+
     if avgDurSummaries:
         avgERandDur = createSummaryTable(emissInstEquipDF, species="METHANE")
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF,species="ETHANE")])
@@ -1914,7 +1946,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
     #     generate_site_level_pdfs(root_dir=config['simulationRoot'], site=site, abnormal=abnormal)
 
         # ── simulation-level summaries: run only once per run & mode ──
-    key = (config['simulationRoot'], abnormal)
+    key = (config['simulationRoot'], abnormal.lower())
     if simulationEmissions and key not in _SIM_AGG_DONE:
         run_emissions_summary_pipeline_for_modelReadableName_and_unitID(
             folder=config['simulationRoot'], abnormal=abnormal)
@@ -1935,20 +1967,40 @@ def generatedCsvSummaries(config, df, site, abnormal):
                 plot_annual_emissions_for_modelReadableName(f"{annualSummariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
                 plot_annual_emissions_site_level(f"{annualSummariesPath}/annualEmissions_by_site_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
                 plot_annual_emissions_for_metype(f"{annualSummariesPath}/annualEmissions_by_METype_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                
+
         else:
             logger.warning("Plots cannot be generated because MAES did not find any AnnualEmissions summaries")
 
-        if os.path.exists(similationLevelSummariesPath):
-            for sp in SPECIES:
-                plot_annual_emissions_unitid_level(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_unitID_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_for_modelReadableName(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_site_level(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_category_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_for_metype(f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_METype_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-            generate_comnbined_cdf_plot(config)
-        else:
-            logger.warning("Plots cannot be generated because MAES did not find any  AggregatedSimulationEmissions summaries")
+            # ------------------------------------------------------------------
+            # Aggregated‑simulation plots: run **once** per (simulationRoot, abnormal)
+            # ------------------------------------------------------------------
+            key = (config['simulationRoot'], abnormal.lower())
+
+            if os.path.exists(similationLevelSummariesPath):
+                if key not in _SIM_AGG_DONE:
+                    for sp in SPECIES:
+                        plot_annual_emissions_unitid_level(
+                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_unitID_abnormal_{abnormal.lower()}.csv",
+                            sp, plot_by="file")
+                        plot_annual_emissions_for_modelReadableName(
+                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv",
+                            sp, plot_by="file")
+                        plot_annual_emissions_site_level(
+                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_category_abnormal_{abnormal.lower()}.csv",
+                            sp, plot_by="file")
+                        plot_annual_emissions_for_metype(
+                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_METype_abnormal_{abnormal.lower()}.csv",
+                            sp, plot_by="file")
+
+                    generate_comnbined_cdf_plot(config)
+
+                    # mark as done so later sites skip this work
+                    _SIM_AGG_DONE.add(key)
+                else:
+                    logger.info(f"Skipping aggregated‑simulation plots — already done for {key}")
+            else:
+                logger.warning(
+                    "Plots cannot be generated because MAES did not find any AggregatedSimulationEmissions summaries")
 
 
     return None
-   
