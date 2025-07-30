@@ -1628,7 +1628,7 @@ def plotMeanEmissions(ax, mean_emissions, fac, abnormal):
 
 def calcProbabilitiesAllMCs(tss):
     ts_df = pd.concat([t.df for t in tss.values()], ignore_index=True)
-    combined_ts = ts.TimeseriesRLE(ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=True)
+    combined_ts = ts.TimeseriesRLE(ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=False)
     pdf = combined_ts.toPDF()
     return pdf.data.rename(columns={"value": "tsValue"})
 
