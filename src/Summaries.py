@@ -1961,46 +1961,54 @@ def generatedCsvSummaries(config, df, site, abnormal):
     if gen_plots:
         similationLevelSummariesPath = f"{config['simulationRoot']}/summaries/AggregatedSimulationEmissions"
         annualSummariesPath = f"{config['simulationRoot']}/summaries/AnnualEmissions/site={site}"
+
+        # 1) Per-site annual plots (if available)
         if os.path.exists(annualSummariesPath):
             for sp in SPECIES:
-                plot_annual_emissions_unitid_level(f"{annualSummariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_for_modelReadableName(f"{annualSummariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_site_level(f"{annualSummariesPath}/annualEmissions_by_site_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-                plot_annual_emissions_for_metype(f"{annualSummariesPath}/annualEmissions_by_METype_abnormal_{abnormal.lower()}.csv", sp, plot_by="file")
-
+                plot_annual_emissions_unitid_level(
+                    f"{annualSummariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv",
+                    sp, plot_by="file")
+                plot_annual_emissions_for_modelReadableName(
+                    f"{annualSummariesPath}/annualEmissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv",
+                    sp, plot_by="file")
+                plot_annual_emissions_site_level(
+                    f"{annualSummariesPath}/annualEmissions_by_site_abnormal_{abnormal.lower()}.csv",
+                    sp, plot_by="file")
+                plot_annual_emissions_for_metype(
+                    f"{annualSummariesPath}/annualEmissions_by_METype_abnormal_{abnormal.lower()}.csv",
+                    sp, plot_by="file")
         else:
-            logger.warning("Plots cannot be generated because MAES did not find any AnnualEmissions summaries")
+            logger.warning("AnnualEmissions summaries not found; skipping per-site annual plots.")
 
-            # ------------------------------------------------------------------
-            # Aggregated‑simulation plots: run **once** per (simulationRoot, abnormal)
-            # ------------------------------------------------------------------
-            key = (config['simulationRoot'], abnormal.lower())
+        # 2) Aggregated-simulation plots (run once per (simulationRoot, abnormal))
+        key = (config['simulationRoot'], abnormal.lower())
+        if os.path.exists(similationLevelSummariesPath):
+            if key not in _SIM_AGG_DONE:
+                for sp in SPECIES:
+                    plot_annual_emissions_unitid_level(
+                        f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_unitID_abnormal_{abnormal.lower()}.csv",
+                        sp, plot_by="file")
+                    plot_annual_emissions_for_modelReadableName(
+                        f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv",
+                        sp, plot_by="file")
+                    plot_annual_emissions_site_level(
+                        f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_category_abnormal_{abnormal.lower()}.csv",
+                        sp, plot_by="file")
+                    plot_annual_emissions_for_metype(
+                        f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_METype_abnormal_{abnormal.lower()}.csv",
+                        sp, plot_by="file")
 
-            if os.path.exists(similationLevelSummariesPath):
-                if key not in _SIM_AGG_DONE:
-                    for sp in SPECIES:
-                        plot_annual_emissions_unitid_level(
-                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_unitID_abnormal_{abnormal.lower()}.csv",
-                            sp, plot_by="file")
-                        plot_annual_emissions_for_modelReadableName(
-                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_modelReadableName_abnormal_{abnormal.lower()}.csv",
-                            sp, plot_by="file")
-                        plot_annual_emissions_site_level(
-                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_category_abnormal_{abnormal.lower()}.csv",
-                            sp, plot_by="file")
-                        plot_annual_emissions_for_metype(
-                            f"{similationLevelSummariesPath}/aggregated_sim_emissions_by_METype_abnormal_{abnormal.lower()}.csv",
-                            sp, plot_by="file")
+                # Make sure the combined PDFs exist so the CDF plot can be generated
+                for abn in ["on", "off"]:
+                    agg_pdf = f"{similationLevelSummariesPath}/aggregated_sim_PDFs_abnormal_{abn}.csv"
+                    if not os.path.exists(agg_pdf):
+                        generate_site_level_pdfs(root_dir=config['simulationRoot'], site=None, abnormal=abn)
 
-                    generate_comnbined_cdf_plot(config)
-
-                    # mark as done so later sites skip this work
-                    _SIM_AGG_DONE.add(key)
-                else:
-                    logger.info(f"Skipping aggregated‑simulation plots — already done for {key}")
+                generate_comnbined_cdf_plot(config)
+                _SIM_AGG_DONE.add(key)
             else:
-                logger.warning(
-                    "Plots cannot be generated because MAES did not find any AggregatedSimulationEmissions summaries")
-
+                logger.info(f"Skipping aggregated-simulation plots — already done for {key}")
+        else:
+            logger.warning("AggregatedSimulationEmissions summaries not found; skipping aggregated-simulation plots.")
 
     return None
