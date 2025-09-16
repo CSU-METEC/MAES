@@ -1839,12 +1839,13 @@ def fillEmptyDataWithZero(df,emissionCol):
     missing = []
     facID = df['facilityID'].unique()[0]
     site = df['site'].unique()[0]
+    
 
     for mc in mcRuns:
         for uid in unitIDs:
             METype, emitterID = unit_info[uid]['METype'], unit_info[uid]['emitterID']
             group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
-            group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
+            # group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
             if METype not in model_dict:
                 # Add missing species rows for units without a defined model dictionary.
                 pres_species = set(group['species'].unique())
@@ -1865,6 +1866,9 @@ def fillEmptyDataWithZero(df,emissionCol):
     df_missing = pd.DataFrame(missing)
     df_complete = pd.concat([df, df_missing], ignore_index=True)
     df_complete[emissionCol] = df_complete[emissionCol].fillna(0)
+    # df.to_csv('C:\METEC\MAES_development\output\TEST\df.csv')
+    # df_missing.to_csv('C:\METEC\MAES_development\output\TEST\df_missing.csv')
+    # df_complete.to_csv('C:\METEC\MAES_development\output\TEST\df_complete.csv')
     return df_complete
 
 def generatedCsvSummaries(config, df, site, abnormal):

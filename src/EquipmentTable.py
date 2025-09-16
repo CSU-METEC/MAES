@@ -70,7 +70,7 @@ class EquipmentTableEntry(ABC):
                               'latitude', 'longitude',
                               'implCategory', 'implClass',
                               'modelID', 'modelCategory', 'modelSubcategory', 'modelEmissionCategory', 'modelReadableName',
-                              'equipmentCount',
+                              'equipmentCount', 'operator', 'psno',
                               'mcRunNum'
                               ]
 
@@ -86,6 +86,8 @@ class EquipmentTableEntry(ABC):
                  equipmentType=None,
                  mcRunNum=-1,
                  key=None,
+                 operator=None,
+                 psno=None,
                  **kwargs
                  ):
         super().__init__(**kwargs)
@@ -109,6 +111,8 @@ class EquipmentTableEntry(ABC):
         self.modelEmissionCategory = modelEmissionCategory
         self.equipmentCount = equipmentCount
         self.mcRunNum = mcRunNum
+        self.operator = operator
+        self.psno = psno
 
         simdm = sdm.SimDataManager.getSimDataManager()
         # simdm should be None only for testing
