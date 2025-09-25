@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter
-from scipy.stats import lognorm, fisk, norm
-from scipy.optimize import minimize
+from scipy.stats import norm
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,82 +46,161 @@ def get_threshold_stats(df_sorted: pd.DataFrame, thresholds: list[int]):
     return percentages, coords
 
 
-
-# logistic mixture CDF in log‑space
+# ---------- Continuous (positive) part ----------
 def mix2_lognorm_cdf(x, w, mu1, s1, mu2, s2):
     z1 = (np.log(x) - mu1) / s1
     z2 = (np.log(x) - mu2) / s2
     return w * norm.cdf(z1) + (1 - w) * norm.cdf(z2)
 
-def plot_cdf(df_sorted, percentages, threshold_coords,
-             abnormal, out_dir):
+def zi_mix2_cdf(x, p0, w, mu1, s1, mu2, s2):
+    """Zero-inflated mixture CDF on x>0."""
+    return p0 + (1.0 - p0) * mix2_lognorm_cdf(x, w, mu1, s1, mu2, s2)
+
+
+# ---------- Fast EM in log-space (weighted 2-Gaussian) ----------
+def em_gauss_mix_1d(y, wts, max_iter=200, tol=1e-6, sigma_floor=1e-3):
+    """
+    EM for a 1D 2-Gaussian mixture on y=log(x) with sample weights wts.
+    Returns (pi, mu1, s1, mu2, s2) with mu1 <= mu2.
+    """
+    W = float(np.sum(wts))
+    if W <= 0:
+        raise ValueError("Sum of weights must be > 0")
+
+    # Init via quantiles and weighted std
+    q30, q80 = np.quantile(y, [0.30, 0.80])
+    mu1, mu2 = q30, q80
+    ybar = np.average(y, weights=wts)
+    s_init = np.sqrt(np.average((y - ybar) ** 2, weights=wts))
+    s1 = s2 = max(s_init, 1e-1, sigma_floor)
+    pi = 0.5
+
+    for _ in range(max_iter):
+        n1 = norm.pdf(y, loc=mu1, scale=max(s1, sigma_floor))
+        n2 = norm.pdf(y, loc=mu2, scale=max(s2, sigma_floor))
+        num1 = pi * n1
+        num2 = (1 - pi) * n2
+        denom = num1 + num2 + 1e-300
+        r1 = num1 / denom
+        r2 = 1.0 - r1
+
+        wr1 = wts * r1
+        wr2 = wts * r2
+        sum1 = wr1.sum(); sum2 = wr2.sum()
+
+        pi_new  = sum1 / (sum1 + sum2)
+        mu1_new = (wr1 @ y) / max(sum1, 1e-300)
+        mu2_new = (wr2 @ y) / max(sum2, 1e-300)
+        s1_new  = np.sqrt(np.sum(wr1 * (y - mu1_new)**2) / max(sum1, 1e-300))
+        s2_new  = np.sqrt(np.sum(wr2 * (y - mu2_new)**2) / max(sum2, 1e-300))
+
+        delta = max(
+            abs(pi_new - pi),
+            abs(mu1_new - mu1),
+            abs(mu2_new - mu2),
+            abs(s1_new - s1),
+            abs(s2_new - s2),
+        )
+        pi, mu1, mu2 = pi_new, mu1_new, mu2_new
+        s1, s2 = max(s1_new, sigma_floor), max(s2_new, sigma_floor)
+        if delta < tol:
+            break
+
+    # Order by mean
+    if mu1 > mu2:
+        mu1, mu2 = mu2, mu1
+        s1, s2 = s2, s1
+        pi = 1 - pi
+    return pi, mu1, s1, mu2, s2
+
+
+# ---------- Plotting with zero-inflated EM fit ----------
+def plot_cdf(df_sorted, percentages, threshold_coords, abnormal, out_dir):
     # 1) Load & clean
     x = df_sorted["CH4_EmissionRate_kg/h"].to_numpy(dtype=float)
     F = df_sorted["cdf"].to_numpy(dtype=float)
     mask = (x > 0) & np.concatenate([[True], np.diff(F) > 0])
     xF, FF = x[mask], F[mask]
 
-    # 2) Sub‑sample 200 points for fitting SSE
-    idx = np.linspace(0, len(xF)-1, min(200, len(xF))).astype(int)
-    xS, FS = xF[idx], FF[idx]
+    # Weights & totals for emissions calc
+    weights_rows = df_sorted["probability"].to_numpy(dtype=float)
+    weighted = (df_sorted["CH4_EmissionRate_kg/h"] * df_sorted["probability"]).to_numpy(dtype=float)
+    total_emis = weighted.sum()
+    x_all = df_sorted["CH4_EmissionRate_kg/h"].to_numpy(dtype=float)
 
-    # 3) Define SSE on subsample
-    def sse(p):
-        w, mu1, s1, mu2, s2 = p
-        if not (0< w<1 and s1>0 and s2>0):
-            return 1e9
-        return np.sum((mix2_lognorm_cdf(xS, *p) - FS)**2)
+    # Empirical mean & 95% CI (weighted)
+    wsum = np.sum(weights_rows)
+    emp_mean = np.sum(x_all * weights_rows) / wsum if wsum > 0 else np.nan
+    q_low, q_high = np.interp([0.025, 0.975], FF, xF, left=xF[0], right=xF[-1])
 
-    # 4) Initial guesses & bounds
-    init = [
-        0.8,
-        np.log(np.percentile(xS, 1)), 1.0,
-        np.log(np.percentile(xS, 50)), 1.0
-    ]
-    bnds = [
-        (1e-3, 0.999),
-        (None, None), (1e-3, 5.0),
-        (None, None), (1e-3, 5.0),
-    ]
+    # 2) Zero inflation: mass at 0 (or ≤ first positive) from ECDF
+    p0 = float(FF[0]) if len(FF) else 0.0
 
-    # 5) Fit with L‑BFGS‑B
-    res = minimize(sse, init, bounds=bnds,
-                   method='L-BFGS-B',
-                   options={'maxiter':200, 'ftol':1e-6})
-    w, mu1, s1, mu2, s2 = res.x
+    # 3) Fit positive support via EM (fast)
+    fit_mask = np.isfinite(x_all) & (x_all > 0) & np.isfinite(weights_rows) & (weights_rows > 0)
+    x_pos = x_all[fit_mask]
+    w_pos = weights_rows[fit_mask]
 
-    # 6) Begin plot
-    fig, ax = plt.subplots(figsize=(10,6))
+    if x_pos.size >= 2 and np.sum(w_pos) > 0:
+        # Aggregate duplicates for speed
+        uniq_x, inv = np.unique(x_pos, return_inverse=True)
+        wts = np.bincount(inv, weights=w_pos).astype(float)
+        y = np.log(np.clip(uniq_x, 1e-12, None))
+        w_mix, mu1, s1, mu2, s2 = em_gauss_mix_1d(y, wts)
+    else:
+        # Degenerate fallback if not enough positive support
+        m = np.log(max(np.median(xF), 1e-12)) if len(xF) else 0.0
+        s = 0.5
+        w_mix, mu1, s1, mu2, s2 = 0.5, m, s, m, s
+
+    # 4) Plot
+    fig, ax = plt.subplots(figsize=(10, 6))
     ax.set_xscale('log')
-    ax.plot(xF, FF, 'k', label="Empirical CDF")
+    ax.plot(
+        xF, FF, 'k',
+        label=(f"Empirical CDF (mean={emp_mean:.2f} kg/h, "
+               f"95% CI [{q_low:.2f}, {q_high:.2f}] kg/h)")
+    )
 
-    # 7) Plot fitted mixture on a thinner grid
-    xg = np.logspace(np.log10(xF.min()), np.log10(xF.max()), 250)
-    ax.plot(xg, mix2_lognorm_cdf(xg, w, mu1, s1, mu2, s2),
-            'r--', lw=2,
-            label=(f"Mix2‑lognorm fit: w={w:.2f}, "
-                   f"μ₁={mu1:.2f}, σ₁={s1:.2f}, "
-                   f"μ₂={mu2:.2f}, σ₂={s2:.2f}"))
+    xg = np.logspace(np.log10(max(xF.min(), 1e-12)), np.log10(xF.max()), 300)
+    Fg = zi_mix2_cdf(xg, p0, w_mix, mu1, s1, mu2, s2)
+    ax.plot(
+        xg, Fg, 'r--', lw=2,
+        label=(f"Zero-inflated 2-lognormal CDF fit:\n"
+               f"p₀={p0:.2f}, w={w_mix:.2f}, μ₁={mu1:.2f}, σ₁={s1:.2f}, "
+               f"μ₂={mu2:.2f}, σ₂={s2:.2f}")
+    )
 
-    # 8) Threshold lines
+    # 5) Threshold lines (show % rates ≤T and % emissions >T)
     cmap = plt.get_cmap('tab10')
+    total_emis = max(total_emis, 1e-300)
     for i, (thr, _) in enumerate(threshold_coords):
-        pct = percentages[thr]
-        ax.axvline(thr, color=cmap(i),
-                   ls='--', lw=1,
-                   label=f"{pct:.2f}% < {thr} kg/h")
+        # % of site-level emission rates ≤T from empirical CDF
+        p_rates_le = 100.0 * np.interp(thr, xF, FF, left=FF[0], right=FF[-1])
+        if isinstance(percentages, dict) and thr in percentages:
+            p_rates_le = percentages[thr]
+        # % of total emissions strictly >T
+        emis_share_gt = (weighted[x_all > thr].sum() / total_emis) * 100.0
 
-    # 9) Cosmetics
-    ax.legend(loc="upper left", fontsize=10, title="CDF & Thresholds")
-    ax.set_xlabel("CH₄ Emission Rate (kg/h, log scale)", fontsize=14)
+        ax.axvline(
+            thr, color=cmap(i), ls='--', lw=1,
+            label=f"{thr:g} kg/h: {p_rates_le:.2f}% | {emis_share_gt:.2f}%"
+        )
+
+    # 6) Cosmetics
+    ax.legend(
+        loc="upper left", fontsize=10,
+        title="Thresholds (T): % of Site-level Emission Rates ≤T | % of Total Emissions >T"
+    )
+    ax.set_xlabel("CH4 Emission Rate (kg/h, log scale)", fontsize=14)
     ax.set_ylabel("Cumulative Probability", fontsize=14)
-    ax.set_title(f"CDF of CH₄ Emission Rates ({abnormal})", fontsize=16)
+    ax.set_title(f"CDF of CH4 Emission Rates (Abnormal {abnormal.capitalize()})", fontsize=16)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0%}"))
     ax.tick_params(labelsize=12)
     ax.grid(which='both', ls='--', lw=0.5, alpha=0.7)
     ax.margins(x=0.05, y=0.15)
 
-    # 10) Save
+    # 7) Save
     os.makedirs(out_dir, exist_ok=True)
     fig.tight_layout()
     fig.savefig(f"{out_dir}/combined_CDF_abnormal_{abnormal}.png", dpi=200)
