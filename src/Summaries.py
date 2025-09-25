@@ -1840,6 +1840,23 @@ def fillEmptyDataWithZero(df,emissionCol):
     facID = df['facilityID'].unique()[0]
     site = df['site'].unique()[0]
     
+    newDFMissing = pd.DataFrame()
+    for keyN, valN in model_dict.items():
+        valuesDF = pd.DataFrame(valN)
+        valuesDF['METype'] = pd.Series(np.full(len(valN), keyN))
+        newDFMissing = pd.concat([newDFMissing, valuesDF], ignore_index=True)
+        i = 10
+
+    # for mc in mcRuns:
+    #     mcNow = me_df[me_df['mcRun'] == mc]
+    #     newDFMissing['mcRun'] = mc
+    # i = 10
+    # params = [mcRun, unitID, species, modelReadableName - model emission cateogry - METype]
+    unitIDs = me_df['unitID'].unique()
+    mcRuns = me_df['mcRun'].unique()
+    import itertools
+    combs = list(itertools.product(unitIDs, mcRuns))
+    combsDF = pd.DataFrame(combs)
 
     for mc in mcRuns:
         for uid in unitIDs:
@@ -1872,8 +1889,8 @@ def fillEmptyDataWithZero(df,emissionCol):
     return df_complete
 
 def generatedCsvSummaries(config, df, site, abnormal):
-     # Get DFs for emissions for the summaries
-    zerosDF = fillEmptyDataWithZero(df, emissionCol="emissions_USTonsPerYear")
+    zerosDF = df
+    
     emissCatDF = Pl.processEmissionsCat(zerosDF)
     emissInstEquipDF = Pl.processInstantEquipEmissions(df)
 

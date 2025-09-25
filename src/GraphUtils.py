@@ -47,42 +47,7 @@ def mergeEmissionRecords(eventDF, tsTable, gascomp, debugEventList=False):
                                emissionUnits='kg/s',
                                site=emEmTsDF['site'].astype(str))
     
-    EMISSION_EVENT_PIVOT_LIST = [
-        'mcRun',
-        'facilityID',
-        'unitID',
-        'emitterID',
-        'site',
-        'command',
-        'timestamp',
-        'duration',
-        'nextTS',
-        'species',
-        'tsUnits',
-        'gcUnits',
-        'emissionUnits'
-    ]
-
-    emPT = emEmTsDF.pivot_table(index=EMISSION_EVENT_PIVOT_LIST,
-                                values=['emission', 'eventID'],
-                                aggfunc={'emission': 'sum', 'eventID': 'first'})
-    if debugEventList:
-        eventAggFunc = lambda x: list(x.unique())
-    else:
-        eventAggFunc = 'count'
-
-    emPT2 = emEmTsDF.pivot_table(index=EMISSION_EVENT_PIVOT_LIST,
-                                 values='eventID',
-                                 aggfunc=eventAggFunc).rename(columns={'eventID': 'eventList'})
-
-    emPTRet = (emPT.merge(emPT2, left_index=True, right_index=True)
-               .reset_index()
-               .sort_values(['mcRun', 'eventID'])
-               # set the tsValue & gcValue fields to nan -- they are no longer valid if there were any aggregations
-               .assign(tsValue=np.nan, gcValue=np.nan)
-               )
-
-    return emPTRet
+    return emEmTsDF
 
 def readCompleteEvents(config):
     eventDF, tsTable, gascomp, metadata, config = readCoreTables(config, config['studyName'], config['runNumber'])

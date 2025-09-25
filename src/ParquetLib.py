@@ -520,6 +520,7 @@ def postprocess(config):
             site = df['site'].unique()[0]
             postProcessParquetResults(config, df, site)
 
+
 def getParquetMetadata(parquetDir):
     PARQUET_RE = re.compile(r'events\/site=(?P<site>.*)\/mcRun=(?P<mcRun>.*)')
 
