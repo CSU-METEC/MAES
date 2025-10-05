@@ -1967,8 +1967,27 @@ def fillEmptyDataWithZero(df,emissionCol):
     # df_complete.to_csv('C:\METEC\MAES_development\output\TEST\df_complete.csv')
     return df_complete
 
+def getBetterZeros(df):
+    # mrn = df['modelReadableName'].unique()
+    # runs = df['mcRun'].unique()
+    # fullIndex = pd.MultiIndex.from_product([mrn, runs], names=["modelReadableName", "mcRun"]).to_frame(index=False)
+    # zerosDF = fullIndex.merge(df, on=["modelReadableName", "mcRun"], how="left").fillna(0)
+    colsForEmpty = ["modelReadableName", "unitID", "facilityID",
+                     "site", "species", "METype", "modelEmissionCategory"]
+    colsForMerge = colsForEmpty.copy()
+    colsForMerge.append("mcRun")
+    emitterColsToFill = ['emission', 'emissions_USTonsPerYear', 'emissions_kgPerH']
+
+    pairs = df[colsForEmpty].drop_duplicates()
+    runs = df['mcRun'].unique()
+    full_grid = pairs.merge(pd.DataFrame({'mcRun': runs}), how="cross")
+    df_full = full_grid.merge(df, on=colsForMerge, how="left")
+    df_full[emitterColsToFill] = df_full[emitterColsToFill].fillna(0)
+    return df_full
+
 def generatedCsvSummaries(config, df, site, abnormal):
-    zerosDF = df
+    # zerosDF = df
+    zerosDF = getBetterZeros(df)
     
     emissCatDF = Pl.processEmissionsCat(zerosDF)
     emissInstEquipDF = Pl.processInstantEquipEmissions(df)

@@ -350,6 +350,13 @@ def readParquetEvents(config, site=None, mcRun=None, mergeGC=False, species=None
     mdDF['site'] = mdDF['site'].astype('str')
     retDF['site'] = retDF['site'].astype('str')
     retDF = retDF.merge(mdDF, how='left', on=['facilityID', 'unitID', 'emitterID', 'mcRun', 'site'])
+    # add psno and operator name in emissions
+    operatorInfo = mdDF[mdDF['equipmentType'] == 'MEETFacility'][['facilityID', 'operator', 'psno']].drop_duplicates()
+    # newRetDF = retDF.drop(columns=['psno','operator']).merge(operatorInfo, on='facilityID', how='left')
+    psno_map = operatorInfo.set_index('facilityID')['psno']
+    op_map   = operatorInfo.set_index('facilityID')['operator']
+    retDF['psno'] = retDF['psno'].fillna(retDF['facilityID'].map(psno_map))
+    retDF['operator'] = retDF['operator'].fillna(retDF['facilityID'].map(op_map))
 
     return retDF
 
@@ -452,6 +459,12 @@ def filterAbnormalEmissions(df):
     df = df[df['emitterID'].isin(valid_emitter_ids)]
     return df
 
+def addPsnoOperatorToParquets(retDF, psnoMap, operatorMap):
+
+    retDF['psno'] = retDF['psno'].fillna(retDF['facilityID'].map(psnoMap))
+    retDF['operator'] = retDF['operator'].fillna(retDF['facilityID'].map(operatorMap))
+    return retDF
+
 def postProcessParquetResults(config, df, site):
     simDuration = config['simDurationDays']
     df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
@@ -461,13 +474,20 @@ def postProcessParquetResults(config, df, site):
     total_years = simDuration / u.DAYS_PER_YEAR  # Assuming u.DAYS_PER_YEAR is defined in Units module
     avg_frequency = total_events / total_years
 
+    operatorInfo = df[['facilityID', 'operator', 'psno']].drop_duplicates()
+
     # Get DFs for emissions for the parquet files
     logging.info("Creating Parquet Files for Emission by Categories for...")
     emissCatDFParq = processEmissionsCat(df)
+    emissCatDFParq = emissCatDFParq.merge(operatorInfo, on='facilityID')
     logging.info("Creating Parquet Files for Emission by Equipment...")
     emissEquipDFParq = processEquipEmissions(df)
+    emissEquipDFParq = emissEquipDFParq.merge(operatorInfo, on='facilityID')
     logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
     emissInstEquipDFParq = processInstantEquipEmissions(df)
+    emissInstEquipDFParq = emissInstEquipDFParq.merge(operatorInfo, on='facilityID')
+    
+
     toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
     toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
     toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
