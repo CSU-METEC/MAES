@@ -126,12 +126,12 @@ def postProcessParquetResultsFromParquetSection(config, df, site):
     logging.info("Creating Parquet Files for Emission by Equipment...")
     emissEquipDFParq = processEquipEmissions(df)
     emissEquipDFParq = emissEquipDFParq.merge(operatorInfo, on='facilityID')
-    emissEquipDFParq ['psno'] = emissEquipDFParq ['psno'].astype(str)
+    emissEquipDFParq['psno'] = emissEquipDFParq ['psno'].astype(str)
 
     logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
     emissInstEquipDFParq = processInstantEquipEmissions(df)
     emissInstEquipDFParq = emissInstEquipDFParq.merge(operatorInfo, on='facilityID')
-    emissInstEquipDFParq ['psno'] = emissInstEquipDFParq ['psno'].astype(str)
+    emissInstEquipDFParq['psno'] = emissInstEquipDFParq ['psno'].astype(str)
     
     toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
     toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
@@ -497,7 +497,7 @@ def processEquipEmissions(df):
 def processInstantEquipEmissions(df):
     df['emissions_kgPerH'] = df['emission'] * SECONDSINHOUR
     df = df[['site', 'facilityID', 'mcRun', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory',
-             'timestamp', 'duration', 'species', 'emission', 'emissions_kgPerH', 'emitterID']]
+             'timestamp', 'duration', 'species', 'emission', 'emissions_kgPerH', 'emitterID', 'emissions_USTonsPerYear']]
     newColumnNames = {'emission': 'emissions_kgPerS', 'duration': 'duration_s', 'timestamp': 'timestamp_s'}
     df.rename(columns=newColumnNames, inplace=True)
     df = df[df['emissions_kgPerS'] > 0]
