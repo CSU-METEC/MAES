@@ -93,6 +93,55 @@ def toParquet(config):
         toBaseParquetFullConfig(config, metadata,         'parquetMetadataDS')
         toBaseParquetFullConfig(config, summaryDF,        'parquetSummaryDS')
 
+    
+    eventDF2 = readParquetEvents(config,
+                                     site=config['siteName'],
+                                     mergeGC=True,
+                                     species=['METHANE', 'ETHANE'],
+                                     additionalEventFilters=[('command', '=', 'EMISSION')])
+    
+    
+    for fac, df in eventDF2.groupby('facilityID'):
+        site = df['site'].unique()[0]
+        postProcessParquetResultsFromParquetSection(config, df, site)
+
+    
+def postProcessParquetResultsFromParquetSection(config, df, site):
+    simDuration = config['simDurationDays']
+    df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
+
+    operatorInfo = df[['facilityID', 'operator', 'psno']].drop_duplicates()
+
+    avg_duration = df[df['command'] == 'EMISSION']['duration'].mean()
+    total_events = len(df[df['command'] == 'EMISSION'])
+    total_years = simDuration / u.DAYS_PER_YEAR  # Assuming u.DAYS_PER_YEAR is defined in Units module
+    avg_frequency = total_events / total_years
+
+    # Get DFs for emissions for the parquet files
+    logging.info("Creating Parquet Files for Emission by Categories for...")
+    emissCatDFParq = processEmissionsCat(df)
+    emissCatDFParq = emissCatDFParq.merge(operatorInfo, on='facilityID')
+    emissCatDFParq['psno'] = emissCatDFParq['psno'].astype(str)
+
+    logging.info("Creating Parquet Files for Emission by Equipment...")
+    emissEquipDFParq = processEquipEmissions(df)
+    emissEquipDFParq = emissEquipDFParq.merge(operatorInfo, on='facilityID')
+    emissEquipDFParq ['psno'] = emissEquipDFParq ['psno'].astype(str)
+
+    logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
+    emissInstEquipDFParq = processInstantEquipEmissions(df)
+    emissInstEquipDFParq = emissInstEquipDFParq.merge(operatorInfo, on='facilityID')
+    emissInstEquipDFParq ['psno'] = emissInstEquipDFParq ['psno'].astype(str)
+    
+    toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
+    toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
+    toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
+    avg_data = pd.DataFrame({
+        'facilityID': df['facilityID'].unique(),
+        'average_duration_days': avg_duration,
+        'average_annual_frequency': avg_frequency
+    })
+    toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
 
 
 def toFilter(varName, var):
@@ -469,34 +518,27 @@ def postProcessParquetResults(config, df, site):
     simDuration = config['simDurationDays']
     df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
 
-    avg_duration = df[df['command'] == 'EMISSION']['duration'].mean()
-    total_events = len(df[df['command'] == 'EMISSION'])
-    total_years = simDuration / u.DAYS_PER_YEAR  # Assuming u.DAYS_PER_YEAR is defined in Units module
-    avg_frequency = total_events / total_years
+    # avg_duration = df[df['command'] == 'EMISSION']['duration'].mean()
+    # total_events = len(df[df['command'] == 'EMISSION'])
+    # total_years = simDuration / u.DAYS_PER_YEAR  # Assuming u.DAYS_PER_YEAR is defined in Units module
+    # avg_frequency = total_events / total_years
 
-    operatorInfo = df[['facilityID', 'operator', 'psno']].drop_duplicates()
-
-    # Get DFs for emissions for the parquet files
-    logging.info("Creating Parquet Files for Emission by Categories for...")
-    emissCatDFParq = processEmissionsCat(df)
-    emissCatDFParq = emissCatDFParq.merge(operatorInfo, on='facilityID')
-    logging.info("Creating Parquet Files for Emission by Equipment...")
-    emissEquipDFParq = processEquipEmissions(df)
-    emissEquipDFParq = emissEquipDFParq.merge(operatorInfo, on='facilityID')
-    logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
-    emissInstEquipDFParq = processInstantEquipEmissions(df)
-    emissInstEquipDFParq = emissInstEquipDFParq.merge(operatorInfo, on='facilityID')
-    
-
-    toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
-    toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
-    toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
-    avg_data = pd.DataFrame({
-        'facilityID': df['facilityID'].unique(),
-        'average_duration_days': avg_duration,
-        'average_annual_frequency': avg_frequency
-    })
-    toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
+    # # Get DFs for emissions for the parquet files
+    # logging.info("Creating Parquet Files for Emission by Categories for...")
+    # emissCatDFParq = processEmissionsCat(df)
+    # logging.info("Creating Parquet Files for Emission by Equipment...")
+    # emissEquipDFParq = processEquipEmissions(df)
+    # logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
+    # emissInstEquipDFParq = processInstantEquipEmissions(df)
+    # toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
+    # toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
+    # toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
+    # avg_data = pd.DataFrame({
+    #     'facilityID': df['facilityID'].unique(),
+    #     'average_duration_days': avg_duration,
+    #     'average_annual_frequency': avg_frequency
+    # })
+    # toBaseParquet(config, avg_data, 'averageEmissionMetrics', partition_cols=['facilityID'])
 
     #Check for abnormal condition
     if not config['abnormal']:
@@ -520,7 +562,7 @@ def postProcessParquetResults(config, df, site):
         raise(ValueError("abnormal value should be on or off"))
 
 
-    return None  # to aggregate stats across sites
+    return None  # to aggregate stats across site
 
 
 def postprocess(config):
