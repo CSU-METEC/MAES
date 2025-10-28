@@ -3719,7 +3719,7 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
                  **kwargs):
         super().__init__(**kwargs)
         self.activityDistribution = activityDistribution
-        self.fluid = fluid
+        self.fluid = fluid.strip()
         self.vaporFF = 'Vapor'
         self.flowGCTag = 'Tank'
         self.gcTag = f"{self.flowGCTag}"
