@@ -2,6 +2,7 @@ import pandas as pd
 import AppUtils as au
 from Timer import Timer
 import pyarrow.parquet as pq
+import pyarrow.lib as pl
 import GraphUtils as gu
 import logging
 import Units as u
@@ -9,6 +10,8 @@ from pathlib import Path
 import re
 import urllib.parse as up
 import Summaries as sm
+import json
+import pyarrow as pa
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +30,7 @@ SECONDSINHOUR = 3600
 US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 
+
 def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
     df.to_parquet(pqBase, partition_cols=partition_cols,
@@ -34,6 +38,17 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
                   existing_data_behavior='overwrite_or_ignore')
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
+    # ── Skip any empty write ──────────────────────
+    if df is None or df.empty:
+        site_hint = None
+        if df is not None and 'site' in df.columns and df['site'].nunique() == 1:
+            site_hint = df['site'].iloc[0]
+        msg = f"Skip {dsName}: empty DataFrame"
+        if site_hint:
+            msg += f" (site = {site_hint})"
+        logger.info(msg)
+        return
+
     pqBase = config[dsName]
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
@@ -127,6 +142,105 @@ def _extendDSName(ds, site, mcRun):
         else:
             return dsPath / f'site={site}/mcRun={mcRun}'
 
+def safe_read_parquet_summary(config, *, site=None, mcRun=None):
+    """
+    Robust reader for summary parquet partitions.
+
+    Order of attempts
+    -----------------
+    1.  ParquetLib.readParquetSummary  – the fast path.
+    2.  pyarrow.parquet.ParquetDataset.read() – still fast, but may raise the
+        ArrowNotImplementedError if schemas clash.
+    3.  Manual per-file read + pandas.concat – always works, a bit slower.
+
+    Returns
+    -------
+    pandas.DataFrame
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # Build the on-disk path for the requested slice
+    # ─────────────────────────────────────────────────────────────────────────
+    base_dir = getattr(config, "parquetSummaryDS", None) or config["parquetSummaryDS"]
+    base_path = Path(base_dir)
+
+    if site:
+        base_path = base_path / f"site={up.quote(site)}"
+    if mcRun is not None:
+        base_path = base_path / f"mcRun={mcRun}"
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 1. Try the library helper (fastest)
+    # ─────────────────────────────────────────────────────────────────────────
+    try:
+        import ParquetLib as Pl  # local import avoids circularity at import-time
+        return Pl.readParquetSummary(config, site=site, mcRun=mcRun)
+    except Exception:
+        # Anything thrown here will be retried with the slower fallbacks
+        pass
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 2. Try pyarrow’s dataset reader (still vectorised & fast)
+    # ─────────────────────────────────────────────────────────────────────────
+    try:
+        ds = pq.ParquetDataset(str(base_path), use_legacy_dataset=False)
+        return ds.read().to_pandas()
+    except Exception:
+        # On ArrowNotImplementedError or other merge issues we fall through
+        pass
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 3. Last-resort: read each physical file separately and concat
+    # ─────────────────────────────────────────────────────────────────────────
+    parquet_files = list(base_path.rglob("*.parquet"))
+    if not parquet_files:
+        raise FileNotFoundError(str(base_path))
+
+    frames = []
+    for fp in parquet_files:
+        table = pq.read_table(fp)  # each individual file has a valid schema
+        frames.append(table.to_pandas())  # convert here to sidestep Arrow merging
+
+    df = pd.concat(frames, ignore_index=True, sort=False)
+
+    # Ensure partition columns are present for downstream code
+    if site and "site" not in df.columns:
+        df["site"] = site
+    if mcRun is not None and "mcRun" not in df.columns:
+        df["mcRun"] = mcRun
+
+    return df
+
+def continueReadPQFile(pqBase, **kwargs):
+    try:
+        ds = pq.ParquetDataset(str(pqBase), use_legacy_dataset=False, **kwargs)
+        return ds.read().to_pandas()
+    except Exception as e:
+        # On ArrowNotImplementedError or other merge issues we fall through
+        pass
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # 3. Last-resort: read each physical file separately and concat
+    # ─────────────────────────────────────────────────────────────────────────
+    parquet_files = list(pqBase.rglob("*.parquet"))
+    if not parquet_files:
+        raise FileNotFoundError(str(pqBase))
+
+    frames = []
+    for fp in parquet_files:
+        table = pq.read_table(fp)  # each individual file has a valid schema
+        frames.append(table.to_pandas())  # convert here to sidestep Arrow merging
+
+    df = pd.concat(frames, ignore_index=True, sort=False)
+
+    # Ensure partition columns are present for downstream code
+    if site and "site" not in df.columns:
+        df["site"] = site
+    if mcRun is not None and "mcRun" not in df.columns:
+        df["mcRun"] = mcRun
+
+    return df
+
+
 def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=None, sort_by=None, additionalFilters=None):
     if additionalFilters is not None:
         filter = additionalFilters
@@ -185,8 +299,31 @@ def readParquetGasComposition(config, site=None, mcRun=None, species=None):
 def readParquetMetadata(config, site=None, mcRun=None, additionalMDFilters=None):
     return baseReadParquetFullConfig(config, 'parquetMetadataDS', site=site, mcRun=mcRun, additionalFilters=additionalMDFilters)
 
+def _safeReadParquetSummary(config, dsName, site=None, mcRun=None):
+    try:
+        return baseReadParquetFullConfig(config, 'parquetSummaryDS', site=site, mcRun=mcRun)
+    except pl.ArrowNotImplementedError:
+        logger.warning(f"Got ArrowNotImplementedError, {dsName=}, {site=}, {mcRun=}")
+    pqBase = config[dsName]
+    pqPath = Path(pqBase)
+    parquet_files = list(pqPath.rglob("*.parquet"))
+    if not parquet_files:
+        raise FileNotFoundError(str(pqPath))
+
+    frames = []
+    for fp in parquet_files:
+        try:
+            table = pq.read_table(fp)  # each individual file has a valid schema
+            frames.append(table.to_pandas())  # convert here to sidestep Arrow merging
+        except Exception as e:
+            logging.warning(f"fp: {str(fp)}, exception: {e}")
+
+    df = pd.concat(frames, ignore_index=True, sort=False)
+    return df[['eventID', 'timestamp', 'command', 'mcRun']]
+
 def readParquetSummary(config, site=None, mcRun=None):
-    return baseReadParquetFullConfig(config, 'parquetSummaryDS', site=site, mcRun=mcRun)
+    # return baseReadParquetFullConfig(config, 'parquetSummaryDS', site=site, mcRun=mcRun)
+    return _safeReadParquetSummary(config, 'parquetSummaryDS', site=site, mcRun=mcRun)
 
 def readParquetEvents(config, site=None, mcRun=None, mergeGC=False, species=None, additionalEventFilters=[('command', '=', 'EMISSION')]):
     eventDF = readParquetRawEvents(config, site=site, mcRun=mcRun, additionalFilters=additionalEventFilters)
@@ -315,7 +452,7 @@ def filterAbnormalEmissions(df):
     df = df[df['emitterID'].isin(valid_emitter_ids)]
     return df
 
-def postProcessParquetResults(config, df, fac):
+def postProcessParquetResults(config, df, site):
     simDuration = config['simDurationDays']
     df['emissions_USTonsPerYear'] = (df['emission'] * df['duration'] * u.KG_TO_SHORT_TONS) * u.DAYS_PER_YEAR / simDuration
 
@@ -343,21 +480,21 @@ def postProcessParquetResults(config, df, fac):
 
     #Check for abnormal condition
     if not config['abnormal']:
-        sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
+        sm.generatedCsvSummaries(config, df, site, abnormal="ON")
         dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
-            logger.info("No non fugitive emissions where found")
+            logger.info(f"No non-fugitive emissions where found for site {site}")
         else:    
-            sm.generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+            sm.generatedCsvSummaries(config, dfAbnormalOFF, site, abnormal="OFF")
        
     elif config['abnormal'].upper() == "OFF":
         dfAbnormalOFF = filterAbnormalEmissions(df)
         if dfAbnormalOFF.empty:
-            logger.info("No non fugitive emissions where found")
+            logger.info(f"No non-fugitive emissions where found for site {site}")
         else:    
-            sm.generatedCsvSummaries(config, dfAbnormalOFF, fac, abnormal="OFF")
+            sm.generatedCsvSummaries(config, dfAbnormalOFF, site, abnormal="OFF")
     elif config['abnormal'].upper() == "ON":
-        sm.generatedCsvSummaries(config, df, fac, abnormal="ON")
+        sm.generatedCsvSummaries(config, df, site, abnormal="ON")
 
     else:
         raise(ValueError("abnormal value should be on or off"))
@@ -380,7 +517,8 @@ def postprocess(config):
 
     with Timer("Process events") as t1:
         for fac, df in eventDF2.groupby('facilityID'):
-            postProcessParquetResults(config, df, fac)
+            site = df['site'].unique()[0]
+            postProcessParquetResults(config, df, site)
 
 def getParquetMetadata(parquetDir):
     PARQUET_RE = re.compile(r'events\/site=(?P<site>.*)\/mcRun=(?P<mcRun>.*)')
