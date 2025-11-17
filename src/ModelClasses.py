@@ -5173,6 +5173,8 @@ class MEETFFEmitter(mc.EmissionManager):
         
         a = self.majorEquipment.unitID
         deltat = min(map(lambda x: x.changeTimeAbsolute, self.majorEquipment.outletFluidFlows['Vapor'])) - currentTime
+        if stateInfo.stateName == 'FLASH':
+            deltat = stateInfo.deltaTimeInState
 
         for singleFlow in self.majorEquipment.outletFluidFlows.get('Vapor', []):
             # deltat = singleFlow.changeTimeAbsolute - currentTime
