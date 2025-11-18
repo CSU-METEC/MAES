@@ -1908,75 +1908,72 @@ def allModelReadableNamesDict():
     return result_dict
 
 
-def fillEmptyDataWithZero(df,emissionCol):
-    me_df = df[df['METype'].notnull() & (df['METype'] != "")]
-    unit_info = {r['unitID']: {'METype': r['METype'], 'emitterID': r['emitterID']}
-                 for _, r in me_df.iterrows()}
-    model_dict = allModelReadableNamesDict()
-    overall_species = list(df['species'].unique())
-    mcRuns, unitIDs = df['mcRun'].unique(), set(unit_info.keys())
-    missing = []
-    facID = df['facilityID'].unique()[0]
-    site = df['site'].unique()[0]
+# def fillEmptyDataWithZero(df,emissionCol):
+#     me_df = df[df['METype'].notnull() & (df['METype'] != "")]
+#     unit_info = {r['unitID']: {'METype': r['METype'], 'emitterID': r['emitterID']}
+#                  for _, r in me_df.iterrows()}
+#     model_dict = allModelReadableNamesDict()
+#     overall_species = list(df['species'].unique())
+#     mcRuns, unitIDs = df['mcRun'].unique(), set(unit_info.keys())
+#     missing = []
+#     facID = df['facilityID'].unique()[0]
+#     site = df['site'].unique()[0]
     
-    newDFMissing = pd.DataFrame()
-    for keyN, valN in model_dict.items():
-        valuesDF = pd.DataFrame(valN)
-        valuesDF['METype'] = pd.Series(np.full(len(valN), keyN))
-        newDFMissing = pd.concat([newDFMissing, valuesDF], ignore_index=True)
-        i = 10
+#     newDFMissing = pd.DataFrame()
+#     for keyN, valN in model_dict.items():
+#         valuesDF = pd.DataFrame(valN)
+#         valuesDF['METype'] = pd.Series(np.full(len(valN), keyN))
+#         newDFMissing = pd.concat([newDFMissing, valuesDF], ignore_index=True)
+#         i = 10
 
-    # for mc in mcRuns:
-    #     mcNow = me_df[me_df['mcRun'] == mc]
-    #     newDFMissing['mcRun'] = mc
-    # i = 10
-    # params = [mcRun, unitID, species, modelReadableName - model emission cateogry - METype]
-    unitIDs = me_df['unitID'].unique()
-    mcRuns = me_df['mcRun'].unique()
-    import itertools
-    combs = list(itertools.product(unitIDs, mcRuns))
-    combsDF = pd.DataFrame(combs)
+#     # for mc in mcRuns:
+#     #     mcNow = me_df[me_df['mcRun'] == mc]
+#     #     newDFMissing['mcRun'] = mc
+#     # i = 10
+#     # params = [mcRun, unitID, species, modelReadableName - model emission cateogry - METype]
+#     unitIDs = me_df['unitID'].unique()
+#     mcRuns = me_df['mcRun'].unique()
+#     import itertools
+#     combs = list(itertools.product(unitIDs, mcRuns))
+#     combsDF = pd.DataFrame(combs)
 
-    for mc in mcRuns:
-        for uid in unitIDs:
-            METype, emitterID = unit_info[uid]['METype'], unit_info[uid]['emitterID']
-            group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
-            # group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
-            if METype not in model_dict:
-                # Add missing species rows for units without a defined model dictionary.
-                pres_species = set(group['species'].unique())
-                for sp in set(overall_species) - pres_species:
-                    missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
-                                    'modelReadableName': None, 'modelEmissionCategory': None,
-                                    'emitterID': emitterID, emissionCol: 0, 'facilityID': facID, 'site': site})
-            else:
-                # For units with a model dictionary, for each species add missing model events.
-                for sp in overall_species:
-                    pres_models = set(group[group['species'] == sp]['modelReadableName'].dropna().unique())
-                    for m in model_dict[METype]:
-                        if m['modelReadableName'] not in pres_models:
-                            missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
-                                            'modelReadableName': m['modelReadableName'],
-                                            'modelEmissionCategory': m['modelEmissionCategory'],
-                                            'emitterID': emitterID, emissionCol: 0, 'facilityID': facID, 'site': site})
-    df_missing = pd.DataFrame(missing)
-    df_complete = pd.concat([df, df_missing], ignore_index=True)
-    df_complete[emissionCol] = df_complete[emissionCol].fillna(0)
-    # df.to_csv('C:\METEC\MAES_development\output\TEST\df.csv')
-    # df_missing.to_csv('C:\METEC\MAES_development\output\TEST\df_missing.csv')
-    # df_complete.to_csv('C:\METEC\MAES_development\output\TEST\df_complete.csv')
-    return df_complete
+#     for mc in mcRuns:
+#         for uid in unitIDs:
+#             METype, emitterID = unit_info[uid]['METype'], unit_info[uid]['emitterID']
+#             group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
+#             # group = df[(df['mcRun'] == mc) & (df['unitID'] == uid)]
+#             if METype not in model_dict:
+#                 # Add missing species rows for units without a defined model dictionary.
+#                 pres_species = set(group['species'].unique())
+#                 for sp in set(overall_species) - pres_species:
+#                     missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
+#                                     'modelReadableName': None, 'modelEmissionCategory': None,
+#                                     'emitterID': emitterID, emissionCol: 0, 'facilityID': facID, 'site': site})
+#             else:
+#                 # For units with a model dictionary, for each species add missing model events.
+#                 for sp in overall_species:
+#                     pres_models = set(group[group['species'] == sp]['modelReadableName'].dropna().unique())
+#                     for m in model_dict[METype]:
+#                         if m['modelReadableName'] not in pres_models:
+#                             missing.append({'mcRun': mc, 'unitID': uid, 'METype': METype, 'species': sp,
+#                                             'modelReadableName': m['modelReadableName'],
+#                                             'modelEmissionCategory': m['modelEmissionCategory'],
+#                                             'emitterID': emitterID, emissionCol: 0, 'facilityID': facID, 'site': site})
+#     df_missing = pd.DataFrame(missing)
+#     df_complete = pd.concat([df, df_missing], ignore_index=True)
+#     df_complete[emissionCol] = df_complete[emissionCol].fillna(0)
+#     # df.to_csv('C:\METEC\MAES_development\output\TEST\df.csv')
+#     # df_missing.to_csv('C:\METEC\MAES_development\output\TEST\df_missing.csv')
+#     # df_complete.to_csv('C:\METEC\MAES_development\output\TEST\df_complete.csv')
+#     return df_complete
 
-def getBetterZeros(df):
-    # mrn = df['modelReadableName'].unique()
-    # runs = df['mcRun'].unique()
-    # fullIndex = pd.MultiIndex.from_product([mrn, runs], names=["modelReadableName", "mcRun"]).to_frame(index=False)
-    # zerosDF = fullIndex.merge(df, on=["modelReadableName", "mcRun"], how="left").fillna(0)
+def fillEmptyDataWithZero(df, emissionCol):
     colsForEmpty = ["modelReadableName", "unitID", "facilityID",
                      "site", "species", "METype", "modelEmissionCategory"]
     colsForMerge = colsForEmpty.copy()
     colsForMerge.append("mcRun")
     emitterColsToFill = ['emission', 'emissions_USTonsPerYear', 'emissions_kgPerH']
+    emitterColsToFill = [c for c in emitterColsToFill if c in df.columns]
 
     pairs = df[colsForEmpty].drop_duplicates()
     runs = df['mcRun'].unique()
@@ -1987,7 +1984,7 @@ def getBetterZeros(df):
 
 def generatedCsvSummaries(config, df, site, abnormal):
     # zerosDF = df
-    zerosDF = getBetterZeros(df)
+    zerosDF = fillEmptyDataWithZero(df, emissionCol='emissions_USTonsPerYear')
     
     emissCatDF = Pl.processEmissionsCat(zerosDF)
     emissInstEquipDF = Pl.processInstantEquipEmissions(df)
