@@ -35,9 +35,10 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
     df.to_parquet(pqBase, partition_cols=partition_cols,
                   basename_template=f"{dsName}-{{i}}.parquet",
-                  existing_data_behavior='overwrite_or_ignore')
+                  existing_data_behavior='overwrite_or_ignore',
+                  index=False)
 
-def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
+def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site']):
     # ── Skip any empty write ──────────────────────
     if df is None or df.empty:
         site_hint = None
@@ -52,8 +53,8 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
     pqBase = config[dsName]
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
-                  basename_template=f"{dsName}-{{i}}.parquet",
-                  existing_data_behavior='overwrite_or_ignore',
+                  # basename_template=f"{dsName}-{{i}}.parquet",
+                  # existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
                   index=False
                   )

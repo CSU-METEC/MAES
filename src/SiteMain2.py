@@ -11,6 +11,8 @@ import utilities.EmissionsCSVGenerator as eg
 import Units as u
 import ParquetLib as pl
 import os
+import pandas as pd
+import datetime as dt
 
 ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize']
 
@@ -118,7 +120,8 @@ def runWorkitem(workitem):
         'studyShortname': workitem['studyName'],
         'studyFilename': workitem['studyFilename'],
         'MCScenario': workitem['MCScenario'],
-        'runtime': runtime
+        'runtime': runtime,
+        'pid': os.getpid()
     }
 
 def generateSingleWorkitem(cm, workType):
@@ -162,7 +165,8 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         cm.expandPhase("MCIteration", MCIteration=-1)
         initWorkitems.append(generateSingleWorkitem(cm, 'initialization'))
         # simulation & parquet workitems work on individual site & MC iterations
-        for singleMCIter in range(int(cm.getConfigVar('monteCarloIterations'))):
+        numMCIters = int(cm.getConfigVar('monteCarloIterations'))
+        for singleMCIter in range(numMCIters):
             cm.expandPhase("MCIteration", MCIteration=singleMCIter)
             simWorkitems.append(generateSingleWorkitem(cm, 'simulation'))
             parquetWorkitems.append(generateSingleWorkitem(cm, "parquet"))
@@ -248,6 +252,12 @@ def main(cm, workitemQueues=None):
     clocktime = t0.deltat.total_seconds()
     totalMCIterations = cm.getConfigVar('monteCarloIterations')
     logger.info(f"Total runtime: {totalRuntime} seconds, clock time: {clocktime}, MC Iterations: {totalMCIterations}, items: {len(resList)}")
+    resDF = pd.DataFrame(resList)
+    resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
+    resFilename = dt.datetime.now().strftime(resFileFormat)
+    resDF.to_csv(resFilename, index=False)
+    logger.info(f"Wrote {resFilename}")
+
 
 # set this up as preMain so config does not get instantiated as a global variable
 
