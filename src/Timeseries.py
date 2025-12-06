@@ -193,6 +193,10 @@ class Timeseries(ABC):
     def addSquare(self, ts2, filterZeros):
         # add
         e1, e2, bpList = self._arithmeticPrep(ts2)
+        # if isinstance(e1, float):
+        #     breakpoint()
+        # elif isinstance(e2, float):
+        #     breakpoint()
         e = list(e1 + e2)
         tsOut = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=filterZeros)
         return tsOut
@@ -1041,6 +1045,7 @@ class TimeseriesSet():
                                                     'nextTS',
                                                     'tsValue']))
         for singleTS in self.tsSetList:
+            # print(singleTS.df['site'].unique())
             sumTS = sumTS.addSquare(singleTS, filterZeros)
 
         return sumTS

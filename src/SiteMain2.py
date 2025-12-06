@@ -46,6 +46,8 @@ def pick(simdm, mcRunNum):
 def initializeSim(config, simdm):
     with Timer("Initialize Simulation") as t0:
         studyFile = config['studyFilename']
+        if studyFile.split('/')[-1].startswith('~$'):
+            return t0.deltat.total_seconds()
         rawIntake = mf.parseIntakeSpreadsheet(studyFile)
         mf.instantiateIntake(simdm, rawIntake)
         simdm.dumpTemplates()

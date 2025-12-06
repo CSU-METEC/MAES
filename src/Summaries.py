@@ -1661,20 +1661,24 @@ def readParquetFiles(config, site, abnormal, mergeGC, additionalEventFilters):
 def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
     AllMcRuns = {}
     for mcRun, mcRunDF in dfToGroup.groupby('mcRun'):
-        EndSimDF = siteEndSimDF[siteEndSimDF['mcRun'] == mcRun]
-        simDuration = EndSimDF.loc[EndSimDF['command'] == 'SIM-STOP', 'timestamp'].values[0]
-        totalTimeseriesSet = ts.TimeseriesSet(aggrSet(input_df=mcRunDF.sort_values(by=['nextTS'], ascending=[True]), value_column=valueColName, group_options=groupOptions))
+        try:
+            EndSimDF = siteEndSimDF[siteEndSimDF['mcRun'] == mcRun]
+            simDuration = EndSimDF.loc[EndSimDF['command'] == 'SIM-STOP', 'timestamp'].values[0]
+            totalTimeseriesSet = ts.TimeseriesSet(aggrSet(input_df=mcRunDF.sort_values(by=['nextTS'], ascending=[True]), value_column=valueColName, group_options=groupOptions))
 
-        if valueColName == "emission":
-            tdf = totalTimeseriesSet.sum(filterZeros=False)
-            tdf.df = tdf.df[tdf.df['nextTS'] <= simDuration]
-            tdf.df.loc[:, 'tsValue'] = tdf.df['tsValue'] * SECONDSINHOUR
-            AllMcRuns[mcRun] = tdf
-        else:
-            for tscat in totalTimeseriesSet.tsSetList:
-                tscat.df = tscat.df[tscat.df["nextTS"] <= simDuration]
+            if valueColName == "emission":
+                tdf = totalTimeseriesSet.sum(filterZeros=False)
+                tdf.df = tdf.df[tdf.df['nextTS'] <= simDuration]
+                tdf.df.loc[:, 'tsValue'] = tdf.df['tsValue'] * SECONDSINHOUR
+                AllMcRuns[mcRun] = tdf
+            else:
+                for tscat in totalTimeseriesSet.tsSetList:
+                    tscat.df = tscat.df[tscat.df["nextTS"] <= simDuration]
 
-            AllMcRuns[mcRun] = totalTimeseriesSet.tsSetList
+                AllMcRuns[mcRun] = totalTimeseriesSet.tsSetList
+        except Exception as e:
+            print(f'Skipping {mcRunDF['site'].unique()} because of error {e}')
+            continue
 
     return AllMcRuns
 
