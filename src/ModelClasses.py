@@ -4122,6 +4122,28 @@ class MEETBattery2(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
             return None
 
         return inst
+    
+
+
+def getpLeakTank(gasFracDistName, simdm):
+    if isinstance(gasFracDistName, int) or isinstance(gasFracDistName, float):  # put to self if it is int
+        if gasFracDistName > 1:
+            msg = 'Gas Fraction is > 1. Please check "Fraction of Flash Released" column in Separators'
+            raise NotImplementedError(msg)
+        return d.Constant(gasFracDistName)
+    elif isinstance(gasFracDistName, str):  # if str
+        adVal = isNumber(gasFracDistName)
+        if adVal is not None:  # check if it can be converted to float
+            if adVal > 1:
+                msg = 'Gas Fraction is > 1. Please check "Fraction of Flash Released" column in Separators'
+                raise NotImplementedError(msg)
+            return d.Constant(adVal)
+        else:  # distribution if it is dist file
+            dataBasePath = Path(au.expandFilename(simdm.config['emitterProfileDir'], simdm.config, readonly=True))
+            dataPath = dataBasePath / gasFracDistName
+            dist = None if gasFracDistName is None else dp.DistributionProfile.readFile(dataPath)
+            return dist
+
 
 class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
 
@@ -4130,19 +4152,20 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
                                          'stateChangeNotificationRecipients', 'gasRatio',
                                          'consolidatedFlowTable', 'totalGasVolume', 'flowGCTag', 'gcTag',
                                          'vaporFF', 'consolidatedFlowTableVapor', 'opDur', 'consolidatedTankFlash',
-                                         'tankThiefHatchMTTRMinSec', 'tankThiefHatchMTTRMaxSec',
-                                         'tankThiefHatchDurDist', 'tankThiefHatchGasFrac',
+                                         'tankThiefHatchMTTRMinSec', 'tankThiefHatchMTTRMaxSec', 'tankOverpressurePLeak', 
+                                         'tankThiefHatchDurDist', 'tankThiefHatchGasFrac', 'tankOverpressurePLeakDist',  
                                          'tankOverpressureMTTRMinSec', 'tankOverpressureMTTRMaxSec',
                                          'tankOverpressureDurDist', 'tankOverpressureGasFrac', 'currentGasFraction',
                                          'tankOverpressureThresholdScfs', 'inletFlowAtMaxPrimryFlowScfs',
                                          'maxPrimaryOutletFlowScfs', 'primaryEqRatio', 'currentPrimaryEqRatio',
                                          'tankOverpressureMTBFMinSec', 'tankOverpressureMTBFMaxSec',
-                                         'tankOverpressureMTBFDurDist', 'overpressureTimeTracker', 'maxPrimaryOutletFlowScfh']
+                                         'tankOverpressureMTBFDurDist', 'overpressureTimeTracker', 'maxPrimaryOutletFlowScfh',
+                                         'flashDelayCurrent', 'flashLeakTimer']
 
     def __init__(self,
                  activityDistribution=None,
                  fluid=None,
-                 tankOverpressurePLeak=None,
+                 tankOverpressurePLeakFile=None,
                  tankOverpressureMTTRMinDays=None,
                  tankOverpressureMTTRMaxDays=None,
                  tankOverpressureThresholdScfh=None,
@@ -4156,7 +4179,11 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         self.flowGCTag = 'Tank'
         self.gcTag = f"{self.flowGCTag}"
         self.upstreamEquipment = []
-        self.tankOverpressurePLeak = 0 if tankOverpressurePLeak is None else tankOverpressurePLeak
+        # self.tankOverpressurePLeak = 0 if tankOverpressurePLeak is None else tankOverpressurePLeak
+        simdm = sdm.SimDataManager.getSimDataManager()
+        self.tankOverpressurePLeakFile = tankOverpressurePLeakFile
+        self.tankOverpressurePLeakDist = getpLeakTank(self.tankOverpressurePLeakFile, simdm)
+        self.tankOverpressurePLeak = self.tankOverpressurePLeakDist.pick()
         self.tankOverpressureMTTRMinDays = 0 if tankOverpressureMTTRMinDays is None else tankOverpressureMTTRMinDays
         self.tankOverpressureMTTRMaxDays = 0 if tankOverpressureMTTRMaxDays is None else tankOverpressureMTTRMaxDays
         self.tankOverpressureMTTRMinSec = u.daysToSecs(self.tankOverpressureMTTRMinDays)
@@ -4201,6 +4228,8 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         self.overpressureTimeTracker = 0
         self.tankMode = tankMode
         self.tankControlled = tankControlled
+        self.flashDelayCurrent = 0
+        self.flashLeakTimer = 0
 
     def getYIntercept(self, slope):   # eq of line y=mx+c
         yInt = self.maxPrimaryOutletFlowScfs - slope * self.inletFlowAtMaxPrimryFlowScfs
@@ -4267,6 +4296,16 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
 
         # ThiefHatch/Vent opens randomly based on pLeak/MTTR. Keep a check of this when we check for threshold
         # if np.random.random() < self.tankOverpressurePLeak:
+        if cs == 'FLASH':
+            if self.flashLeakTimer < self.flashDelayCurrent:
+                nextState = self.overPressureVarsAccidental(rateChangeDelay=rateChangeDelay)
+                return nextState
+            else:
+                self.flashDelay()
+                self.flashLeakTimer = 0
+                pass
+            pass
+
         if (self.tankOverpressureMTBFMinSec - self.tankOverpressureMTBFMinSec/10) <= \
                 self.overpressureTimeTracker <= \
                 (self.tankOverpressureMTBFMaxSec + self.tankOverpressureMTBFMaxSec/10):
@@ -4288,6 +4327,10 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         else:
             currentMultiplier = self.sumOfVaporOutletFlows
         return currentMultiplier
+    
+    def flashDelay(self):
+        self.flashDelayCurrent = int(self.tankOverpressureDurDist.pick())
+        pass
 
     def getTimeForState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
         cs = currentStateInfo.stateName
@@ -4295,8 +4338,10 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
             delay = self.opDur
             self.overpressureTimeTracker += delay
         elif cs == 'FLASH':
-            delay = int(self.tankOverpressureDurDist.pick())
+            # self.flashDelay()
+            delay = min(self.flashDelayCurrent, (self.getMinChangeTimeLiquids(self.inletFluidFlows)-currentTime))
             self.overpressureTimeTracker = 0  # reset time tracking to start mtbf tracking after this state
+            self.flashLeakTimer+=delay
         elif cs == 'OVERPRESSURE':
             delay = self.overpressureDur
             self.overpressureTimeTracker += delay
@@ -4365,6 +4410,7 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         self.tankOverpressureInitDist = d.Uniform({'min': 0,
                                                      'max': self.tankOverpressureMTBFMinSec})
         self.overpressureTimeTracker = self.tankOverpressureInitDist.pick()
+        self.flashDelay()
         return ret
 
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
