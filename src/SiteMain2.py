@@ -11,8 +11,11 @@ import utilities.EmissionsCSVGenerator as eg
 import Units as u
 import ParquetLib as pl
 import os
+import pandas as pd
+import datetime as dt
+import Summaries2 as sum
 
-ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize']
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'simSummary']
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +96,12 @@ def toParquet(config, simdm):
 
 def summarize(config, simdm):
     with Timer("Summarize") as t0:
-        # todo: this will reread the parquet files for all MC iterations.  Is it possible to do this iteration-by-iteration?
-        pl.postprocess(config)
+        sum.summarize(config)
+    return t0.deltat.total_seconds()
+
+def summarizeSimulation(config, simdm):
+    with Timer("Summarize") as t0:
+        sum.summarizeSimulation(config)
     return t0.deltat.total_seconds()
 
 def runWorkitem(workitem):
@@ -110,6 +117,8 @@ def runWorkitem(workitem):
             runtime = toParquet(workitem, simdm)
         elif worktype == 'summarize':
             runtime = summarize(workitem, simdm)
+        elif worktype == 'simSummary':
+            runtime = summarizeSimulation(workitem, simdm)
         else:
             logger.error(f"Unknown worktype: {worktype}")
 
@@ -152,6 +161,7 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     simWorkitems = []
     parquetWorkitems = []
     summaryWorkitems = []
+    simSummaryWorkitems = []
 
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
@@ -169,6 +179,9 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         # summarization happens at the site level only
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
+    # simSummary happens once per simulation
+    simSummaryWI = generateSingleWorkitem(cm, 'simSummary')
+    simSummaryWorkitems.append(simSummaryWI)
 
     retWorkitems = []
     if 'initialization' in phasesToInclude:
@@ -179,6 +192,8 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         retWorkitems.append(parquetWorkitems)
     if 'summarize' in phasesToInclude:
         retWorkitems.append(summaryWorkitems)
+    if 'simSummary' in phasesToInclude:
+        retWorkitems.append(simSummaryWorkitems)
 
     return retWorkitems
 
@@ -224,7 +239,7 @@ def defineConvenienceConfigVars(cMgr):
     pass
 
 def main(cm, workitemQueues=None):
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s  %(message)s")
+    logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
     defineConvenienceConfigVars(cm)
     if workitemQueues is None:
         listOfWorkitemQueues = generateWorkitems(cm)
@@ -248,6 +263,11 @@ def main(cm, workitemQueues=None):
     clocktime = t0.deltat.total_seconds()
     totalMCIterations = cm.getConfigVar('monteCarloIterations')
     logger.info(f"Total runtime: {totalRuntime} seconds, clock time: {clocktime}, MC Iterations: {totalMCIterations}, items: {len(resList)}")
+    resDF = pd.DataFrame(resList)
+    resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
+    resFilename = dt.datetime.now().strftime(resFileFormat)
+    resDF.to_csv(resFilename, index=False)
+    logger.info(f"Wrote {resFilename}")
 
 # set this up as preMain so config does not get instantiated as a global variable
 

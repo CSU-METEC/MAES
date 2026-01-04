@@ -30,12 +30,12 @@ SECONDSINHOUR = 3600
 US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 
-
 def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
     df.to_parquet(pqBase, partition_cols=partition_cols,
-                  basename_template=f"{dsName}-{{i}}.parquet",
-                  existing_data_behavior='overwrite_or_ignore')
+                  # basename_template=f"{dsName}-{{i}}.parquet",
+                  # existing_data_behavior='overwrite_or_ignore',
+                  index=False)
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
     # ── Skip any empty write ──────────────────────

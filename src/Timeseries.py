@@ -23,7 +23,6 @@ HOURS_PER_DAY = 24
 SECONDS_PER_HOUR = 3600
 SECONDS_PER_MINUTE = 60
 
-
 class Method(Enum):
     SUM = "sum"
     MEAN = "mean"
@@ -34,10 +33,8 @@ class Method(Enum):
     LOWER = "lower"
     UPPER = "upper"
 
-
 class MalformedTimeseriesError(Exception):
     pass
-
 
 def dataframeMask(df, mask,
                   dfStartTimeName='timestamp',
@@ -53,9 +50,9 @@ def dataframeMask(df, mask,
         raise ValueError(f"mask parameter is not a pandas Dataframe")
 
     # pd.arrays.IntervalArray also works for these.  Which is better?
-    dataMap = pd.IntervalIndex.from_arrays(df[dfStartTimeName], df[dfEndTimeName], closed='both')
+    dataMap  = pd.IntervalIndex.from_arrays(df[dfStartTimeName], df[dfEndTimeName], closed='both')
     # dataMap = pd.arrays.IntervalArray.from_arrays(df[dfStartTimeName], df[dfEndTimeName], closed='both')
-    dmDF = pd.DataFrame({"dataIdx": df.index}, index=dataMap)
+    dmDF =  pd.DataFrame({"dataIdx": df.index}, index=dataMap)
     maskMap = pd.IntervalIndex.from_arrays(mask[maskStartTimeName], mask[maskEndTimeName], closed='both')
     # maskMap = pd.arrays.IntervalArray.from_arrays(mask[maskStartTimeName], mask[maskEndTimeName], closed='both')
     maskDF = pd.DataFrame({"maskIdx": mask.index}, index=maskMap)
@@ -84,17 +81,17 @@ def dataframeMask(df, mask,
                                maskValue=maskEntry[maskValueName])
 
         retList.append(dataDF)
-
+        
+        
     if not retList:
         return pd.DataFrame()
 
     retDF = pd.concat(retList)
     retDF = retDF.assign(maskedStartTime=retDF[[dfStartTimeName, 'maskStartTime']].max(axis='columns'),
-                         maskedEndTime=retDF[[dfEndTimeName, 'maskEndTime']].min(axis='columns')
-                         )
+                            maskedEndTime=retDF[[dfEndTimeName, 'maskEndTime']].min(axis='columns')
+                            )
     retDF = retDF[(retDF[maskValueName] != 0)]
     return retDF
-
 
 class Timeseries(ABC):
 
@@ -104,7 +101,9 @@ class Timeseries(ABC):
 
     @classmethod
     @abstractmethod
-    def fromCollections(cls, startTimeCollection, endTimeCollection, valueCollection, **kwargs):
+    def  fromCollections(cls, startTimeCollection, endTimeCollection, valueCollection,
+                         startTimeColName=None, endTimeColName=None, valueColName=None,
+                         **kwargs):
         raise NotImplementedError()
 
     @property
@@ -190,17 +189,25 @@ class Timeseries(ABC):
         tot = (self._durations * self._values).sum()
         return tot
 
-    def addSquare(self, ts2, filterZeros):
+    def addSquare(self, ts2):
         # add
         e1, e2, bpList = self._arithmeticPrep(ts2)
         e = list(e1 + e2)
-        tsOut = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=filterZeros)
+        tsOut = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1],
+                                               filterZeros=True,
+                                               startTimeColName=self.startTimeColName,
+                                               endTimeColName=self.endTimeColName,
+                                               valueColName=self.valueColName)
         return tsOut
 
     def subtractSquare(self, ts2):
         e1, e2, bpList = self._arithmeticPrep(ts2)
         e = e1 - e2
-        return self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=True)
+        ret = self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=True,
+                                             startTimeColName=self.startTimeColName,
+                                             endTimeColName=self.endTimeColName,
+                                             valueColName=self.valueColName)
+        return ret
 
     def multiplySquare(self, ts2):
         e1, e2, bpList = self._arithmeticPrep(ts2)
@@ -211,7 +218,6 @@ class Timeseries(ABC):
         e1, e2, bpList = self._arithmeticPrep(ts2)
         e = e1 / e2
         return self.__class__.fromCollections(bpList[:-1], bpList[1:], e[:-1], filterZeros=True)
-
 
 #
 # RLE encoded timeseries.  Non-zero values are implemented as (startTime, endTime] intervals with a rate column
@@ -230,8 +236,7 @@ class TimeseriesRLE(Timeseries):
         return isSorted
 
     # column name defaults are consistent w/ MEET instantaneousEvents.csv merged with emissionTimeseries.csv files
-    def __init__(self, df, startTimeColName='timestamp', endTimeColName='nextTS', valueColName='tsValue',
-                 filterZeros=False,
+    def __init__(self, df, startTimeColName='timestamp', endTimeColName='nextTS', valueColName='tsValue', filterZeros=False,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -245,6 +250,11 @@ class TimeseriesRLE(Timeseries):
             initError = True
         if valueColName not in cols:
             logger.error(f"valueColName {valueColName} not in df columns {cols}")
+            initError = True
+        shiftedTS = df[startTimeColName].shift(-1)
+        overlapMask = (df[endTimeColName] > shiftedTS)
+        if overlapMask.any():
+            logger.error(f"Overlapping interval for {self.name} at {df[overlapMask]}")
             initError = True
 
         if initError:
@@ -273,9 +283,17 @@ class TimeseriesRLE(Timeseries):
         # self._intervalDF = pd.DataFrame(data={'values': self._values}).set_index(intervals)
 
     @classmethod
-    def fromCollections(cls, startTimeCollection, endTimeCollection, valueCollection, **kwargs):
-        df = pd.DataFrame({'timestamp': startTimeCollection, 'nextTS': endTimeCollection, 'tsValue': valueCollection})
-        return cls(df, **kwargs)
+    def fromCollections(cls, startTimeCollection, endTimeCollection, valueCollection,
+                        startTimeColName='timestamp', endTimeColName='nextTS', valueColName='valueCollection',
+                        **kwargs):
+        df = pd.DataFrame({startTimeColName: startTimeCollection,
+                           endTimeColName: endTimeCollection,
+                           valueColName: valueCollection})
+        return cls(df,
+                   startTimeColName=startTimeColName,
+                   endTimeColName=endTimeColName,
+                   valueColName=valueColName,
+                   **kwargs)
 
     @classmethod
     def fromDictList(cls, dictList, valueColName='tsValue', **kwargs):
@@ -294,11 +312,11 @@ class TimeseriesRLE(Timeseries):
 
     @property
     def _startTimes(self):
-        return self.df[self.startTimeColName]
+        return self.df[self.startTimeColName].astype(int)
 
     @property
     def _endTimes(self):
-        return self.df[self.endTimeColName]
+        return self.df[self.endTimeColName].astype(int)
 
     def isempty(self):
         if self.df.empty:
@@ -307,16 +325,16 @@ class TimeseriesRLE(Timeseries):
 
     def equal(self, ts2):
         ret = (
-                super().equal(ts2)
-                and (len(self.df) == len(ts2.df))
-                and np.array_equal(self._startTimes.values, ts2._startTimes.values)
-                and np.array_equal(self._endTimes, ts2._endTimes)
-                and np.allclose(self._values, ts2._values)
+            super().equal(ts2)
+            and (len(self.df) == len(ts2.df))
+            and np.array_equal(self._startTimes.values, ts2._startTimes.values)
+            and np.array_equal(self._endTimes, ts2._endTimes)
+            and np.allclose(self._values, ts2._values)
         )
 
         return ret
 
-    def _sortedSample(self, bpList):
+    def sampleSquare(self, bpList):
         indVect = self._endTimes.searchsorted(bpList, side='left')
 
         # filter out indices where bpList value exceeds max end time
@@ -339,14 +357,14 @@ class TimeseriesRLE(Timeseries):
         ret = compDF['calcRate'].squeeze()
         return ret
 
-    def sampleSquare(self, bpList):
-        # times are closed on the bottom end, open on the top end:
-        #  self.df['startTime'] <= t < self.df['endTime']
-
-        # ret = self._intervalSample(bpList)
-        ret = self._sortedSample(bpList)
-
-        return ret
+    # def sampleSquare(self, bpList):
+    #     # times are closed on the bottom end, open on the top end:
+    #     #  self.df['startTime'] <= t < self.df['endTime']
+    #
+    #     # ret = self._intervalSample(bpList)
+    #     ret = self._sortedSample(bpList)
+    #
+    #     return ret
 
     def mask(self, ts2, fillZeros=False):
         if not isinstance(ts2, Timeseries):
@@ -362,8 +380,7 @@ class TimeseriesRLE(Timeseries):
         if fillZeros:
             # currently assumes ts2 is a single interval
             retDF = retTS.df
-            renameDict = {'timestamp': retTS.startTimeColName, 'nextTS': retTS.endTimeColName,
-                          'tsValue': retTS.valueColName}
+            renameDict = {'timestamp': retTS.startTimeColName, 'nextTS': retTS.endTimeColName, 'tsValue': retTS.valueColName}
             startTS = maskDF.iloc[0][ts2.startTimeColName]
             endTS = maskDF.iloc[0][ts2.endTimeColName]
             zeroDF = pd.DataFrame()
@@ -402,8 +419,8 @@ class TimeseriesRLE(Timeseries):
 
         nonZeroTS2 = ts2.nonzero()
 
-        dataMap = pd.arrays.IntervalArray.from_arrays(self._startTimes, self._endTimes, closed='both')
-        dmDF = pd.DataFrame({"dataIdx": self.df.index}, index=dataMap)
+        dataMap  = pd.arrays.IntervalArray.from_arrays(self._startTimes, self._endTimes, closed='both')
+        dmDF =  pd.DataFrame({"dataIdx": self.df.index}, index=dataMap)
         maskMap = pd.IntervalIndex.from_arrays(nonZeroTS2._startTimes, nonZeroTS2._endTimes, closed='both')
         maskDF = pd.DataFrame({"dataIdx": nonZeroTS2.df.index}, index=maskMap)
         om = list(filter(any, map(dmDF.index.overlaps, maskDF.index)))
@@ -429,6 +446,7 @@ class TimeseriesRLE(Timeseries):
         retDF = pd.concat(retList)
         return retDF
 
+
     def periodicAverage(self, intervals):
         fullTS = self.toFullTimeseries()
         fullDF = fullTS.df
@@ -448,6 +466,7 @@ class TimeseriesRLE(Timeseries):
         etName = self.endTimeColName
         valName = self.valueColName
 
+        # todo: what is this doing?  Can it be replaced by a call to zeroPeriods / fillZeros?
         zeroIntervals = pd.DataFrame({stName: self.df[:-1][etName].to_numpy(),
                                       etName: self.df[1:][stName].to_numpy(),
                                       valName: 0})
@@ -461,6 +480,7 @@ class TimeseriesRLE(Timeseries):
                         origDF[[stName, valName]]
                         ]).reset_index(drop=True)
 
+
         extDF = (p1
                  .sort_values(stName, kind='stable')
                  .reset_index(drop=True)
@@ -472,6 +492,7 @@ class TimeseriesRLE(Timeseries):
         return ret
 
     def toCompleteTimeseries(self):
+        # todo: what is a complete timeseries???
         tsList = []
         for _, singleRow in self.df.iterrows():
             end = singleRow[self.endTimeColName].astype(int)
@@ -486,9 +507,10 @@ class TimeseriesRLE(Timeseries):
         retTS = TimeseriesFull(retDF, startTimeColName=self.startTimeColName, rateColName=self.valueColName)
         return retTS
 
-    def toPDF(self, omitZero=None):
-        ret = TimeseriesPDF.fromTS(self, omitZero)
+    def toPDF(self):
+        ret = TimeseriesPDF.fromTS(self)
         return ret
+
 
     def CDFInverse(self, pts=[0.5]):
         p1 = self.toPDF()
@@ -500,6 +522,7 @@ class TimeseriesRLE(Timeseries):
         return self
 
     def maskTS(self, tStart=None, tEnd=None, fill=False):
+        # todo: can this be replaced with one of the mask functions defined above?
         stName = self.startTimeColName
         etName = self.endTimeColName
         valName = self.valueColName
@@ -519,9 +542,8 @@ class TimeseriesRLE(Timeseries):
         tsOut = tsIn[idxKeep].reset_index(drop=True)
 
         if not tsOut.empty:
-            tsOut.loc[0, stName] = max(tsOut.loc[0, stName], tStart)  # truncate the first period
-            tsOut.loc[tsOut.index[-1], etName] = min(tsOut.loc[tsOut.index[-1], etName],
-                                                     tEnd)  # truncate the last period
+            tsOut.loc[0, stName] = max(tsOut.loc[0, stName], tStart)  #truncate the first period
+            tsOut.loc[tsOut.index[-1], etName] = min(tsOut.loc[tsOut.index[-1], etName], tEnd)  #truncate the last period
             if fill:
                 if tsOut.loc[0, stName] > tStart:
                     step = pd.DataFrame([[tStart, tsOut.loc[0, stName], 0]], columns=tsOut.columns)
@@ -535,8 +557,7 @@ class TimeseriesRLE(Timeseries):
                 tsOut.loc[0] = [tStart, tEnd, 0]
         if not isinstance(tsOut, pd.DataFrame):
             tsOut = pd.DataFrame(tsOut)
-        return self.__class__(tsOut, startTimeColName=self.startTimeColName, endTimeColName=self.endTimeColName,
-                              valueColName=self.valueColName)
+        return self.__class__(tsOut, startTimeColName=self.startTimeColName, endTimeColName=self.endTimeColName, valueColName=self.valueColName)
 
     def totalDuration(self, omitZero=True):
         df1 = self.df
@@ -567,12 +588,14 @@ class TimeseriesRLE(Timeseries):
 
         return meanValue, totalDur, totalValue
 
+
     def std(self):
         meanValue, totalDur, totalValue = self.mean()
         dur = self._durations
         stdValue = np.sqrt(np.sum(dur * (self.df[self.valueColName] - meanValue) ** 2) / (totalDur - 1))
 
         return stdValue, meanValue, totalDur, totalValue
+
 
     def meanAndStd(self, omitZero=False, startTime=None, endTime=None):
         # Computes the mean value and standard deviation of a time series
@@ -582,13 +605,6 @@ class TimeseriesRLE(Timeseries):
         # Compute mean value, total duration, and total value
         stdValue, meanValue, totalDur, totalValue = obj.std()
         return meanValue, stdValue, totalDur, totalValue
-
-    def removeZeros(self):
-        # Removes time periods with zero values from the time series
-        if not self.df.empty:
-            idx = self.df[self.valueColName] != 0
-            self.df = self.df[idx]
-            return self
 
     def startTime(self):
         # Returns the start time of the time series
@@ -606,7 +622,43 @@ class TimeseriesRLE(Timeseries):
             t1 = self.df.loc[self.df.index[-1], self.endTimeColName]
         return t1
 
+    def removeZeros(self):
+        """
+        Removes time periods with zero values from the time series
+        :return:
+        """
+        # todo: destructive
+        if not self.df.empty:
+            idx = self.df[self.valueColName] != 0
+            self.df = self.df[idx]
+            return self
+
+    def removeZerosNonDestructive(self):
+        """
+        Removes time periods with zero values from the time series
+        :return:
+        """
+        if self.df.empty:
+            return self
+
+        idx = self._values != 0
+        retDF = self.df[idx]
+        ret = self.__class__(retDF,
+                             name=self.name,
+                             startTimeColName=self.startTimeColName,
+                             endTimeColName=self.endTimeColName,
+                             valueColName=self.valueColName)
+        return ret
+
     def removeErrorValues(self, replace=[]):
+        """
+        Removes time periods with NaN from the time series
+
+        :param replace: if set, replace NaN values with this value.
+        :return:
+        """
+        # todo: destructive
+        # todo: why is replace an empty list?
         idx = ~np.isinf(self.df[self.valueColName]) & ~np.isnan(self.df[self.valueColName])
         if not replace:
             self.df = self.df[idx]
@@ -615,6 +667,12 @@ class TimeseriesRLE(Timeseries):
         return self
 
     def removeZeroDuration(self):
+        """
+        Removes time periods with zero duration from the time series
+
+        :return:
+        """
+        # todo: destructive
         idx = self.df[self.valueColName] != 0
         self.df = self.df[idx]
 
@@ -622,20 +680,63 @@ class TimeseriesRLE(Timeseries):
         self.df = self.df[idx]
         return self
 
-    def zeroPeriods(self, startatZero=False):
-        if startatZero:
-            all_ones = self.__class__(pd.DataFrame([(0, self.endTime(), 1)],
-                                                   columns=[self.startTimeColName, self.endTimeColName,
-                                                            self.valueColName]))
-        else:
-            all_ones = self.__class__(pd.DataFrame([(self.startTime(), self.endTime(), 1)],
-                                                   columns=[self.startTimeColName, self.endTimeColName,
-                                                            self.valueColName]))
+    def zeroPeriods(self, startTime=None, endTime=None, maintainOriginalZeros=False):
+        """
+        RLE timeseries have implicit zero periods, that is, periods that are not covered by entries with values.
+        zeroPeriods constructs a new Timeseries with the zero periods (and only the zero periods) explicitly set.
 
-        ts1 = self.removeZeros()
-        ts1.df.loc[:, self.valueColName] = 1
-        zeroTS = all_ones.subtractSquare(ts1)
-        return zeroTS.removeZeros()
+        :param startTime: if set, start the result at the passed value (usually 0).  Otherwise, start the result with the start time
+        of the input timeseries.  Default None (use existing start time).
+        :param endTime: if set, use this value as the end time of the resulting timeseries.  If not set, use the end
+        time of the input timeseries.  Default None (use existing end time).
+
+        :returns: a "zero period" timeseries -- that is, a timeseries with zero periods of the original timeseries,
+        with a vlue of 1.
+        """
+
+        # todo: why is the value of the returned timeseries 1?
+        # todo: which is faster -- this method or using dataframe shift of the nextTS column?
+
+        startTimeVal = startTime if startTime is not None else self.startTime()
+        endTimeVal = endTime if endTime is not None else self.endTime()
+
+        dataDict = {self.startTimeColName: startTimeVal,
+                    self.endTimeColName:   endTimeVal,
+                    self.valueColName:     1}
+        allOnes = self.__class__(pd.DataFrame([dataDict]),
+                                 startTimeColName = self.startTimeColName,
+                                 endTimeColName = self.endTimeColName,
+                                 valueColName = self.valueColName)
+
+        # todo: removeZeros is destructive!  I do not think this does what you think it does...
+        if maintainOriginalZeros:
+            ts1 = self
+        else:
+            ts1 = self.removeZerosNonDestructive()
+            ts1.df.loc[:, self.valueColName] = 1
+        zeroTS = allOnes.subtractSquare(ts1)
+        zeroTS.df = zeroTS.df[zeroTS.df[zeroTS.valueColName] >= 0.0]
+        if maintainOriginalZeros:
+            ret = zeroTS
+        else:
+            ret = zeroTS.removeZerosNonDestructive()
+        return ret
+
+    def fillZeros(self, **kwargs):
+        zeroTS = self.zeroPeriods(**kwargs)
+        zeroDF = zeroTS.df
+        zeroDF[zeroTS.valueColName] = 0.0
+        newDF = (pd.concat([self.df, zeroDF])
+                 .reset_index(drop=True)
+                 .sort_values(self.startTimeColName)
+                 .drop_duplicates(subset=[self.startTimeColName, self.endTimeColName])
+                 )
+        newTS = self.__class__(newDF,
+                               name=self.name,
+                               startTimeColName=self.startTimeColName,
+                               endTimeColName=self.endTimeColName,
+                               valueColName=self.valueColName)
+        return newTS
 
     def min(self, omitZero=False):
         if self.df.empty:
@@ -678,8 +779,7 @@ class TimeseriesRLE(Timeseries):
             minValue = 0
             maxValue = 0
         else:
-            meanValue, stdValue, totalDur, totalValue = self.meanAndStd(omitZero=omitZero, startTime=startTime,
-                                                                        endTime=endTime)
+            meanValue, stdValue, totalDur, totalValue = self.meanAndStd(omitZero=omitZero, startTime=startTime, endTime=endTime)
 
             # Correct units
             totalValue = totalValue / SecondsPerUnit
@@ -691,6 +791,7 @@ class TimeseriesRLE(Timeseries):
             minValue = self.min(omitZero=omitZero)
             maxValue = self.max()
             # Create the stats table
+        # todo: this is a stupid data structure for the return value.
         statsTab = pd.DataFrame(
             {
                 'Minimum': [minValue],
@@ -709,6 +810,7 @@ class TimeseriesRLE(Timeseries):
     def hasZeroPeriods(self):
         # returns True if there are any zero periods between the start
         # and end of the time series
+        # todo: how is this used???
         elapsed = self.endTime() - self.startTime()
         tf = self.totalDuration() < elapsed
         return tf
@@ -716,6 +818,7 @@ class TimeseriesRLE(Timeseries):
     def threshold(self, threshold=[]):
         # retains only periods where the values are above the threshold
         # (single value) or are between values in the threshold (2 values), inclusively.
+        # todo: why is threshold specified as a list?  Why not two keywords (thresholdMin, thresholdMax)?
         if len(threshold) == 0 or len(threshold) > 2:
             raise ValueError("Threshold vector must be of length 1 or 2")
 
@@ -742,10 +845,10 @@ class TimeseriesRLE(Timeseries):
 
     def createConstant(self, constVal):
         times = self._startEndTimes
-        newDF = pd.DataFrame(
-            [{self.startTimeColName: times[0], self.endTimeColName: times[1], self.valueColName: constVal}])
+        newDF = pd.DataFrame([{self.startTimeColName: times[0], self.endTimeColName: times[1], self.valueColName: constVal}])
         newTS = TimeseriesRLE(newDF)
         return newTS
+
 
 
 # Fully expanded timeseries, useful for graphing and other packages.  Only a single time column, with every rate change
@@ -829,9 +932,10 @@ class TimeseriesFull(Timeseries):
                                             name=self.name, rateUnits=self.units)
         return ret
 
+
     def toTimeseriesRLE(self, filterZeros=False):
         vals = self._values
-        workDF = self.df.assign(prevVal=vals.shift(1, fill_value=vals[0] - 1))
+        workDF = self.df.assign(prevVal=vals.shift(1, fill_value=vals[0]-1))
         changeDF = workDF[vals != workDF['prevVal']]
         lastTime = self._startTimes.iloc[-1]
         changeDF = changeDF.assign(nextTS=changeDF[self.startTimeColName].shift(-1, fill_value=lastTime).astype(int))
@@ -856,11 +960,11 @@ class TimeseriesCategorical(TimeseriesRLE):
     @property
     def _values(self):
         return self.categories
-
+        
     @property
     def categories(self):
         return self.df["categories"]
-
+        
     @property
     def catval(self):
         return self.df["catVal"]
@@ -887,57 +991,72 @@ class TimeseriesCategorical(TimeseriesRLE):
         raise NotImplementedError()
 
     def transitionMatrix(self):
-        analysisDF = self.df.assign(duration=self._endTimes - self._startTimes, nextState=self._values.shift(-1))
-        durationPT = analysisDF.pivot_table(index=self.valueColName, values='duration', aggfunc=['min', 'mean', 'max'],
-                                            observed=True)
+        analysisDF = self.df.assign(duration=self._endTimes-self._startTimes, nextState=self._values.shift(-1))
+        durationPT = analysisDF.pivot_table(index=self.valueColName, values='duration', aggfunc=['min', 'mean', 'max'], observed=True)
         durationPT.columns = ['min', 'mean', 'max']
-        transitionPT = analysisDF.pivot_table(index='categories', values='timestamp', columns='nextState',
-                                              aggfunc='count', observed=True)
+        transitionPT = analysisDF.pivot_table(index='categories', values='timestamp', columns='nextState', aggfunc='count', observed=True)
         transitionProbDF = transitionPT.div(transitionPT.sum(axis='columns'), axis='index')
         transitionProbDF = transitionProbDF.fillna(0)
         ret = durationPT.merge(transitionProbDF, on='categories')
         return ret
-
 
 class TimeseriesPDF():
     def __init__(self, data, tolerance=[], omitNaN=False):
         self.tolerance = tolerance
         self.OmitNaN = omitNaN
 
-        # If data is timeseries object
+        #If data is timeseries object
         if isinstance(data, Timeseries):
             self.data = self.fromTS(data)
         else:
             self.data = data
-        # Skipping functions from_vector and from_mc
+        #Skipping functions from_vector and from_mc
 
     @property
     def _values(self):
         return self.data["value"]
-
+    
     @property
     def _count(self):
         return self.data["count"]
-
+    
     def isempty(self):
         return self.data.empty
 
     def add(self, pdfObj: "TimeseriesPDF"):
         self.data = pd.concat([self.data, pdfObj.data], ignore_index=True)
         return self
-
+    
     @classmethod
-    def fromTS(cls, ts, tolerance=[], datascale=1, omitZero=None) -> "TimeseriesPDF":
+    def fromTS(cls, ts, tolerance=[], datascale=1) -> "TimeseriesPDF":
         if ts.isempty():
             return cls(pd.DataFrame(columns=['value', 'count']))
+
+        return cls.fromDataFrame(ts.df,
+                                 tolerance=tolerance, datascale=1,
+                                 startTimeColName=ts.startTimeColName, endTimeColName=ts.endTimeColName, valueColName=ts.valueColName,)
 
         data = ts.df[ts.valueColName]
         if tolerance:
             data = (data * datascale).round(tolerance[0]) * tolerance[0]
         counts = ts._durations.groupby(data).sum().reset_index()
         counts.columns = ['value', 'count']
-        counts["probability"] = counts["count"] / ts.totalDuration(omitZero)
+        counts["probability"] = counts["count"] / ts.totalDuration()
         return cls(counts)
+
+    @classmethod
+    def fromDataFrame(cls, df, tolerance=[],
+                      datascale=1,
+                      startTimeColName='timestamp', endTimeColName='nextTS', valueColName='tsValue'):
+        data = df[valueColName]
+        if tolerance:
+            data = (data * datascale).round(tolerance[0]) * tolerance[0]
+        durations = df[endTimeColName]-df[startTimeColName]
+        counts = durations.groupby(data).sum().reset_index()
+        counts.columns = ['value', 'count']
+        counts["probability"] = counts["count"] / durations.sum()
+        return cls(counts)
+
 
     def toCDF(self) -> "pd.DataFrame":
         if self.data.empty:
@@ -945,22 +1064,20 @@ class TimeseriesPDF():
         self.data['cumulative_sum'] = self.data['count'].cumsum() / self.data['count'].sum()
         r = self.data[['value', 'cumulative_sum']]
         return r
-
+    
     def cdfInverse(self, cdf_df, pts=[0.5]) -> (list | list[None]):
         if any(pt > 1 or pt < 0 for pt in pts):
             raise ValueError("cdfInverse(): Sample points must lie between zero and one")
 
         if cdf_df.shape[0] > 1 and cdf_df['cumulative_sum'].iloc[0] != 0:
-            cdf_df = pd.concat(
-                [pd.DataFrame({'value': cdf_df['value'].iloc[0], 'cumulative_sum': 0}, index=[0]), cdf_df])
+            cdf_df = pd.concat([pd.DataFrame({'value': cdf_df['value'].iloc[0], 'cumulative_sum': 0}, index=[0]), cdf_df])
 
         if cdf_df.shape[0] == 1:
             ci = [cdf_df['value'].iloc[0]] * len(pts)
         elif cdf_df['cumulative_sum'].isna().any() or cdf_df.empty:
             ci = [None] * len(pts)
         else:
-            f = sint.interp1d(cdf_df['cumulative_sum'], cdf_df['value'], bounds_error=False, fill_value=np.nan,
-                              kind='linear')
+            f = sint.interp1d(cdf_df['cumulative_sum'], cdf_df['value'], bounds_error=False, fill_value=np.nan, kind='linear')
             ci = f(pts)
         return ci
 
@@ -975,6 +1092,7 @@ class TimeseriesPDF():
         maxValue = self.max()
         stdValue = np.nan  # no time to figure this one out at the moment
 
+        # todo: this is a stupid data structure for the return value
         stats = pd.DataFrame({
             'Minimum': [minValue],
             'Lower': [ci[0]],
@@ -1022,7 +1140,6 @@ class TimeseriesPDF():
         else:
             return np.sum(self.data['count'])
 
-
 #
 # TimeseriesSet
 #
@@ -1036,20 +1153,52 @@ class TimeseriesSet():
     def addTimeseries(self, ts):
         self.tsSetList.append(ts)
 
-    def sum(self, filterZeros=True):
+    def sum(self):
         sumTS = TimeseriesRLE(pd.DataFrame(columns=['timestamp',
                                                     'nextTS',
                                                     'tsValue']))
         for singleTS in self.tsSetList:
-            sumTS = sumTS.addSquare(singleTS, filterZeros)
+            sumTS = sumTS.addSquare(singleTS)
+
 
         return sumTS
+
+    def sumNew(self):
+        startSet = set()
+        endSet = set()
+        for singleTS in self.tsSetList:
+            startSet.update(singleTS._startTimes)
+            endSet.update(singleTS._endTimes)
+
+        startSet.update(endSet)
+        bpList = sorted(list(startSet))
+        sqList = []
+        for singleTS in self.tsSetList:
+            thisSquare = singleTS.sampleSquare(bpList)
+            sqList.append(thisSquare)
+
+        fullDF = pd.concat(sqList, axis='columns')
+        sumDF = fullDF.sum(axis='columns')
+
+        tsOut = TimeseriesRLE.fromCollections(bpList[:-1], bpList[1:], sumDF[:-1],
+                                              filterZeros=True,
+                                              startTimeColName='timestamp',
+                                              endTimeColName='nextTS',
+                                              valueColName='tsValue')
+        return tsOut
 
     def mean(self):
         sumTS = self.sum()
         numTS = sumTS.createConstant(len(self.tsSetList))
 
         return sumTS.divideSquare(numTS)
+
+    def toPDF(self):
+        dfList = map(lambda x: x.df, self.tsSetList)
+        pdfDF = pd.concat(dfList)
+        ret = TimeseriesPDF.fromDataFrame(pdfDF)
+        return ret
+
 
 
 

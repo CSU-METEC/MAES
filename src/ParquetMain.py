@@ -9,9 +9,10 @@ import SiteMain2 as sm
 logger = logging.getLogger(__name__)
 
 def main(cMgr):
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
     # workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['parquet', 'summarize'])
-    workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['summarize'])
+    # workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['simSummary'])
+    workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['summarize', 'simSummary'])
     sm.main(cMgr, workitemQueues=workitemQueues)
 
 

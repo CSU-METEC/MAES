@@ -15,6 +15,8 @@ import re
 
 logger = logging.getLogger(__name__)
 
+LOG_FORMAT = "%(asctime)s %(levelname)s  %(message)s"
+
 # Do not delete these imports -- even though pycharm might mark them as unused, they are important
 # for instantiating the emitters in loadEmitterFile
 
