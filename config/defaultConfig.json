@@ -24,13 +24,13 @@
       "unitID": false,
       "Pneumatics": false,
       "abnormal": null,
-      "fullSummaries": false,
-      "annualSummaries": false,
-      "instantaneousSummaries": false,
-      "pdfSummaries": false,
-      "avgDurSummaries": false,
-      "siteEmiss":false,
-      "simulationEmissions":false,
+      "fullSummaries": true,
+      "annualSummaries": true,
+      "instantaneousSummaries": true,
+      "pdfSummaries": true,
+      "avgDurSummaries": true,
+      "siteEmiss":true,
+      "simulationEmissions": true,
       "statesAndTsPloting":false,
       "mcRunTS":null,
       "miiEmiss":false,
@@ -69,7 +69,10 @@
       "parquetGasCompositionDS": "{parquetDir}/gascomposition",
       "parquetMetadataDS":       "{parquetDir}/metadata",
       "parquetSummaryDS":        "{parquetDir}/simsummary",
-      "parquetEventListDS":      "{parquetDir}/eventList"
+      "parquetEventListDS":      "{parquetDir}/eventList",
+      "parquetNewSummary":       "{parquetDir}/newSummary",
+      "parquetNewInstEmissions": "{parquetDir}/newInstEmissions",
+      "parquetNewSimSummary":    "{parquetDir}/newSimSummary"
     },
 
     "MCIteration": {
