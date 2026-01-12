@@ -2121,7 +2121,8 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
                                          'stuckDumpValveDurDist', 'currentGasFraction', 'trackingTimeSubtract',
                                          'operatingDurationMinSec', 'operatingDurationMaxSec', 'operatingDurationDist',
                                          'stuckDumpValveDurMinSec', 'stuckDumpValveDurMaxSec', 'gasFractionDist',
-                                         'stateChangeTime', 'stuckDumpValveMTBFMinSec', 'stuckDumpValveMTBFMaxSec']
+                                         'stateChangeTime', 'stuckDumpValveMTBFMinSec', 'stuckDumpValveMTBFMaxSec',
+                                         'stuckDumpValvepLeakDist', 'stuckDumpValvepLeak']
 
     def __init__(self,
                  activityDistribution=None,
@@ -2137,7 +2138,7 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
                  stuckDumpValveDurMinDays=None,
                  stuckDumpValveDurMaxDays=None,
                  gasFractionDistFileName=None,
-                 stuckDumpValvepLeak=None,
+                 stuckDumpValvepLeakFile=None,
                  multipleInstances=None,
                  instanceFormat=None,
                  stuckDumpValveCC=None,
@@ -2154,10 +2155,16 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         self.primaryWaterRatio = primaryWaterRatio
         self.productionGC = productionGC
         self.eqComponentCount = eqComponentCount
-        self.stuckDumpValvepLeak = 0 if stuckDumpValvepLeak is None else stuckDumpValvepLeak
+        simdm = sdm.SimDataManager.getSimDataManager()
+        # self.tankOverpressurePLeakFile = tankOverpressurePLeakFile
+        # self.tankOverpressurePLeakDist = getpLeakTank(self.tankOverpressurePLeakFile, simdm)
+        # self.tankOverpressurePLeak = self.tankOverpressurePLeakDist.pick()
+        self.stuckDumpValvepLeakFile = 0 if stuckDumpValvepLeakFile is None else stuckDumpValvepLeakFile
+        self.stuckDumpValvepLeakDist = getpLeakTank(self.stuckDumpValvepLeakFile, simdm)
+        self.stuckDumpValvepLeak = self.stuckDumpValvepLeakDist.pick()
+
         self.stateChangeTime = 0
         self.gasFractionDistFileName = gasFractionDistFileName
-        simdm = sdm.SimDataManager.getSimDataManager()
         self.gasFractionDist = getFlashFrac(gasFractionDistFileName, simdm)
         self.stuckDumpValveDurMinDays = 0 if stuckDumpValveDurMinDays is None else stuckDumpValveDurMinDays
         self.stuckDumpValveDurMinSec = int(u.daysToSecs(self.stuckDumpValveDurMinDays))
@@ -2170,8 +2177,8 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         else:
             self.operatingDurationMinSec = int((self.stuckDumpValveDurMinSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # MTBF formula
             self.operatingDurationMaxSec = int((self.stuckDumpValveDurMaxSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # if separator dump valve is not stuck, it is operating
-            self.operatingDurationDist = d.Uniform({'min': self.operatingDurationMinSec,   # this defn will change if we have another state
-                                                    'max': self.operatingDurationMaxSec})
+            self.operatingDurationDist = d.Uniform({'min': self.operatingDurationMinSec, 'max': self.operatingDurationMaxSec})
+
         self.currentGasFraction = 0
         self.trackingTimeSubtract = 0
         self.delayCheck = 0
@@ -2211,16 +2218,14 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
     def getTimeForState(self,  currentStateData=None, currentStateInfo=None, currentTime=None):
         cs = currentStateInfo.stateName
         if cs == 'OPERATING':
-            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime,
-                        self.opDur)
+            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime, self.opDur)
             # self.trackingTime += delay
             self.delayCheck = self.trackingTime+delay
             delay = self.updateDelay(delay, self.delayCheck, self.opDur, self.trackingTime)
             self.trackingTime += delay
             self.currentGasFraction = 0        # all gas goes to gas sales when in op state
         elif cs == 'STUCK_DUMP_VALVE':
-            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime,
-                        self.sdvDur)
+            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime, self.sdvDur)
             # self.trackingTime += delay
             self.delayCheck = self.trackingTime+delay
             delay = self.updateDelay(delay, self.delayCheck, self.sdvDur, self.trackingTime)
@@ -2247,6 +2252,10 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         if self.trackingTime >= self.sdvDur:
             self.trackingTimeSubtract = self.trackingTime
             self.trackingTime = 0
+            self.stuckDumpValvepLeak = self.stuckDumpValvepLeakDist.pick()
+            self.operatingDurationMinSec = int((self.stuckDumpValveDurMinSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # MTBF formula
+            self.operatingDurationMaxSec = int((self.stuckDumpValveDurMaxSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # if separator dump valve is not stuck, it is operating
+            self.operatingDurationDist = d.Uniform({'min': self.operatingDurationMinSec, 'max': self.operatingDurationMaxSec})
             self.opDur = int(self.operatingDurationDist.pick())
             nextState = 'OPERATING'
         else:
@@ -4173,6 +4182,7 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
                  tankControlled=None,
                  **kwargs):
         super().__init__(**kwargs)
+        from scipy.stats import binom
         self.activityDistribution = activityDistribution
         self.fluid = fluid
         self.vaporFF = 'Vapor'
@@ -4303,6 +4313,11 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
             else:
                 self.flashDelay()
                 self.flashLeakTimer = 0
+                newpLeak = self.tankOverpressurePLeakDist.pick()
+                self.tankOverpressureMTBFMinSec = (self.tankOverpressureMTTRMinSec * (1 - newpLeak)) / newpLeak
+                self.tankOverpressureMTBFMaxSec = (self.tankOverpressureMTTRMaxSec * (1 - newpLeak)) / newpLeak
+                self.tankOverpressureMTBFDurDist = d.Uniform({'min': self.tankOverpressureMTBFMinSec,
+                                                              'max': self.tankOverpressureMTBFMaxSec})
                 pass
             pass
 

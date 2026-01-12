@@ -32,7 +32,7 @@
 	{"Model Parameter": "Primary Water Takeoff Ratio",                "Python Parameter": "primaryWaterRatio",                        "Parameter Type": "Sheet"},
 	{"Model Parameter": "Flow GC Tag",                                "Python Parameter": "flowGCTag",                                "Parameter Type": "Sheet"},
 	{"Model Parameter": "Stuck Dump Valve Component Count",           "Python Parameter": "stuckDumpValveCC",                         "Parameter Type": "Sheet"},
-	{"Model Parameter": "Stuck Dump Valve pLeak",                     "Python Parameter": "stuckDumpValvepLeak",                      "Parameter Type": "Sheet"},
+	{"Model Parameter": "Stuck Dump Valve pLeak",                     "Python Parameter": "stuckDumpValvepLeakFile",                      "Parameter Type": "Sheet"},
 	{"Model Parameter": "Stuck Dump Valve Failure Duration Min",      "Python Parameter": "stuckDumpValveDurMinDays",                 "Parameter Type": "Sheet"},
 	{"Model Parameter": "Stuck Dump Valve Failure Duration Max",      "Python Parameter": "stuckDumpValveDurMaxDays",                 "Parameter Type": "Sheet"},
 	{"Model Parameter": "Fraction of Flash Released",                 "Python Parameter": "gasFractionDistFileName",                  "Parameter Type": "Sheet"},

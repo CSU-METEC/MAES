@@ -64,6 +64,43 @@ class Constant(Distribution):
         return Constant(df.iloc[0].to_dict())  # row[0], col [ConstVal]
 
 
+class Binomial(Distribution):
+
+    def __init__(self, json):
+        n = json['n']
+        p = json['p']
+        self.n = n
+        self.p = p
+
+    def pick(self, _=None):
+        if DISTRIBUTION_DEBUG:
+            return self.n
+        n = self.n
+        p = self.p
+        ret = np.random.binomial(n, p)/n
+        return ret
+
+    def test(self, seq):
+        calcMean = np.mean(seq)
+        meanClose = math.isclose(self.p, calcMean, rel_tol=RELATIVE_TOLERANCE)
+        return meanClose
+
+    def __str__(self):
+        return f"<Binomial Distribution, n: {self.n}, p: {self.p}>"
+
+    @classmethod
+    def fromPandas(cls, df):
+        jDict = {"n": df.iat[0, 0], "p": df.iat[0, 1]}
+        return Binomial(jDict)
+
+    def toJson(self):
+        return {'distribution': 'binomial', 'n': self.n, 'p': self.p}
+
+    def __eq__(self, other):
+        if not isinstance(other, Binomial):
+            return False
+        return self.p == other.p and self.p == other.p
+
 class Normal(Distribution):
 
     # todo: this style of passing arguments is non-standard.  Move to kwargs with defaults, and us **kwargs in caller
