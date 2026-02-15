@@ -305,6 +305,18 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
     def getLhvVals(self):
         fCompDF = self._getGCEntries()
         lhv = fCompDF[fCompDF['DriveFactorUnits'] == 'scf/bbl']['LHV (kJ/scf)']
+        # lhv is a series.  It should have length of exactly 1.  Check
+        if len(lhv) == 0:
+            msg = f"No 'LHV (kJ/scf)' value found in {self.fluidFlowGCFilename}"
+            logger.error(msg)
+            raise ValueError(msg)
+        if len(lhv) != 1:
+            msg = f"Multiple 'LHV (kJ/scf)' values found in {self.fluidFlowGCFilename}"
+            logger.error(msg)
+            raise ValueError(msg)
+        # since lhv is a series, it causes conniptions with math & type conversion functions for
+        # python 3.12 and beyond.  Convert it to a scalar.
+        lhv = lhv.iloc[0]
         # conversionDFUnits = f"{newGCUnits}/{self.gcUnits}"
         return float(lhv)
 
