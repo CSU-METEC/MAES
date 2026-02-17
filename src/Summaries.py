@@ -1666,7 +1666,7 @@ def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
         totalTimeseriesSet = ts.TimeseriesSet(aggrSet(input_df=mcRunDF.sort_values(by=['nextTS'], ascending=[True]), value_column=valueColName, group_options=groupOptions))
 
         if valueColName == "emission":
-            tdf = totalTimeseriesSet.sum(filterZeros=False)
+            tdf = totalTimeseriesSet.sum()
             tdf.df = tdf.df[tdf.df['nextTS'] <= simDuration]
             tdf.df.loc[:, 'tsValue'] = tdf.df['tsValue'] * SECONDSINHOUR
             AllMcRuns[mcRun] = tdf
@@ -2049,6 +2049,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
     if pdfSummaries:
         # Get PDF at Site Level for CH4 Emissions
         generatePDFs(config=config, df=df, abnormal=abnormal, site=site)
+        pass
 
     if avgDurSummaries:
         avgERandDur = createSummaryTable(emissInstEquipDF, species="METHANE")

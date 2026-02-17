@@ -266,6 +266,7 @@ def main(cm, workitemQueues=None):
     resDF = pd.DataFrame(resList)
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
     resFilename = dt.datetime.now().strftime(resFileFormat)
+    resDF = resDF.assign(scenarioTimestamp=cm.getConfigVar('scenarioTimestamp'))
     resDF.to_csv(resFilename, index=False)
     logger.info(f"Wrote {resFilename}")
 
