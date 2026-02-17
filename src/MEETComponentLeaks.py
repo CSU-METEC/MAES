@@ -3,7 +3,6 @@ import MEETGlobals as mg
 from pathlib import Path
 import AppUtils as au
 import Units as u
-import numpy as np
 import math
 import logging
 from EmitterProfile import EmitterProfile
@@ -15,6 +14,7 @@ import MEETClasses as mc
 import MEETFluidFlow as ff
 import GasComposition3 as gc
 import MEETExceptions as me
+import random
 
 class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
     """Model steady leaks from components"""
@@ -126,7 +126,7 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
         self.fluidFlow = ff.EmpiricalFluidFlow('Vapor', emissionDriverPath, tmpGC)
 
     def pickFromMTTR(self, num):
-        ret = int(-num * math.log(1 - np.random.random(1)))
+        ret = int(-num * math.log(1 - random.random()))
         return ret
 
 
@@ -144,10 +144,10 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
         MTTR_secs = u.hoursToSecs(MTTR_hours)
 
         # determine timing of first failure
-        if np.random.random(1) <= pLeak:  # component is failed (i.e. leaking) at start of simulation if rand is less than or equal to pLeak
+        if random.random() <= pLeak:  # component is failed (i.e. leaking) at start of simulation if rand is less than or equal to pLeak
             tstart = 0
         else:  # calculate time at which component will fail
-            # tstart = int(-MTBF_secs * math.log(1 - np.random.random(1)))
+            # tstart = int(-MTBF_secs * math.log(1 - random.random()))
             tstart = self.pickFromMTTR(MTBF_secs)
 
         if tstart > tMax:  # if component does not fail before end of sim return empty list
