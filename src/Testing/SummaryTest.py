@@ -6,6 +6,7 @@ import AppUtils as au
 import json
 from pathlib import Path
 import datetime as dt
+import ParquetLib as pl
 
 
 VALUE_EPSILON = 0.01
@@ -421,11 +422,11 @@ def main(cMgr):
         'unitID': True,
         'Pneumatics': True,
     }
-    # with Timer("old summaries") as t0:
-    #     for singleJob in summaryJobs:
-    #         jobWithSummaryArgs = {**singleJob, **oldSummaryArgs}
-    #         pl.postprocess(jobWithSummaryArgs)
-    #     t0.setCount(len(summaryJobs))
+    with Timer("old summaries") as t0:
+        for singleJob in summaryJobs:
+            jobWithSummaryArgs = {**singleJob, **oldSummaryArgs}
+            pl.postprocess(jobWithSummaryArgs)
+        t0.setCount(len(summaryJobs))
 
     compResults = []
     with Timer("compare summaries") as t1:
