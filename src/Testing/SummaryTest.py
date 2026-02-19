@@ -4,6 +4,8 @@ from Timer import Timer
 import SiteMain2 as sm
 import AppUtils as au
 import json
+from pathlib import Path
+import datetime as dt
 
 
 VALUE_EPSILON = 0.01
@@ -22,10 +24,7 @@ def _readOldSummaries(config):
             'typeList': ['modelReadableName'],
             'fileFormat': 'avg_ER_and_duration_by_{type}_abnormal_{abnormal}'
         },
-        # 'AggregatedSimulationEmissions': {
-        #     'typeList': ['category', 'METype', 'modelReadableName', 'unitID'],
-        #     'fileFormat': 'aggregated_sim_emissions_by_{type}_abnormal_{abnormal}'
-        # }
+
     }
     SUMMARY_FILE_TEMPLATE = "{simulationRoot}/summaries/{summaryType}/{siteDir}/{fname}.csv"
 
@@ -46,13 +45,15 @@ def _readOldSummaries(config):
                 logging.debug(thisSummary)
                 summaryFilename = SUMMARY_FILE_TEMPLATE.format(**thisSummary)
                 logging.debug(f"  {summaryFilename}")
-                summaryDF = pd.read_csv(summaryFilename)
-                if singleType == 'site':
-                    keyType = 'modelEmissionCategory'
-                else:
-                    keyType = singleType
-                summaryKey = (singleSummary, keyType, abnormal)
-                ret[summaryKey] = summaryDF
+                summaryPath = Path(summaryFilename)
+                if summaryPath.exists():
+                    summaryDF = pd.read_csv(summaryFilename)
+                    if singleType == 'site':
+                        keyType = 'modelEmissionCategory'
+                    else:
+                        keyType = singleType
+                    summaryKey = (singleSummary, keyType, abnormal)
+                    ret[summaryKey] = summaryDF
 
     return ret
 
@@ -63,13 +64,19 @@ def _readNewSummaries(config):
     ])
     return summaryDF
 
+def _readNewEventSummaries(config):
+    summaryDF = pd.read_parquet(config['parquetNewEventSummary'], filters=[
+        ('site', '=', config['siteName'])
+    ])
+    return summaryDF
+
 def _doComparisons(comparisonDF, siteName, oldSummaryKey):
     roMissing = (comparisonDF['_merge'] == 'right_only') & (comparisonDF['mean'] != 0.0)
     loMissing = (comparisonDF['_merge'] == 'left_only')
     missingItems = roMissing | loMissing
     missingItemCount = 0
     if missingItems.any():
-        missingItemCount = missingItems.sum()
+        missingItemCount = int(missingItems.sum())
         logging.warning(f"  missing items {oldSummaryKey=},  out of {len(comparisonDF)=} {missingItemCount=}")
     # exclude any 'roMissing' values from further consideration
     roSpurious = (comparisonDF['_merge'] == 'right_only') & (comparisonDF['mean'] == 0.0)
@@ -78,21 +85,24 @@ def _doComparisons(comparisonDF, siteName, oldSummaryKey):
     outOfRange = (comparisonDF['delta'] > VALUE_EPSILON)
     outOfRangeCount = 0
     if outOfRange.any():
-        outOfRangeCount = outOfRange.sum()
+        outOfRangeCount = int(outOfRange.sum())
         logging.warning(f"  out of range {oldSummaryKey=},  out of {len(comparisonDF)=} {outOfRangeCount=}")
 
-    countsDiffer = (comparisonDF['compCount'] != comparisonDF['count'])
-    countsDifferCount = 0
-    if countsDiffer.any():
-        countsDifferCount = countsDiffer.sum()
-        logging.warning(f"  counts differ {oldSummaryKey=},  out of {len(comparisonDF)=} {countsDifferCount=}")
+    if 'compCount' in comparisonDF:
+        countsDiffer = (comparisonDF['compCount'] != comparisonDF['count'])
+        countsDifferCount = 0
+        if countsDiffer.any():
+            countsDifferCount = int(countsDiffer.sum())
+            logging.warning(f"  counts differ {oldSummaryKey=},  out of {len(comparisonDF)=} {countsDifferCount=}")
+    else:
+        countsDifferCount = 0
 
     thisRet = {
         'siteName': siteName,
         'oldSummaryKey': oldSummaryKey,
-        'missingItemCount': int(missingItemCount),
-        'outOfRangeCount': int(outOfRangeCount),
-        'countsDifferCount': int(countsDifferCount)
+        'missingItemCount': missingItemCount,
+        'outOfRangeCount': outOfRangeCount,
+        'countsDifferCount': countsDifferCount
     }
 
     return thisRet
@@ -124,7 +134,9 @@ def doAnnualEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
     for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
         newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
 
-        oldSummaryDF = oldSummaryDict[oldSummaryKey]
+        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
+        if oldSummaryDF is None:
+            continue
 
         oldSummaryCategory, oldSummaryType, oldSummaryAbnormal = oldSummaryKey
         oldSummaryDF = oldSummaryDF.assign(compCount=oldSummaryDF['MCRuns_emission_list'].apply(lambda x: len(json.loads(x))))
@@ -168,7 +180,9 @@ def doAggregatedEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
         oldSummaryType, oldSummaryCategory, oldSummaryAbnormal = oldSummaryKey
         newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
 
-        oldSummaryDF = oldSummaryDict[oldSummaryKey]
+        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
+        if oldSummaryDF is None:
+            continue
 
         flaredGasMalfunctionCount = 0
         if oldSummaryAbnormal == 'off':
@@ -209,6 +223,161 @@ def doAggregatedEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
 
     return retList
 
+def doInstantaneousEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
+    OLD_SUMMARY_TO_NEW_SUMMARY_MAP = {
+        ('InstantaneousEmissions', 'modelReadableName', 'on'):
+            {'CICategory': 'instantEmissionsByModelReadableName', 'includeFugitive': True,
+             'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
+        ('InstantaneousEmissions', 'modelReadableName', 'off'):
+            {'CICategory': 'instantEmissionsByModelReadableName', 'includeFugitive': False,
+             'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
+    }
+
+    retList = []
+    for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
+        oldSummaryType, oldSummaryCategory, oldSummaryAbnormal = oldSummaryKey
+        newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
+
+        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
+        if oldSummaryDF is None:
+            continue
+
+        flaredGasMalfunctionCount = 0
+        if oldSummaryAbnormal == 'off':
+            flaredGasMalfunctionMask = oldSummaryDF['modelReadableName'] == 'Flared Gas Malfunction'
+            oldSummaryDF = oldSummaryDF[~flaredGasMalfunctionMask]
+            if flaredGasMalfunctionMask.any():
+                flaredGasMalfunctionCount = flaredGasMalfunctionMask.sum()
+                logging.warning(f"  flared gas malfunctions detected, {oldSummaryKey=}, out of {len(oldSummaryDF)=} {flaredGasMalfunctionCount=}")
+        else:
+            flaredGasMalfunctionCount = 0
+
+
+        newSummaryMask = (
+                (newSummaryDF['CICategory'] == newSummaryKey['CICategory'])
+                & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
+                & (newSummaryDF['units'] == 'kg/hour')  # Units are different than other summaries
+                & (newSummaryDF['mcRun'].isna())
+        )
+        newSummarySubsetDF = newSummaryDF[newSummaryMask]
+
+        compNewDF = newSummarySubsetDF[~newSummarySubsetDF['modelReadableName'].isna()]
+        compOldDF = oldSummaryDF[oldSummaryDF['modelReadableName'] != 'summed_modelReadableName']
+
+        comparisonDF = compOldDF.merge(compNewDF,
+                                       on=['METype', 'unitID', 'modelReadableName', 'species'],
+                                       how='outer',
+                                       indicator=True
+                                       )
+        
+
+        comparisonDF = comparisonDF.assign(delta=(comparisonDF['mean_emissions'] - comparisonDF['mean']).abs())
+
+        thisRet = _doComparisons(comparisonDF, siteName, oldSummaryKey)
+        thisRet = {**thisRet, 'flaredGasMalfunctionCount': flaredGasMalfunctionCount}
+
+        retList.append(thisRet)
+
+    return retList
+        
+        
+
+def doEventComparison(siteName, oldSummaryDict, newSummaryDF):
+    OLD_SUMMARY_TO_NEW_SUMMARY_MAP = {
+        ('AvgEmissionRatesAndDurations', 'modelReadableName', 'on'):
+            {'CICategory': 'eventSummary', 'includeFugitive': True,
+             'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
+        ('AvgEmissionRatesAndDurations', 'modelReadableName', 'off'):
+            {'CICategory': 'eventSummary', 'includeFugitive': False,
+             'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
+    }
+
+    retList = []
+    for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
+        oldSummaryType, oldSummaryCategory, oldSummaryAbnormal = oldSummaryKey
+        newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
+
+        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
+        if oldSummaryDF is None:
+            continue
+
+        flaredGasMalfunctionCount = 0
+        if oldSummaryAbnormal == 'off':
+            flaredGasMalfunctionMask = oldSummaryDF['modelReadableName'] == 'Flared Gas Malfunction'
+            oldSummaryDF = oldSummaryDF[~flaredGasMalfunctionMask]
+            if flaredGasMalfunctionMask.any():
+                flaredGasMalfunctionCount = flaredGasMalfunctionMask.sum()
+                logging.warning(f"  flared gas malfunctions detected, {oldSummaryKey=}, out of {len(oldSummaryDF)=} {flaredGasMalfunctionCount=}")
+        else:
+            flaredGasMalfunctionCount = 0
+
+
+        newSummaryMask = (
+                (newSummaryDF['CICategory'] == newSummaryKey['CICategory'])
+                & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
+                & (newSummaryDF['emissionRateUnits'] == 'kg/h')  # Units are different than other summaries
+                & (newSummaryDF['mcRun'].isna())
+        )
+        newSummarySubsetDF = newSummaryDF[newSummaryMask]
+
+        compNewDF = newSummarySubsetDF[~newSummarySubsetDF['modelReadableName'].isna()]
+        compOldDF = oldSummaryDF[oldSummaryDF['modelReadableName'] != 'summed_modelReadableName']
+
+        comparisonDF = compOldDF.merge(compNewDF,
+                                       on=['unitID', 'modelReadableName', 'species'],
+                                       how='outer',
+                                       indicator=True
+                                       )
+        
+        # first, filter out entries in the new summary that are not in original
+        roMask = comparisonDF['_merge'] == 'right_only'
+        ## right_only values that are zero are OK
+        roNonZeroMask = roMask & (comparisonDF['meanEmissionRate'] != 0.0)
+        roNonZeroCount = 0
+        if roNonZeroMask.any():
+            roNonZeroCount = int(roNonZeroMask.sum())
+            logging.warning(f"  right-only rows with non-zero emissionRate values {oldSummaryKey=},  out of {len(comparisonDF)=} {roNonZeroMask=}")
+        # See if we are missing any new summary vaues
+        loMask = comparisonDF['_merge'] == 'left_only'
+        loCount = 0
+        if loMask.any():
+            loCount = int(loMask.sum())
+            logging.warning(f"  left-only rows {oldSummaryKey=},  out of {len(comparisonDF)=} {loCount=}")
+
+        # filter out lo & ro values
+        comparisonDF = comparisonDF[~(roMask | loMask)]
+
+        comparisonDF = comparisonDF.assign(eventCountDelta=(comparisonDF['avg_event_count'] - comparisonDF['eventsPerMCRun']).abs(),
+                                           emissionRateDelta=(comparisonDF['avg_emission_rate (kg/h)'] - comparisonDF['meanEmissionRate']).abs()
+                                           )
+        
+
+        eventOutOfRange = (comparisonDF['eventCountDelta'] > VALUE_EPSILON)
+        eventOutOfRangeCount = 0
+        if eventOutOfRange.any():
+            eventOutOfRangeCount = int(eventOutOfRange.sum())
+            logging.warning(f"  events per MC Run out of range {oldSummaryKey=},  out of {len(comparisonDF)=} {eventOutOfRangeCount=}")
+
+        emissionRateOutOfRange = (comparisonDF['emissionRateDelta'] > VALUE_EPSILON)
+        emissionRateOutOfRangeCount = 0
+        if emissionRateOutOfRange.any():
+            emissionRateOutOfRangeCount = int(emissionRateOutOfRange.sum())
+            logging.warning(f"  emission rates out of range {oldSummaryKey=},  out of {len(comparisonDF)=} {emissionRateOutOfRangeCount=}")
+
+        thisRet = {
+            'siteName': siteName,
+            'oldSummaryKey': oldSummaryKey,
+            'roNonZeroCount': roNonZeroCount,
+            'loCount': loCount,
+            'eventOutOfRangeCount': eventOutOfRangeCount,
+            'emissionRateOutOfRangeCount': emissionRateOutOfRangeCount
+        }
+
+        retList.append(thisRet)
+
+    return retList
+
+
 def compareSummaries(job):
     siteName = job['siteName']
     logging.info(f"Comparing {siteName=}")
@@ -216,11 +385,21 @@ def compareSummaries(job):
     oldSummaryDict = _readOldSummaries(job)
     # read new summary files
     newSummaryDF = _readNewSummaries(job)
+    newEventSummaryDF = _readNewEventSummaries(job)
 
     annualRet = doAnnualEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
     aggregatedRet = doAggregatedEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
+    instRet = doInstantaneousEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
+    eventRet = doEventComparison(siteName, oldSummaryDict, newEventSummaryDF)
 
-    ret = [*annualRet, *aggregatedRet]
+    ret = [*annualRet, *aggregatedRet, *instRet, *eventRet]
+    return ret
+
+def _transformResult(inDict):
+    outKey = inDict['oldSummaryKey']
+    outDict = dict(filter(lambda x: x[0] != 'oldSummaryKey', inDict.items()))
+    expKey = {'summaryType': outKey[0], 'by': outKey[1], 'abnormal': outKey[2]}
+    ret = {**expKey, **outDict}
     return ret
 
 def main(cMgr):
@@ -254,7 +433,14 @@ def main(cMgr):
             res = compareSummaries(singleJob)
             compResults.extend(res)
 
-    resDF = pd.DataFrame(compResults).fillna(0.0)
+    outResList = map(_transformResult, compResults)
+    resDF = pd.DataFrame(outResList).fillna(0.0)
+
+    resFileFormat = f"SummaryTest_results_{cMgr.getConfigVar('scenarioTimestampFormat')}.csv"
+    resFilename = dt.datetime.now().strftime(resFileFormat)
+    resDF = resDF.assign(scenarioTimestamp=cMgr.getConfigVar('scenarioTimestamp'))
+    resDF.to_csv(resFilename, index=False)
+    logging.info(f"Wrote {resFilename}")
 
     pass
 

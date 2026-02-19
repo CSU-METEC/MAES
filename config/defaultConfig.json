@@ -72,7 +72,8 @@
       "parquetEventListDS":      "{parquetDir}/eventList",
       "parquetNewSummary":       "{parquetDir}/newSummary",
       "parquetNewInstEmissions": "{parquetDir}/newInstEmissions",
-      "parquetNewSimSummary":    "{parquetDir}/newSimSummary"
+      "parquetNewSimSummary":    "{parquetDir}/newSimSummary",
+      "parquetNewEventSummary":  "{parquetDir}/newEventSummary"
     },
 
     "MCIteration": {

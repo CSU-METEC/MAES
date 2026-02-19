@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 KG_PER_HOUR_TO_MT_PER_HOUR = .001
+KG_PER_YEAR_TO_KG_PER_HOUR = 1 / u.HOURS_PER_YEAR
 
 SPECIES = ['METHANE','ETHANE']
 
@@ -42,6 +43,9 @@ def _convertKGPerYear2USTonsPerYear(x):
 
 def _convertKGPerYear2MetricTonsPerYear(x):
     return x * KG_PER_HOUR_TO_MT_PER_HOUR
+
+def _convertKGPerYear2KGPerHour(x):
+    return x * KG_PER_YEAR_TO_KG_PER_HOUR
 
 def _createEmissionDF(inDF):
     COLS_TO_KEEP = {'mcRun': 'mcRun',
@@ -80,6 +84,9 @@ def _saveInstEmissionDF(config, instEmissionDF):
 
 def _saveSummaryEmissionDF(config, summaryEmissionDF):
     pl.toBaseParquet(config, summaryEmissionDF, 'newSummary', partition_cols=['site'])
+
+def _saveEventSummaryDF(config, summaryEmissionDF):
+    pl.toBaseParquet(config, summaryEmissionDF, 'newEventSummary', partition_cols=['site'])
 
 def _doAgg(df, groupbyCols, aggFieldList, varCol):
     summaryDFByMCRun = (
@@ -150,6 +157,38 @@ def calculateAnnualSummaries(instEmissionDF, simDurationDays, aggColumnList, mcI
     resDF = pd.concat([singleLevelSummaryDF, multiLevelSummaryDF])
     return resDF
 
+def calculateEmissionSummary(instEmissionDF, simDurationDays, aggColumnList, mcIterations):
+    instEmissionDF = instEmissionDF.assign(emissions_kgPerYear=(instEmissionDF['totalEmission_kg']) / simDurationDays * u.DAYS_PER_YEAR)
+    # first aggregation -- there may be multiple emissions per emitterID (e.g. leaks from the same emitter multiple times per sim)
+    #   aggregate by emitterID to eliminate these
+    aggregatedEmissionsByEmitterID = (
+        instEmissionDF.groupby(['site', 'mcRun', 'species', 'emitterID', 'operator', 'psno', 'METype', 'unitID', 'modelReadableName'],
+                               as_index=False)
+        .agg(emissions_kgPerYear=('emissions_kgPerYear', 'sum'),
+             count=('emissions_kgPerYear', 'count'))
+    )
+
+    resultDFList = []
+    varCol = 'instantEmissionsByModelReadableName'
+    groupbyCols = [*SUMMARY_KEY_COLS, 'METype', 'unitID', 'modelReadableName']
+    mcRunSummaryDF = _doAgg(aggregatedEmissionsByEmitterID, [*groupbyCols, 'mcRun'], aggColumnList, varCol)
+    resultDFList.append(mcRunSummaryDF)
+    mcRunSummaryAggDF = mcRunSummaryDF.assign(emissions_kgPerYear=mcRunSummaryDF['total'])
+    runSummaryDF = _doAgg(mcRunSummaryAggDF, groupbyCols, aggColumnList, varCol)
+    # Patch the runSummaryDF to calculate the adjusted mean, using the full MCIteration count
+    runSummaryDF = runSummaryDF.assign(rawCount=runSummaryDF['count'],
+                                        rawMean=runSummaryDF['mean'],
+                                        mean=runSummaryDF['total'] / mcIterations,
+                                        count=mcIterations
+                                        )
+    resultDFList.append(runSummaryDF)
+    siteSummaryAggDF = runSummaryDF.assign(emissions_kgPerYear=runSummaryDF['total'])
+    siteSummaryDF = _doAgg(siteSummaryAggDF, SUMMARY_KEY_COLS, aggColumnList, varCol)
+    resultDFList.append(siteSummaryDF)
+
+    resDF = pd.concat(resultDFList)
+    return resDF
+
 def _convertResultsList(convertFn, resList):
     convMap = map(lambda x: convertFn(x), resList)
     filterMap = filter(lambda x: not np.isnan(x), convMap)
@@ -182,6 +221,47 @@ def applyConversions(summaryDF, additionalConversions, aggColumnDict):
     retDF = pd.concat(resultList)
     return retDF
 
+def calculateEventSummary(instEmissionDF, simDurationDays, mcIterations, varCol='eventSummary'):
+    AGG_COLS = {
+        'eventCount': ('emission_kgPerS', 'count'),
+        'totalEmission_kg': ('totalEmission_kg', 'sum'),
+        'totalEventDuration_s': ('duration_s', 'sum'),
+        'meanEventDuration_s': ('duration_s', 'mean'),
+        # 'emissionEvents': ('emission_kgPerS', list),
+        'durationEvents': ('duration_s', list),
+        'totalEmissionEvents': ('totalEmission_kg', list)
+
+    }
+    groupbyCols = [*SUMMARY_KEY_COLS, 'unitID', 'modelReadableName']
+    mcGroupbyCols = [*groupbyCols, 'mcRun']
+    mcEventSummary = (
+        instEmissionDF
+        .groupby(mcGroupbyCols, as_index=False)
+        .agg(**AGG_COLS)
+        .assign(CICategory=varCol,
+                mcRuns=1,
+                emissionRateUnits='kg/s'
+                )
+        )
+    mcEventSummary = mcEventSummary.assign(eventsPerMCRun=mcEventSummary['eventCount'] / mcEventSummary['mcRuns'],
+                                           meanEmissionRate=mcEventSummary['totalEmission_kg'] / mcEventSummary['totalEventDuration_s'])
+    mcEventSummary_kgPerh = mcEventSummary.assign(meanEmissionRate=mcEventSummary['meanEmissionRate'] * u.SECONDS_PER_HOUR, emissionRateUnits='kg/h')
+    eventSummary = (
+        instEmissionDF
+        .groupby(groupbyCols, as_index=False)
+        .agg(**AGG_COLS)
+        .assign(CICategory=varCol,
+                mcRuns=mcIterations,
+                emissionRateUnits='kg/s')
+        )
+    eventSummary = eventSummary.assign(eventsPerMCRun=eventSummary['eventCount'] / eventSummary['mcRuns'],
+                                       meanEmissionRate=eventSummary['totalEmission_kg'] / eventSummary['totalEventDuration_s'])
+    eventSummary_kgPerh = eventSummary.assign(meanEmissionRate=eventSummary['meanEmissionRate'] * u.SECONDS_PER_HOUR, emissionRateUnits='kg/h')
+    
+    retDF = pd.concat([mcEventSummary, mcEventSummary_kgPerh, eventSummary, eventSummary_kgPerh])
+    return retDF
+
+
 
 def summarizeSingleSite(config, instEmissionDF):
     CONFIDENCE_LEVEL = 95
@@ -211,21 +291,55 @@ def summarizeSingleSite(config, instEmissionDF):
             {'colName': 'emissions_kgPerYear', 'units': US_TONS_PER_YEAR_UNITS_NAME,     'conversion': _convertKGPerYear2USTonsPerYear},
             {'colName': 'emissions_kgPerYear', 'units': METRIC_TONS_PER_YEAR_UNITS_NAME, 'conversion': _convertKGPerYear2MetricTonsPerYear},
         ]
+
         with Timer("calculate annual summaries") as t0:
             summaryEmissionFugitiveDF = calculateAnnualSummaries(instEmissionDF, simDurationDays, AGG_FIELDS, mcIterations)
             summaryEmissionFugitiveDF = summaryEmissionFugitiveDF.assign(includeFugitive=True)
             summaryEmissionNoFugitiveDF = calculateAnnualSummaries(instEmissionNoFugitiveDF, simDurationDays, AGG_FIELDS, mcIterations)
             summaryEmissionNoFugitiveDF = summaryEmissionNoFugitiveDF.assign(includeFugitive=False)
             t0.setCount(len(summaryEmissionFugitiveDF) + len(summaryEmissionNoFugitiveDF))
+
         with Timer("apply additional conversions") as t1:
             fullSummaryEmissionFugitiveDF = applyConversions(summaryEmissionFugitiveDF, additionalConversions, AGG_FIELDS)
             fullSummaryEmissionNoFugitiveDF = applyConversions(summaryEmissionNoFugitiveDF, additionalConversions, AGG_FIELDS)
             t1.setCount(len(fullSummaryEmissionFugitiveDF) + len(fullSummaryEmissionNoFugitiveDF))
+        
+        specialConversions = [
+            {'colName': 'emissions_kgPerYear', 'units': KG_PER_HOUR_UNITS_NAME, 'conversion': _convertKGPerYear2KGPerHour},
+        ]
+            
+        with Timer("special summaries") as t2:
+            emissionSummaryFugitiveDF = calculateEmissionSummary(instEmissionDF, simDurationDays, AGG_FIELDS, mcIterations)
+            emissionSummaryFugitiveDF = emissionSummaryFugitiveDF.assign(includeFugitive=True)
+            emissionSummaryNoFugitiveDF = calculateEmissionSummary(instEmissionNoFugitiveDF, simDurationDays, AGG_FIELDS, mcIterations)
+            emissionSummaryNoFugitiveDF = emissionSummaryNoFugitiveDF.assign(includeFugitive=False)
+            fullEmissionSummaryFugitiveDF = applyConversions(emissionSummaryFugitiveDF, specialConversions, AGG_FIELDS)
+            fullEmissionSummaryNoFugitiveDF = applyConversions(emissionSummaryNoFugitiveDF, specialConversions, AGG_FIELDS)
 
-        fullSummaryEmissionDF = pd.concat([fullSummaryEmissionFugitiveDF, fullSummaryEmissionNoFugitiveDF])
+            fullSummaryEmissionDF = pd.concat([
+                fullSummaryEmissionFugitiveDF, 
+                fullSummaryEmissionNoFugitiveDF,
+                fullEmissionSummaryFugitiveDF,
+                fullEmissionSummaryNoFugitiveDF
+                ])
+    
 
-        fullSummaryEmissionDF = fullSummaryEmissionDF.assign(confidenceLevel=CONFIDENCE_LEVEL)
+            fullSummaryEmissionDF = fullSummaryEmissionDF.assign(confidenceLevel=CONFIDENCE_LEVEL)
+
+            t2.setCount(len(fullSummaryEmissionDF))
+
         _saveSummaryEmissionDF(config, fullSummaryEmissionDF)
+
+        with Timer("event summaries") as t3:
+            eventSummaryFugitiveDF = calculateEventSummary(instEmissionDF, simDurationDays, mcIterations, 'eventSummary')
+            eventSummaryFugitiveDF = eventSummaryFugitiveDF.assign(includeFugitive=True)
+            eventSummaryNoFugitiveDF = calculateEventSummary(instEmissionNoFugitiveDF, simDurationDays, mcIterations, 'eventSummary')
+            eventSummaryNoFugitiveDF = eventSummaryNoFugitiveDF.assign(includeFugitive=False)
+
+            fullEventSummaryDF = pd.concat([eventSummaryFugitiveDF, eventSummaryNoFugitiveDF])
+            t3.setCount(len(fullEventSummaryDF))
+
+        _saveEventSummaryDF(config, fullEventSummaryDF)
 
     pass
 
