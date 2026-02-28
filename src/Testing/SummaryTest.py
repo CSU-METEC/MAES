@@ -6,36 +6,43 @@ import AppUtils as au
 import json
 from pathlib import Path
 import datetime as dt
-import ParquetLib as pl
 
 
 VALUE_EPSILON = 0.01
 
-def _readOldSummaries(config):
-    SUMMARY_LAYOUTS = {
-        'AnnualEmissions': {
-            'typeList': ['METype', 'modelReadableName', 'site'],
-            'fileFormat': 'annualEmissions_by_{type}_abnormal_{abnormal}'
-        },
-        'InstantaneousEmissions': {
-            'typeList': ['modelReadableName'],
-            'fileFormat': 'instantEmissions_by_{type}_abnormal_{abnormal}'
-        },
-        'AvgEmissionRatesAndDurations': {
-            'typeList': ['modelReadableName'],
-            'fileFormat': 'avg_ER_and_duration_by_{type}_abnormal_{abnormal}'
-        },
-
+SUMMARY_LAYOUTS = {
+    'AnnualEmissions': {
+        'typeList': ['METype', 'modelReadableName', 'site'],
+        'fileFormat': 'annualEmissions_by_{type}_abnormal_{abnormal}'
+    },
+    'InstantaneousEmissions': {
+        'typeList': ['modelReadableName'],
+        'fileFormat': 'instantEmissions_by_{type}_abnormal_{abnormal}'
+    },
+    'AvgEmissionRatesAndDurations': {
+        'typeList': ['modelReadableName'],
+        'fileFormat': 'avg_ER_and_duration_by_{type}_abnormal_{abnormal}'
+    },
+    'AggregatedSimulationEmissions': {
+        'typeList': ['category', 'METype', 'modelReadableName', 'unitID'],
+        'fileFormat': 'aggregated_sim_emissions_by_{type}_abnormal_{abnormal}',
+        'simulationWide': True
     }
-    SUMMARY_FILE_TEMPLATE = "{simulationRoot}/summaries/{summaryType}/{siteDir}/{fname}.csv"
+}
+SUMMARY_FILE_TEMPLATE = "{simulationRoot}/summaries/{summaryType}/{siteDir}/{fname}.csv"
 
+
+def _readOldSummaries(config):
     simulationRoot = config['simulationRoot']
-    siteDir = f"site={config['siteName']}"
 
     ret = {}
     for singleSummary, summaryData in SUMMARY_LAYOUTS.items():
         for singleType in summaryData['typeList']:
             for abnormal in ['on', 'off']:
+                if summaryData.get('simulationWide', False):
+                    siteDir = ''                           # This is a simulation wide summary -- no site parameter
+                else:
+                    siteDir = f"site={config['siteName']}" # This is a site specific summary
                 thisFname = summaryData['fileFormat'].format(type=singleType, abnormal=abnormal)
                 thisSummary = {
                     'simulationRoot': simulationRoot,
@@ -71,6 +78,22 @@ def _readNewEventSummaries(config):
     ])
     return summaryDF
 
+def _readNewSimulationSummary(config):
+    summaryDF = pd.read_parquet(config['parquetNewSimSummary'])  # No filters because this is the simulation wide summary
+    return summaryDF
+
+def filterFlaredGasMalfunction(oldSummaryDF, oldSummaryAbnormal, oldSummaryKey):
+    if oldSummaryAbnormal != 'off':
+        return oldSummaryDF, 0
+    flaredGasMalfunctionMask = oldSummaryDF['modelReadableName'] == 'Flared Gas Malfunction'
+    filteredDF = oldSummaryDF[~flaredGasMalfunctionMask]
+    count = 0
+    if flaredGasMalfunctionMask.any():
+        count = int(flaredGasMalfunctionMask.sum())
+        logging.warning(f"  flared gas malfunctions detected, {oldSummaryKey=}, out of {len(filteredDF)=} {count=}")
+    return filteredDF, count
+
+
 def _doComparisons(comparisonDF, siteName, oldSummaryKey):
     roMissing = (comparisonDF['_merge'] == 'right_only') & (comparisonDF['mean'] != 0.0)
     loMissing = (comparisonDF['_merge'] == 'left_only')
@@ -101,6 +124,7 @@ def _doComparisons(comparisonDF, siteName, oldSummaryKey):
     thisRet = {
         'siteName': siteName,
         'oldSummaryKey': oldSummaryKey,
+        'comparedItems': len(comparisonDF),
         'missingItemCount': missingItemCount,
         'outOfRangeCount': outOfRangeCount,
         'countsDifferCount': countsDifferCount
@@ -133,13 +157,11 @@ def doAnnualEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
     }
     retList = []
     for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
-        newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
-
         oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
         if oldSummaryDF is None:
             continue
 
-        oldSummaryCategory, oldSummaryType, oldSummaryAbnormal = oldSummaryKey
+        _, oldSummaryType, _ = oldSummaryKey
         oldSummaryDF = oldSummaryDF.assign(compCount=oldSummaryDF['MCRuns_emission_list'].apply(lambda x: len(json.loads(x))))
         # Filter out summary rows
         oldSummaryDF = oldSummaryDF[~oldSummaryDF[oldSummaryType].isin(newSummaryKey['sumRows'])]
@@ -150,8 +172,7 @@ def doAnnualEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
                 & (~newSummaryDF[newSummaryColumn].isna())
                 & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
                 & (newSummaryDF['units'] == 'mt/year')
-                & (newSummaryDF['mcRun'].isna())
-        )
+                )
         newSummarySubsetDF = newSummaryDF[newSummaryMask]
 
         comparisonDF = oldSummaryDF.merge(newSummarySubsetDF,
@@ -166,8 +187,45 @@ def doAnnualEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
 
     return retList
 
+def compareReadableNameSummaries(siteName, oldSummaryDict, newSummaryDF, summaryMap, unitsFilter, addCompCount):
+    retList = []
+    for oldSummaryKey, newSummaryKey in summaryMap.items():
+        _, _, oldSummaryAbnormal = oldSummaryKey
+
+        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
+        if oldSummaryDF is None:
+            continue
+
+        oldSummaryDF, flaredGasMalfunctionCount = filterFlaredGasMalfunction(oldSummaryDF, oldSummaryAbnormal, oldSummaryKey)
+
+        newSummaryMask = (
+                (newSummaryDF['CICategory'] == newSummaryKey['CICategory'])
+                & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
+                & (newSummaryDF['units'] == unitsFilter)
+        )
+        newSummarySubsetDF = newSummaryDF[newSummaryMask]
+
+        compNewDF = newSummarySubsetDF[~newSummarySubsetDF['modelReadableName'].isna()]
+        compOldDF = oldSummaryDF[oldSummaryDF['modelReadableName'] != 'summed_modelReadableName']
+        if addCompCount:
+            compOldDF = compOldDF.assign(compCount=compOldDF['MCRuns_emission_list'].apply(lambda x: len(json.loads(x))))
+
+        comparisonDF = compOldDF.merge(compNewDF,
+                                       on=['METype', 'unitID', 'modelReadableName', 'species'],
+                                       how='outer',
+                                       indicator=True
+                                       )
+
+        comparisonDF = comparisonDF.assign(delta=(comparisonDF['mean_emissions'] - comparisonDF['mean']).abs())
+
+        thisRet = _doComparisons(comparisonDF, siteName, oldSummaryKey)
+        thisRet = {**thisRet, 'flaredGasMalfunctionCount': flaredGasMalfunctionCount}
+
+        retList.append(thisRet)
+    return retList
+
 def doAggregatedEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
-    OLD_SUMMARY_TO_NEW_SUMMARY_MAP = {
+    summaryMap = {
         ('AnnualEmissions', 'modelReadableName', 'on'):
             {'CICategory': 'modelReadableName', 'includeFugitive': True,
              'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
@@ -175,57 +233,11 @@ def doAggregatedEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
             {'CICategory': 'modelReadableName', 'includeFugitive': False,
              'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
     }
-
-    retList = []
-    for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
-        oldSummaryType, oldSummaryCategory, oldSummaryAbnormal = oldSummaryKey
-        newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
-
-        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
-        if oldSummaryDF is None:
-            continue
-
-        flaredGasMalfunctionCount = 0
-        if oldSummaryAbnormal == 'off':
-            flaredGasMalfunctionMask = oldSummaryDF['modelReadableName'] == 'Flared Gas Malfunction'
-            oldSummaryDF = oldSummaryDF[~flaredGasMalfunctionMask]
-            if flaredGasMalfunctionMask.any():
-                flaredGasMalfunctionCount = flaredGasMalfunctionMask.sum()
-                logging.warning(f"  flared gas malfunctions detected, {oldSummaryKey=}, out of {len(oldSummaryDF)=} {flaredGasMalfunctionCount=}")
-        else:
-            flaredGasMalfunctionCount = 0
-
-
-        newSummaryMask = (
-                (newSummaryDF['CICategory'] == newSummaryKey['CICategory'])
-                & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
-                & (newSummaryDF['units'] == 'mt/year')
-                & (newSummaryDF['mcRun'].isna())
-        )
-        newSummarySubsetDF = newSummaryDF[newSummaryMask]
-
-        compNewDF = newSummarySubsetDF[~newSummarySubsetDF['modelReadableName'].isna()]
-        compOldDF = oldSummaryDF[oldSummaryDF['modelReadableName'] != 'summed_modelReadableName']
-        compOldDF = compOldDF.assign(compCount=compOldDF['MCRuns_emission_list'].apply(lambda x: len(json.loads(x))))
-
-        comparisonDF = compOldDF.merge(compNewDF,
-                                       on=['METype', 'unitID', 'modelReadableName', 'species'],
-                                       how='outer',
-                                       indicator=True
-                                       )
-
-
-        comparisonDF = comparisonDF.assign(delta=(comparisonDF['mean_emissions'] - comparisonDF['mean']).abs())
-
-        thisRet = _doComparisons(comparisonDF, siteName, oldSummaryKey)
-        thisRet = {**thisRet, 'flaredGasMalfunctionCount': flaredGasMalfunctionCount}
-
-        retList.append(thisRet)
-
-    return retList
+    ret = compareReadableNameSummaries(siteName, oldSummaryDict, newSummaryDF, summaryMap, 'mt/year', addCompCount=True)
+    return ret
 
 def doInstantaneousEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
-    OLD_SUMMARY_TO_NEW_SUMMARY_MAP = {
+    summaryMap = {
         ('InstantaneousEmissions', 'modelReadableName', 'on'):
             {'CICategory': 'instantEmissionsByModelReadableName', 'includeFugitive': True,
              'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
@@ -233,55 +245,8 @@ def doInstantaneousEmissionComparison(siteName, oldSummaryDict, newSummaryDF):
             {'CICategory': 'instantEmissionsByModelReadableName', 'includeFugitive': False,
              'comparisonHierarchy': ['METype', 'unitID', 'modelReadableName']},
     }
-
-    retList = []
-    for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
-        oldSummaryType, oldSummaryCategory, oldSummaryAbnormal = oldSummaryKey
-        newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
-
-        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
-        if oldSummaryDF is None:
-            continue
-
-        flaredGasMalfunctionCount = 0
-        if oldSummaryAbnormal == 'off':
-            flaredGasMalfunctionMask = oldSummaryDF['modelReadableName'] == 'Flared Gas Malfunction'
-            oldSummaryDF = oldSummaryDF[~flaredGasMalfunctionMask]
-            if flaredGasMalfunctionMask.any():
-                flaredGasMalfunctionCount = flaredGasMalfunctionMask.sum()
-                logging.warning(f"  flared gas malfunctions detected, {oldSummaryKey=}, out of {len(oldSummaryDF)=} {flaredGasMalfunctionCount=}")
-        else:
-            flaredGasMalfunctionCount = 0
-
-
-        newSummaryMask = (
-                (newSummaryDF['CICategory'] == newSummaryKey['CICategory'])
-                & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
-                & (newSummaryDF['units'] == 'kg/hour')  # Units are different than other summaries
-                & (newSummaryDF['mcRun'].isna())
-        )
-        newSummarySubsetDF = newSummaryDF[newSummaryMask]
-
-        compNewDF = newSummarySubsetDF[~newSummarySubsetDF['modelReadableName'].isna()]
-        compOldDF = oldSummaryDF[oldSummaryDF['modelReadableName'] != 'summed_modelReadableName']
-
-        comparisonDF = compOldDF.merge(compNewDF,
-                                       on=['METype', 'unitID', 'modelReadableName', 'species'],
-                                       how='outer',
-                                       indicator=True
-                                       )
-        
-
-        comparisonDF = comparisonDF.assign(delta=(comparisonDF['mean_emissions'] - comparisonDF['mean']).abs())
-
-        thisRet = _doComparisons(comparisonDF, siteName, oldSummaryKey)
-        thisRet = {**thisRet, 'flaredGasMalfunctionCount': flaredGasMalfunctionCount}
-
-        retList.append(thisRet)
-
-    return retList
-        
-        
+    ret = compareReadableNameSummaries(siteName, oldSummaryDict, newSummaryDF, summaryMap, 'kg/hour', addCompCount=False)
+    return ret
 
 def doEventComparison(siteName, oldSummaryDict, newSummaryDF):
     OLD_SUMMARY_TO_NEW_SUMMARY_MAP = {
@@ -295,29 +260,18 @@ def doEventComparison(siteName, oldSummaryDict, newSummaryDF):
 
     retList = []
     for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
-        oldSummaryType, oldSummaryCategory, oldSummaryAbnormal = oldSummaryKey
-        newSummaryKey = OLD_SUMMARY_TO_NEW_SUMMARY_MAP.get(oldSummaryKey, None)
+        _, _, oldSummaryAbnormal = oldSummaryKey
 
         oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
         if oldSummaryDF is None:
             continue
 
-        flaredGasMalfunctionCount = 0
-        if oldSummaryAbnormal == 'off':
-            flaredGasMalfunctionMask = oldSummaryDF['modelReadableName'] == 'Flared Gas Malfunction'
-            oldSummaryDF = oldSummaryDF[~flaredGasMalfunctionMask]
-            if flaredGasMalfunctionMask.any():
-                flaredGasMalfunctionCount = flaredGasMalfunctionMask.sum()
-                logging.warning(f"  flared gas malfunctions detected, {oldSummaryKey=}, out of {len(oldSummaryDF)=} {flaredGasMalfunctionCount=}")
-        else:
-            flaredGasMalfunctionCount = 0
-
+        oldSummaryDF, flaredGasMalfunctionCount = filterFlaredGasMalfunction(oldSummaryDF, oldSummaryAbnormal, oldSummaryKey)
 
         newSummaryMask = (
                 (newSummaryDF['CICategory'] == newSummaryKey['CICategory'])
                 & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
                 & (newSummaryDF['emissionRateUnits'] == 'kg/h')  # Units are different than other summaries
-                & (newSummaryDF['mcRun'].isna())
         )
         newSummarySubsetDF = newSummaryDF[newSummaryMask]
 
@@ -368,6 +322,7 @@ def doEventComparison(siteName, oldSummaryDict, newSummaryDF):
         thisRet = {
             'siteName': siteName,
             'oldSummaryKey': oldSummaryKey,
+            'comparedItems': len(comparisonDF),
             'roNonZeroCount': roNonZeroCount,
             'loCount': loCount,
             'eventOutOfRangeCount': eventOutOfRangeCount,
@@ -378,6 +333,99 @@ def doEventComparison(siteName, oldSummaryDict, newSummaryDF):
 
     return retList
 
+def doSimSummaryComparison(siteName, oldSummaryDict, newSummaryDF):
+    OLD_SUMMARY_TO_NEW_SUMMARY_MAP = {
+        ('AggregatedSimulationEmissions', 'modelReadableName', 'on'):
+            {'CICategory': 'modelReadableName', 'includeFugitive': True,
+             'comparisonHierarchy': ['species', 'modelReadableName']},
+        ('AggregatedSimulationEmissions', 'modelReadableName', 'off'):
+            {'CICategory': 'modelReadableName', 'includeFugitive': False,
+             'comparisonHierarchy': ['species', 'modelReadableName']},
+
+        ('AggregatedSimulationEmissions', 'category', 'on'):
+            {'CICategory': 'modelEmissionCategory', 'includeFugitive': True,
+             'comparisonHierarchy': ['species', 'modelEmissionCategory']},
+        ('AggregatedSimulationEmissions', 'category', 'off'):
+            {'CICategory': 'modelEmissionCategory', 'includeFugitive': False,
+             'comparisonHierarchy': ['species', 'modelEmissionCategory']},
+
+        ('AggregatedSimulationEmissions', 'METype', 'on'):
+            {'CICategory': 'METype', 'includeFugitive': True,
+             'comparisonHierarchy': ['species', 'METype']},
+        ('AggregatedSimulationEmissions', 'METype', 'off'):
+            {'CICategory': 'METype', 'includeFugitive': False,
+             'comparisonHierarchy': ['species', 'METype']},
+
+        ('AggregatedSimulationEmissions', 'unitID', 'on'):
+            {'CICategory': 'unitID', 'includeFugitive': True,
+             'comparisonHierarchy': ['species', 'unitID']},
+        ('AggregatedSimulationEmissions', 'unitID', 'off'):
+            {'CICategory': 'unitID', 'includeFugitive': False,
+             'comparisonHierarchy': ['species', 'unitID']},
+    }
+
+    retList = []
+    for oldSummaryKey, newSummaryKey in OLD_SUMMARY_TO_NEW_SUMMARY_MAP.items():
+        oldSummaryDF = oldSummaryDict.get(oldSummaryKey, None)
+        if oldSummaryDF is None:
+            continue
+
+        newSummaryMask = (
+                (newSummaryDF['CICategory'] == newSummaryKey['CICategory'])
+                & (newSummaryDF['includeFugitive'] == newSummaryKey['includeFugitive'])
+                & ((newSummaryDF['units'] == 'mt/year') | (newSummaryDF['units'] == 'unitless')) # sim-wide summaries include unitless C2/C1 ratios
+        )
+        newSummarySubsetDF = newSummaryDF[newSummaryMask]
+
+        compNewDF = newSummarySubsetDF
+        compOldDF = oldSummaryDF
+
+        comparisonDF = compOldDF.merge(compNewDF,
+                                       on=newSummaryKey['comparisonHierarchy'],
+                                       how='outer',
+                                       indicator=True
+                                       )
+        
+        # first, filter out entries in the new summary that are not in original
+        roMask = comparisonDF['_merge'] == 'right_only'
+        ## right_only values that are zero or NaN are ok.
+        ## convert any mean values in comparisonDF to 0.0
+        comparisonDF = comparisonDF.assign(mean=comparisonDF['mean'].fillna(0.0))
+        roNonZeroMask = roMask & (comparisonDF['mean'] != 0.0)
+        roNonZeroCount = 0
+        if roNonZeroMask.any():
+            roNonZeroCount = int(roNonZeroMask.sum())
+            logging.warning(f"  right-only rows with non-zero emissionRate values {oldSummaryKey=},  out of {len(comparisonDF)=}, {roNonZeroCount=}")
+        # See if we are missing any new summary vaues
+        loMask = comparisonDF['_merge'] == 'left_only'
+        loCount = 0
+        if loMask.any():
+            loCount = int(loMask.sum())
+            logging.warning(f"  left-only rows {oldSummaryKey=},  out of {len(comparisonDF)=} {loCount=}")
+
+        # filter out lo & ro values
+        comparisonDF = comparisonDF[~(roMask | loMask)]
+
+        comparisonDF = comparisonDF.assign(emissionRateDelta=(comparisonDF['mean_emissions'] - comparisonDF['mean']).abs())
+
+        emissionRateOutOfRange = (comparisonDF['emissionRateDelta'] > VALUE_EPSILON)
+        emissionRateOutOfRangeCount = 0
+        if emissionRateOutOfRange.any():
+            emissionRateOutOfRangeCount = int(emissionRateOutOfRange.sum())
+            logging.warning(f"  emission rates out of range {oldSummaryKey=},  out of {len(comparisonDF)=} {emissionRateOutOfRangeCount=}")
+
+        thisRet = {
+            'siteName': siteName,
+            'oldSummaryKey': oldSummaryKey,
+            'comparedItems': len(comparisonDF),
+            'roNonZeroCount': roNonZeroCount,
+            'loCount': loCount,
+            'emissionRateOutOfRangeCount': emissionRateOutOfRangeCount
+        }
+
+        retList.append(thisRet)
+
+    return retList
 
 def compareSummaries(job):
     siteName = job['siteName']
@@ -387,6 +435,7 @@ def compareSummaries(job):
     # read new summary files
     newSummaryDF = _readNewSummaries(job)
     newEventSummaryDF = _readNewEventSummaries(job)
+    newSimulationSummaryDF = _readNewSimulationSummary(job)
 
     annualRet = doAnnualEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
     aggregatedRet = doAggregatedEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
@@ -394,6 +443,16 @@ def compareSummaries(job):
     eventRet = doEventComparison(siteName, oldSummaryDict, newEventSummaryDF)
 
     ret = [*annualRet, *aggregatedRet, *instRet, *eventRet]
+    return ret
+
+def compareSimSummaries(job):
+    logging.info(f"Comparing simulation summaries")
+    # read old summary files
+    oldSummaryDict = _readOldSummaries(job)
+    # read new summary files
+    newSimulationSummaryDF = _readNewSimulationSummary(job)
+
+    ret = doSimSummaryComparison('simulation', oldSummaryDict, newSimulationSummaryDF)
     return ret
 
 def _transformResult(inDict):
@@ -405,8 +464,9 @@ def _transformResult(inDict):
 
 def main(cMgr):
     logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
-    workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['summarize'])
+    workitemQueues = sm.generateWorkitems(cMgr, phasesToInclude=['summarize', 'simSummary'])
     summaryJobs = workitemQueues[0]
+    simSummaryJobs = workitemQueues[1]
     oldSummaryArgs = {
         'annualSummaries': True,
         'instantaneousSummaries': True,
@@ -422,16 +482,21 @@ def main(cMgr):
         'unitID': True,
         'Pneumatics': True,
     }
-    with Timer("old summaries") as t0:
-        for singleJob in summaryJobs:
-            jobWithSummaryArgs = {**singleJob, **oldSummaryArgs}
-            pl.postprocess(jobWithSummaryArgs)
-        t0.setCount(len(summaryJobs))
+    # with Timer("old summaries") as t0:
+    #     for singleJob in summaryJobs:
+    #         jobWithSummaryArgs = {**singleJob, **oldSummaryArgs}
+    #         pl.postprocess(jobWithSummaryArgs)
+    #     t0.setCount(len(summaryJobs))
 
     compResults = []
     with Timer("compare summaries") as t1:
         for singleJob in summaryJobs:
             res = compareSummaries(singleJob)
+            compResults.extend(res)
+
+    with Timer("compare simulation wide summaries") as t2:
+        for singleJob in simSummaryJobs:
+            res = compareSimSummaries(singleJob)
             compResults.extend(res)
 
     outResList = map(_transformResult, compResults)
@@ -442,8 +507,6 @@ def main(cMgr):
     resDF = resDF.assign(scenarioTimestamp=cMgr.getConfigVar('scenarioTimestamp'))
     resDF.to_csv(resFilename, index=False)
     logging.info(f"Wrote {resFilename}")
-
-    pass
 
 
 if __name__ == "__main__":

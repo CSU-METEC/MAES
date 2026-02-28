@@ -33,8 +33,8 @@ import json
 class MEETFacility(eqt.Facility):
     def __init__(self,
                  productionGCFilename=None,
-                #  operator=None,
-                #  psno=None,
+                 operator=None,
+                 psno=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.productionGCFilename = productionGCFilename

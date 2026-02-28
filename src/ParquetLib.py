@@ -30,14 +30,18 @@ SECONDSINHOUR = 3600
 US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 
-def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
+def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun'], baseName=None):
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
-    df.to_parquet(pqBase, partition_cols=partition_cols,
-                  # basename_template=f"{dsName}-{{i}}.parquet",
-                  # existing_data_behavior='overwrite_or_ignore',
-                  index=False)
+    toParquetkwArgs = {
+        'partition_cols': partition_cols,
+        'index': False
+    }
+    if baseName is not None:
+        toParquetkwArgs = {**toParquetkwArgs, 'basename_template': f"{baseName}-{{i}}.parquet"}
 
-def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']):
+    df.to_parquet(pqBase, **toParquetkwArgs)
+
+def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None):
     # ── Skip any empty write ──────────────────────
     if df is None or df.empty:
         site_hint = None
@@ -49,10 +53,15 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
         logger.info(msg)
         return
 
+    if basename is None:
+        basename_template = f"{dsName}-{{i}}.parquet"
+    else:
+        basename_template = f"{basename}-{{i}}.parquet"
+
     pqBase = config[dsName]
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
-                  basename_template=f"{dsName}-{{i}}.parquet",
+                  basename_template=basename_template,
                   existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
                   index=False
