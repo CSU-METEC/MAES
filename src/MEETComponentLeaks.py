@@ -126,7 +126,7 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
         self.fluidFlow = ff.EmpiricalFluidFlow('Vapor', emissionDriverPath, tmpGC)
 
     def pickFromMTTR(self, num):
-        ret = int(-num * math.log(1 - np.random.random(1)))
+        ret = int(-num * math.log(1 - np.random.random(1)[0]))
         return ret
 
 
@@ -144,10 +144,10 @@ class ComponentLeaks(ActivityDistributionEnabled, EmissionManager):
         MTTR_secs = u.hoursToSecs(MTTR_hours)
 
         # determine timing of first failure
-        if np.random.random(1) <= pLeak:  # component is failed (i.e. leaking) at start of simulation if rand is less than or equal to pLeak
+        if np.random.random(1)[0] <= pLeak:  # component is failed (i.e. leaking) at start of simulation if rand is less than or equal to pLeak
             tstart = 0
         else:  # calculate time at which component will fail
-            # tstart = int(-MTBF_secs * math.log(1 - np.random.random(1)))
+            # tstart = int(-MTBF_secs * math.log(1 - np.random.random(1)[0]))
             tstart = self.pickFromMTTR(MTBF_secs)
 
         if tstart > tMax:  # if component does not fail before end of sim return empty list
