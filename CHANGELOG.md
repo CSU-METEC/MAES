@@ -1,6 +1,31 @@
 # CHANGELOG
 
 
+## v0.3.0 (2026-03-09)
+
+### Bug Fixes
+
+- **Summaries2.py**: Exclude zero-emission events from event count and duration statistics to match
+  the behaviour of the legacy `Summaries.py` path, which filtered `emissions_kgPerS > 0` before
+  computing `avg_event_count`. Added `_removeZeroEmissionEvents` helper called by both
+  `calculateEmissionSummary` and `calculateEventSummary`.
+
+- **Summaries2.py**: Compute simulation-level C2/C1 ratio as an emission-weighted average rather
+  than an unweighted mean of per-site ratios. Added `_computeSimC2C1` helper and updated
+  `summarizeSimulation` to strip `species='C2/C1'` rows from the per-site summary before all
+  `_filterAndPivot` calls, then recompute C2/C1 for each dimension from aggregated METHANE/ETHANE
+  totals.
+
+- **ParquetLib.py**: Changed `existing_data_behavior` from `overwrite_or_ignore` to
+  `delete_matching` in both `toBaseParquet` and `toBaseParquetFullConfig`. The previous setting
+  caused duplicate Parquet files to accumulate in a partition on repeated summarization runs,
+  producing inflated totals in `siteEmissionsByCat` and `siteEmissionsByEquip`.
+
+- **SummaryTest.py**: Normalise `modelEmissionCategory='TOTAL'` (emitted by legacy `Summaries.py`)
+  to `'COMBINED'` (emitted by `Summaries2.py`) inside `doSimSummaryComparison` so that simulation-
+  summary rows align correctly during validation comparisons.
+
+
 ## v0.2.0 (2025-01-12)
 
 ### Features

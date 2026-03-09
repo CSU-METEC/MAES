@@ -39,7 +39,7 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun'], baseName
     if baseName is not None:
         toParquetkwArgs = {**toParquetkwArgs, 'basename_template': f"{baseName}-{{i}}.parquet"}
 
-    df.to_parquet(pqBase, **toParquetkwArgs)
+    df.to_parquet(pqBase, existing_data_behavior='delete_matching', **toParquetkwArgs)
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None):
     # ── Skip any empty write ──────────────────────
@@ -62,7 +62,11 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
                   basename_template=basename_template,
-                  existing_data_behavior='overwrite_or_ignore',
+                  # delete_matching clears all existing files in matching partitions before writing,
+                  # ensuring repeated calls overwrite rather than accumulate files.
+                  # overwrite_or_ignore only overwrites on filename collision; since pyarrow generates
+                  # unique filenames per call, it effectively appends and would cause duplicate rows.
+                  existing_data_behavior='delete_matching',
                   engine='auto',
                   index=False
                   )
@@ -464,9 +468,7 @@ def processInstantEquipEmissions(df):
     return df
 
 def filterAbnormalEmissions(df):
-    valid_emitter_ids = df[df['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
-    df = df[df['emitterID'].isin(valid_emitter_ids)]
-    return df
+    return df[df['modelEmissionCategory'] != 'FUGITIVE']
 
 def addPsnoOperatorToParquets(retDF, psnoMap, operatorMap):
 

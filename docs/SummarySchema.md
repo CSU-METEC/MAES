@@ -169,15 +169,47 @@ Each level appears twice: once with `emissionRateUnits='kg/s'` and once with `em
 | `CICategory` | string | Always `eventSummary` |
 | `mcRuns` | int64 | Number of MC iterations (`monteCarloIterations`) |
 | `emissionRateUnits` | string | `kg/s` or `kg/h` |
-| `eventCount` | int64 | Total events across all MC runs |
+| `eventCount` | int64 | Total events across all MC runs, including zero-emission events |
+| `nonZeroEventCount` | int64 | Total events with `emission_kgPerS > 0` across all MC runs |
 | `totalEmission_kg` | float64 | Total mass emitted across all events and MC runs (kg) |
 | `totalEventDuration_s` | float64 | Total event duration across all events and MC runs (seconds) |
 | `meanEventDuration_s` | float64 | Mean event duration (seconds) |
-| `eventsPerMCRun` | float64 | `eventCount / mcRuns` |
-| `meanEmissionRate` | float64 | `totalEmission_kg / totalEventDuration_s`, in `emissionRateUnits` |
+| `eventsPerMCRun` | float64 | `eventCount / mcRuns` — includes zero-emission events |
+| `nonZeroEventsPerMCRun` | float64 | `nonZeroEventCount / mcRuns` — matches legacy `Summaries.py` `avg_event_count` (see note below) |
+| `meanEmissionRate` | float64 | Duration-weighted mean rate: `totalEmission_kg / totalEventDuration_s`, in `emissionRateUnits` |
+| `simpleMean` | float64 | Simple arithmetic mean of per-event emission rates, in `emissionRateUnits` (see note below) |
 | `durationEvents` | list\<float64\> | Per-event durations (seconds) across all MC runs |
 | `totalEmissionEvents` | list\<float64\> | Per-event total emissions (kg) across all MC runs |
 | `includeFugitive` | bool | `True` = all categories included; `False` = FUGITIVE excluded |
+
+#### `meanEmissionRate` vs. `simpleMean`
+
+`meanEmissionRate` is the physically correct duration-weighted average rate: total mass emitted divided by total event duration. This weights each event by how long it lasted.
+
+`simpleMean` is the simple arithmetic mean of per-event emission rates, matching the calculation used in the legacy `Summaries.py` (`AvgEmissionRatesAndDurations` output). It is retained for comparison purposes only. It overweights short, high-rate events and underweights long, low-rate events, producing results that can differ substantially from `meanEmissionRate` when event durations vary widely.
+
+**Example:** two events — 10 kg/h for 1 hour and 1 kg/h for 100 hours:
+- `simpleMean` = (10 + 1) / 2 = **5.5 kg/h**
+- `meanEmissionRate` = (10 + 100) / 101 ≈ **1.09 kg/h**
+
+This discrepancy is the primary known cause of differences between `Summaries2.py` and `Summaries.py` results for `AvgEmissionRatesAndDurations`.
+
+#### `eventsPerMCRun` vs. `nonZeroEventsPerMCRun`
+
+`eventsPerMCRun` counts **all** emission events regardless of rate (`eventCount / mcRuns`). It includes MC runs where the gas composition sampled a zero fraction for a species, producing emission events with `emission_kgPerS = 0`.
+
+`nonZeroEventsPerMCRun` counts only events with `emission_kgPerS > 0` (`nonZeroEventCount / mcRuns`). The denominator is always `mcRuns` (total MC iterations), so MC runs with all-zero emissions for a given group contribute 0 to the numerator — exactly matching the legacy `Summaries.py` behavior (`processInstantEquipEmissions` filters `emission > 0` before counting).
+
+##### Root cause of discrepancy in `Summaries.py` validation
+
+For equipment like `Compressor Dry Seal Vent (OP)`, some MC runs sample a zero gas-composition fraction for a species (e.g., METHANE). Those runs still produce `EMISSION` command events but with `emission_kgPerS = 0`. `Summaries.py` silently drops these via its `emission > 0` filter, then averages over all MC iterations, depressing the mean. `Summaries2.py` `eventsPerMCRun` includes them; `nonZeroEventsPerMCRun` reproduces the legacy result.
+
+**Example (Bluestone_Gas_Processing_Plant, `comp_15939.0`, METHANE):**
+- 17 of 100 MC runs sampled zero METHANE fraction → all-zero emission events in those runs
+- `eventsPerMCRun` = 12.64 (all events counted)
+- `nonZeroEventsPerMCRun` = 10.49 (matches `Summaries.py` `avg_event_count` exactly)
+
+**`SummaryTest.py` uses `nonZeroEventsPerMCRun`** when comparing against the legacy `avg_event_count` column, so that zero-emission events do not produce spurious `eventOutOfRangeCount` failures. `eventsPerMCRun` is retained in the dataset for reference but is not used in validation.
 
 ---
 
@@ -204,16 +236,16 @@ Derived from `SiteSummary` by `summarizeSimulation`. One file covering all sites
 | `units` | string | Emission units |
 | `includeFugitive` | bool | `True` = all categories; `False` = FUGITIVE excluded |
 | `CICategory` | string | Grouping level (see table above) |
-| `total` | float64 | Sum of per-site totals |
-| `count` | int64 | Number of contributing rows |
-| `mean` | float64 | Mean of per-site totals |
-| `min` | float64 | Minimum per-site total |
-| `max` | float64 | Maximum per-site total |
-| `lower` | float64 | 25th percentile of per-site totals |
-| `upper` | float64 | 75th percentile of per-site totals |
-| `lowerCI` | float64 | 2.5th percentile of per-site totals |
-| `upperCI` | float64 | 97.5th percentile of per-site totals |
-| `readings` | list\<float64\> | Per-site total values |
+| `total` | float64 | Sum of per-site corrected means (see [Mean correction](#mean-correction)) |
+| `count` | int64 | Number of unique sites in the simulation (`len(fullSummaryDF['site'].unique())`) |
+| `mean` | float64 | `total / count` — mean of per-site corrected means (mirrors `SiteSummary` mean correction: `mean = total / count`) |
+| `min` | float64 | Minimum per-site corrected mean |
+| `max` | float64 | Maximum per-site corrected mean |
+| `lower` | float64 | 25th percentile of per-site corrected means |
+| `upper` | float64 | 75th percentile of per-site corrected means |
+| `lowerCI` | float64 | 2.5th percentile of per-site corrected means (at 95% CI) |
+| `upperCI` | float64 | 97.5th percentile of per-site corrected means (at 95% CI) |
+| `readings` | list\<float64\> | Per-site corrected mean values |
 | `modelEmissionCategory` | string | Present for relevant `CICategory` values |
 | `modelReadableName` | string | Present for relevant `CICategory` values |
 | `unitID` | string | Present for relevant `CICategory` values |
@@ -229,6 +261,25 @@ Every row in `SiteSummary` and `EventSummary` appears twice:
 |---|---|
 | `True` | All emission events, including `modelEmissionCategory = FUGITIVE` |
 | `False` | Emission events with `modelEmissionCategory != FUGITIVE` only |
+
+### Flare equipment and the `includeFugitive=False` filter
+
+> **Design note — legacy bug, not present in `Summaries2.py`**
+>
+> Flare equipment (`tnk_flare`, `LinkedProductionTankFlare`) has emitters in multiple emission categories:
+>
+> | Readable name | Emission category |
+> |---|---|
+> | Flared Gas Operating | `COMBUSTION` |
+> | Flared Gas Malfunction | `FUGITIVE` |
+> | Unflared Gas from Flare | `FUGITIVE` |
+> | Flare Component Leak | `FUGITIVE` |
+>
+> The `includeFugitive=False` split is intended to exclude only true fugitive leaks from the totals, but "Flared Gas Malfunction" and "Unflared Gas from Flare" are assigned `FUGITIVE` because the gas escapes without combustion — they are legitimately excluded from the non-fugitive totals.
+>
+> **Legacy `Summaries.py` bug:** the `abnormal=off` filter in the old code operated on emitter ID membership rather than `modelEmissionCategory`. This caused FUGITIVE-category flare emitters ("Flared Gas Malfunction", "Unflared Gas from Flare") to be retained in the `includeFugitive=False` totals, inflating the `Flare` METype by approximately 38% relative to the correct value.
+>
+> **`Summaries2.py`** filters cleanly as `instEmissionDF['modelEmissionCategory'] != 'FUGITIVE'` (`Summaries2.py:354`), so all FUGITIVE-category events — including flare malfunction and unflared gas — are correctly excluded when `includeFugitive=False`. No code change was required; the correct behaviour was present from the start.
 
 ---
 
@@ -259,6 +310,12 @@ count = monteCarloIterations
 ```
 
 `rawCount` and `rawMean` retain the uncorrected values.
+
+##### CI bounds and `readings` are not zero-filled
+
+The mean correction accounts for absent MC runs, but `readings` only contains values from MC runs where the group had non-zero emissions. `lowerCI`, `upperCI`, and the quintile columns are therefore computed from a list that may be shorter than `monteCarloIterations` when any MC run produces zero emissions for a given group. CI bounds will be optimistically narrow for low-prevalence groups. A future fix would pad `readings` with zeros to length `monteCarloIterations` before computing percentiles.
+
+`SimSummary` applies the same `mean = total / count` pattern at the cross-site level. `count` is the number of unique sites in the simulation, computed explicitly as `len(fullSummaryDF['site'].unique())` before any aggregation and passed into `_filterAndPivot` — it is not derived from the groupby. `total` is the sum of per-site corrected means, and `mean = total / count`. Statistics (`min`, `max`, percentiles, `readings`) are derived from the per-site corrected mean values.
 
 ### Per-dataset MC granularity
 
@@ -319,3 +376,48 @@ resultDFList.append(
 Because every row is relabeled `'COMBINED'` before the call, Level 0 collapses all real categories into one total per `[*SUMMARY_KEY_COLS, 'COMBINED', 'mcRun']`. Level 1 then produces the correct cross-MC statistics for the combined total. `rollupCols=[]` keeps the output to just those cross-MC rows — there is no further site-level rollup because the per-category site-level rollup already covers that need.
 
 Unit conversions flow through `applyConversions` automatically — no special handling is required for COMBINED rows. The `includeFugitive` split is also handled transparently: COMBINED over `instEmissionDF` sums all categories; COMBINED over `instEmissionNoFugitiveDF` sums only non-fugitive categories.
+
+### C2/C1 ratio rows in `SimSummary`
+
+`SimSummary` contains C2/C1 rows computed by `_computeSimC2C1` in `summarizeSimulation`. These are **not** derived by aggregating the per-site C2/C1 rows from `SiteSummary`; instead they are recomputed from scratch from the aggregated METHANE and ETHANE totals:
+
+```
+total_CH4  = Σ site_mean_METHANE  (for sites where CICategory and groupby key match)
+total_C2H6 = Σ site_mean_ETHANE   (same filter)
+C2/C1      = total_C2H6 / total_CH4
+```
+
+This produces an **emission-weighted** simulation-wide ratio: sites that emit more METHANE contribute proportionally more to the denominator and therefore have proportionally more influence on the result. The legacy `Summaries.py` instead averaged the per-site C2/C1 ratios without weighting, treating each site equally regardless of its emission volume.
+
+This is structurally the same discrepancy as `simpleMean` vs `meanEmissionRate` in `EventSummary`:
+
+| | `EventSummary` emission rate | `SimSummary` C2/C1 |
+|---|---|---|
+| **Simple / legacy** | arithmetic mean of per-event rates (each event equally weighted) | arithmetic mean of per-site C2/C1 ratios (each site equally weighted) |
+| **Weighted / new** | `total_mass / total_duration` (weighted by event duration) | `total_C2H6 / total_CH4` (weighted by methane emission volume) |
+| **Bias** | overweights short, high-rate events | overweights high-C2/C1 sites that emit little methane |
+| **Correct approach** | duration-weighted | emission-weighted |
+
+`SimSummary` C2/C1 rows omit `min`, `max`, `lower`, `upper`, `lowerCI`, `upperCI`, and `readings` (set to `NaN` / empty list). The ratio is deterministic given the site-level means; per-site distribution information is not propagated.
+
+**SummaryTest validation:** The `emissionRateOutOfRangeCount=1` flag for `AggregatedSimulationEmissions / unitID / on / simulation` (species `C2/C1`, `unitID=tnk_flare`, ~10.6% relative delta) is an **expected divergence** caused by this methodological difference. The new emission-weighted value is physically correct; the legacy unweighted value is not a defect target.
+
+### `COMBINED` vs `TOTAL` — legacy naming difference
+
+The legacy `Summaries.py` pipeline emits a `TOTAL` category row in `aggregated_sim_emissions_by_category_*.csv` for the `abnormal=ON` case. `Summaries2.py` uses `COMBINED` for the same concept. `SummaryTest.py` normalises this before comparison by replacing `TOTAL` with `COMBINED` in the old summary's `modelEmissionCategory` column.
+
+The legacy pipeline does **not** emit a `TOTAL` row for `abnormal=OFF` (it only writes COMBUSTION and VENTED rows in that case), so no corresponding `COMBINED` match exists on the old side for `off` comparisons. `SummaryTest.py` reports these new-only `COMBINED` rows as `right_only_non_zero` warnings; this is expected and not a defect in `Summaries2.py`.
+
+---
+
+## Topics For Discussion
+
+Sections of this document that capture known methodological differences, design trade-offs, or deferred work items:
+
+- [`meanEmissionRate` vs. `simpleMean`](#meanemissionrate-vs-simplemean) — emission-rate averaging: duration-weighted (correct) vs. arithmetic mean (legacy)
+- [`eventsPerMCRun` vs. `nonZeroEventsPerMCRun`](#eventsperMCRun-vs-nonzeroeventspermcrun) — event counting: all events vs. non-zero-emission events only
+- [Root cause of discrepancy in `Summaries.py` validation](#root-cause-of-discrepancy-in-summariespy-validation) — zero-emission events from zero gas-composition MC runs silently filtered by legacy code
+- [Mean correction](#mean-correction) — `mean = total / monteCarloIterations` corrects for MC runs with no emissions; `rawMean` retains the uncorrected value
+- [CI bounds and `readings` are not zero-filled](#ci-bounds-and-readings-are-not-zero-filled) — percentile/CI columns computed from a shortened `readings` list when some MC runs produce zero emissions; bounds are optimistically narrow for low-prevalence groups
+- [C2/C1 ratio rows in `SimSummary`](#c2c1-ratio-rows-in-simsummary) — simulation-wide C2/C1 recomputed from aggregated totals (emission-weighted) rather than averaged from per-site ratios (unweighted)
+- [Flare equipment and the `includeFugitive=False` filter](#flare-equipment-and-the-includefugitivefalse-filter) — legacy `Summaries.py` retained FUGITIVE-category flare emitters in `abnormal=off` totals due to emitter-ID-based filtering; `Summaries2.py` is correct by construction

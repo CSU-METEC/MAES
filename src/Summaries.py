@@ -997,7 +997,7 @@ def compute_c2_c1_ratios_by(df_base, mode, by):
     return c2c1_stats[['species', by, 'unit', 'mean_emissions', '95%_ci_lower', '95%_ci_upper']]
 
 
-def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_all, all_mcRuns, all_species, output_folder):
+def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_all, all_mcRuns, all_species, output_folder, simDurationDays=None):
     """Processes and saves the summary emissions for a specific abnormal mode (ON/OFF)."""
     all_results_md_name = [
         compute_stats_by(species, all_mcRuns, df_all, mode, by='modelReadableName')
@@ -1017,6 +1017,10 @@ def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_al
     summary_df_unitID = pd.concat(all_results_unitID, ignore_index=True)
     summary_df_unitID = summary_df_unitID.drop(summary_df_unitID[summary_df_unitID["mean_emissions"] == 0 ].index)
 
+    if simDurationDays is not None:
+        summary_df_md_name = summary_df_md_name.assign(simDurationDays=simDurationDays)
+        summary_df_unitID = summary_df_unitID.assign(simDurationDays=simDurationDays)
+
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
 
     output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
@@ -1032,13 +1036,13 @@ def summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(mode, df_al
     logger.info(f"{output_path_md_name} \n {output_path_unitID}")
 
 
-def run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder, abnormal):
+def run_emissions_summary_pipeline_for_modelReadableName_and_unitID(folder, abnormal, simDurationDays=None):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
     df_all = fillEmptyDataWithZero(df=list_all_metype_files(folder), emissionCol='emissions_USTonsPerYear')
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
-    summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(abnormal, df_all, all_mcRuns, all_species, folder)
+    summarize_emissions_by_mode_for_agg_modelReadableName_and_unitID(abnormal, df_all, all_mcRuns, all_species, folder, simDurationDays=simDurationDays)
 
 
 
@@ -1158,7 +1162,7 @@ def compute_total_emissions_stats_for_category(folder, abnormal):
     final = pd.concat([final, c2c1_stats[final.columns]], ignore_index=True)
     return final
 
-def run_total_emissions_pipeline_for_category(folder, abnormal):
+def run_total_emissions_pipeline_for_category(folder, abnormal, simDurationDays=None):
     """
     Runs the total emissions summary for both abnormal modes ("ON" and "OFF").
     """
@@ -1167,6 +1171,8 @@ def run_total_emissions_pipeline_for_category(folder, abnormal):
     os.makedirs(output_folder, exist_ok=True)
 
     df_results = compute_total_emissions_stats_for_category(folder, abnormal)
+    if simDurationDays is not None:
+        df_results = df_results.assign(simDurationDays=simDurationDays)
     suffix = 'abnormal_on.csv' if abnormal == 'ON' else 'abnormal_off.csv'
     output_path = os.path.join(output_folder, f'aggregated_sim_emissions_by_category_{suffix}')
     df_results.to_csv(output_path, index=False)
@@ -1261,7 +1267,7 @@ def compute_c2_c1_ratios_for_metype(df_base, mode):
     })
 
 
-def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, output_folder):
+def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, output_folder, simDurationDays=None):
     """Processes and saves the summary emissions for a specific abnormal mode (ON/OFF)."""
     all_results = [
         compute_stats_per_METype(species, all_mcRuns, df_all, mode)
@@ -1270,6 +1276,8 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
     all_results.append(compute_c2_c1_ratios_for_metype(df_all, mode=mode))
 
     summary_df = pd.concat(all_results, ignore_index=True)
+    if simDurationDays is not None:
+        summary_df = summary_df.assign(simDurationDays=simDurationDays)
     suffix = 'abnormal_on.csv' if mode == 'ON' else 'abnormal_off.csv'
 
     output_folder = os.path.join(output_folder, 'summaries', 'AggregatedSimulationEmissions')
@@ -1282,13 +1290,13 @@ def summarize_metype_emissions_by_mode(mode, df_all, all_mcRuns, all_species, ou
     logger.info(output_path)
 
 
-def run_emissions_summary_pipeline_for_metype(folder, abnormal):
+def run_emissions_summary_pipeline_for_metype(folder, abnormal, simDurationDays=None):
     """Runs the emissions summary for both ABNORMAL ON and OFF modes."""
     df_all = fillEmptyDataWithZero(df=list_all_metype_files(folder), emissionCol='emissions_USTonsPerYear')
     all_mcRuns = sorted(df_all['mcRun'].unique())
     all_species = df_all['species'].unique()
 
-    summarize_metype_emissions_by_mode(abnormal, df_all, all_mcRuns, all_species, folder)
+    summarize_metype_emissions_by_mode(abnormal, df_all, all_mcRuns, all_species, folder, simDurationDays=simDurationDays)
 
 def getAverageEventCountPerMcRun(df: pd.DataFrame, unitID_name: str, model_name: str, species_name: str) -> float:
     """
@@ -1653,8 +1661,7 @@ def readParquetFiles(config, site, abnormal, mergeGC, additionalEventFilters):
     siteEndSimDF = Pl.readParquetSummary(config, site=site)
 
     if abnormal == "OFF":
-        valid_emitter_ids = siteEVDF[siteEVDF['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
-        siteEVDF = siteEVDF[siteEVDF['emitterID'].isin(valid_emitter_ids)]
+        siteEVDF = siteEVDF[siteEVDF['modelEmissionCategory'] != 'FUGITIVE']
 
     return siteEVDF, siteEndSimDF
 
@@ -1985,9 +1992,10 @@ def fillEmptyDataWithZero(df, emissionCol):
 def generatedCsvSummaries(config, df, site, abnormal):
     # zerosDF = df
     zerosDF = fillEmptyDataWithZero(df, emissionCol='emissions_USTonsPerYear')
-    
+
     emissCatDF = Pl.processEmissionsCat(zerosDF)
     emissInstEquipDF = Pl.processInstantEquipEmissions(df)
+    simDurationDays = config.get('simDurationDays')
 
     annualSummaries = config['annualSummaries']
     instantaneousSummaries = config['instantaneousSummaries']
@@ -2013,20 +2021,24 @@ def generatedCsvSummaries(config, df, site, abnormal):
         if unitID:
             detailed_emissionsDF = calcMdReadbleNameEmissionsSummary(zerosDF, species="METHANE")
             detailed_emissionsDF = pd.concat([detailed_emissionsDF, calcMdReadbleNameEmissionsSummary(zerosDF, species="ETHANE")])
+            detailed_emissionsDF = detailed_emissionsDF.assign(simDurationDays=simDurationDays)
             dumpEmissions(detailed_emissionsDF, config, "annual_mdReadbleName_emissions", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
 
         if siteEmissions:
             CategorySummaryDF = calcSiteLevelSummary(emissCatDF, species='METHANE', confidence_level=95)
             CategorySummaryDF = pd.concat([CategorySummaryDF, calcSiteLevelSummary(emissCatDF, species='ETHANE', confidence_level=95)])  # add ethane summary
+            CategorySummaryDF = CategorySummaryDF.assign(simDurationDays=simDurationDays)
             dumpEmissions(CategorySummaryDF, config, "facility", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
 
         if meType:
             equipEmissSummaryDF = calcAnnualEmissSummaryByMEType(zerosDF, species='METHANE', confidence_level=95)
             equipEmissSummaryDF = pd.concat([equipEmissSummaryDF, calcAnnualEmissSummaryByMEType(zerosDF, species='ETHANE', confidence_level=95)])  # add ethane summary
+            equipEmissSummaryDF = equipEmissSummaryDF.assign(simDurationDays=simDurationDays)
             dumpEmissions(equipEmissSummaryDF, config, "equipment", facID=f"AnnualEmissions/site={site}/", abnormal=abnormal)
 
         if pneumatics:
             pneumaticSummaryDF = calcVirtualPneumaticMetypeSummaries(df=zerosDF)
+            pneumaticSummaryDF = pneumaticSummaryDF.assign(simDurationDays=simDurationDays)
             dumpEmissions(pneumaticSummaryDF, config, "pneumatics", facID=f"AnnualEmissions/site={site}/ONGAEIR-GHGRPFormat/", abnormal=abnormal)
 
     if statesAndTsPloting:
@@ -2044,6 +2056,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
     if instantaneousSummaries:
         # Get instantaneous emissions summary by modelReadableName
         instEmissByModelReadName = calcInstEmissModelReadableName(emissInstEquipDF)
+        instEmissByModelReadName = instEmissByModelReadName.assign(simDurationDays=simDurationDays)
         dumpEmissions(instEmissByModelReadName, config, "instantEmissions_emissions_summary", facID=f"InstantaneousEmissions/site={site}/", abnormal=abnormal)
 
     if pdfSummaries:
@@ -2054,6 +2067,7 @@ def generatedCsvSummaries(config, df, site, abnormal):
     if avgDurSummaries:
         avgERandDur = createSummaryTable(emissInstEquipDF, species="METHANE")
         avgERandDur = pd.concat([avgERandDur,createSummaryTable(emissInstEquipDF,species="ETHANE")])
+        avgERandDur = avgERandDur.assign(simDurationDays=simDurationDays)
         dumpEmissions(avgERandDur, config, "avgERandDur", facID=f"AvgEmissionRatesAndDurations/site={site}/", abnormal=abnormal)
 
     # if simulationEmissions:
@@ -2066,11 +2080,11 @@ def generatedCsvSummaries(config, df, site, abnormal):
     key = (config['simulationRoot'], abnormal.lower())
     if simulationEmissions and key not in _SIM_AGG_DONE:
         run_emissions_summary_pipeline_for_modelReadableName_and_unitID(
-            folder=config['simulationRoot'], abnormal=abnormal)
+            folder=config['simulationRoot'], abnormal=abnormal, simDurationDays=simDurationDays)
         run_total_emissions_pipeline_for_category(
-            folder=config['simulationRoot'], abnormal=abnormal)
+            folder=config['simulationRoot'], abnormal=abnormal, simDurationDays=simDurationDays)
         run_emissions_summary_pipeline_for_metype(
-            folder=config['simulationRoot'], abnormal=abnormal)
+            folder=config['simulationRoot'], abnormal=abnormal, simDurationDays=simDurationDays)
         generate_site_level_pdfs(
             root_dir=config['simulationRoot'], site=None, abnormal=abnormal)
         _SIM_AGG_DONE.add(key)
