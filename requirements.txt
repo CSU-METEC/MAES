@@ -6,4 +6,4 @@ pyarrow
 # bokeh
 openpyxl
 xlsxwriter
-# matplotlib
+matplotlib
