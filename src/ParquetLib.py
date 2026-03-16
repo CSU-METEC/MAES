@@ -39,9 +39,7 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun'], baseName
     if baseName is not None:
         toParquetkwArgs = {**toParquetkwArgs, 'basename_template': f"{baseName}-{{i}}.parquet"}
 
-    df.to_parquet(pqBase, existing_data_behavior='delete_matching', **toParquetkwArgs)
-
-def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None):
+def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site']):
     # ── Skip any empty write ──────────────────────
     if df is None or df.empty:
         site_hint = None

@@ -136,6 +136,8 @@ def runWorkitem(workitem):
         'studyFilename': workitem['studyFilename'],
         'MCScenario': workitem['MCScenario'],
         'runtime': runtime,
+        'pid': os.getpid()
+        'runtime': runtime,
         'statsDF': statsDF
     }
 
@@ -182,7 +184,8 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         cm.expandPhase("MCIteration", MCIteration=-1)
         initWorkitems.append(generateSingleWorkitem(cm, 'initialization'))
         # simulation & parquet workitems work on individual site & MC iterations
-        for singleMCIter in range(int(cm.getConfigVar('monteCarloIterations'))):
+        numMCIters = int(cm.getConfigVar('monteCarloIterations'))
+        for singleMCIter in range(numMCIters):
             cm.expandPhase("MCIteration", MCIteration=singleMCIter)
             simWorkitems.append(generateSingleWorkitem(cm, 'simulation'))
             parquetWorkitems.append(generateSingleWorkitem(cm, "parquet"))
