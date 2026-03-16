@@ -15,7 +15,7 @@ import pandas as pd
 import datetime as dt
 import Summaries2 as sum
 
-ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'simSummary']
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDFCache', 'simSummary']
 
 logger = logging.getLogger(__name__)
 
@@ -104,11 +104,17 @@ def summarizeSimulation(config, simdm):
         sum.summarizeSimulation(config)
     return t0.deltat.total_seconds()
 
+def createPDFCache(config, simdm):
+    with Timer("Create PDF Cache") as t0:
+        statsDF = sum.createPDFCache(config)
+    return t0.deltat.total_seconds(), statsDF
+
 def runWorkitem(workitem):
     with sdm.SimDataManager(workitem) as simdm:
         worktype = workitem['workType']
         logger.info(f"runWorkitem: {worktype}, file: {workitem['studyFilename']}, mcIter: {workitem['MCIteration']}, pid: {os.getpid()}")
         runtime = 0
+        statsDF = pd.DataFrame()
         if worktype == 'initialization':
             runtime = initializeSim(workitem, simdm)
         elif worktype == 'simulation':
@@ -117,6 +123,8 @@ def runWorkitem(workitem):
             runtime = toParquet(workitem, simdm)
         elif worktype == 'summarize':
             runtime = summarize(workitem, simdm)
+        elif worktype == 'createPDFCache':
+            runtime, statsDF = createPDFCache(workitem, simdm)
         elif worktype == 'simSummary':
             runtime = summarizeSimulation(workitem, simdm)
         else:
@@ -127,7 +135,8 @@ def runWorkitem(workitem):
         'studyShortname': workitem['studyName'],
         'studyFilename': workitem['studyFilename'],
         'MCScenario': workitem['MCScenario'],
-        'runtime': runtime
+        'runtime': runtime,
+        'statsDF': statsDF
     }
 
 def generateSingleWorkitem(cm, workType):
@@ -161,6 +170,7 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     simWorkitems = []
     parquetWorkitems = []
     summaryWorkitems = []
+    createPDFCacheWorkitems = []
     simSummaryWorkitems = []
 
     fileList = getFileList(cm)
@@ -179,6 +189,7 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         # summarization happens at the site level only
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
+        createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCache'))
     # simSummary happens once per simulation
     simSummaryWI = generateSingleWorkitem(cm, 'simSummary')
     simSummaryWorkitems.append(simSummaryWI)
@@ -192,6 +203,8 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         retWorkitems.append(parquetWorkitems)
     if 'summarize' in phasesToInclude:
         retWorkitems.append(summaryWorkitems)
+    if 'createPDFCache' in phasesToInclude:
+        retWorkitems.append(createPDFCacheWorkitems)
     if 'simSummary' in phasesToInclude:
         retWorkitems.append(simSummaryWorkitems)
 
@@ -263,7 +276,14 @@ def main(cm, workitemQueues=None):
     clocktime = t0.deltat.total_seconds()
     totalMCIterations = cm.getConfigVar('monteCarloIterations')
     logger.info(f"Total runtime: {totalRuntime} seconds, clock time: {clocktime}, MC Iterations: {totalMCIterations}, items: {len(resList)}")
-    resDF = pd.DataFrame(resList)
+    for worktype, prefix in [('createPDFCache', 'PDFCache')]:
+        statsDFs = [r['statsDF'] for r in resList if r['worktype'] == worktype and not r['statsDF'].empty]
+        if statsDFs:
+            statsFilename = f"{prefix}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
+            logger.info(f"Wrote {statsFilename}")
+
+    resDF = pd.DataFrame(resList).drop(columns=['statsDF'])
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
     resFilename = dt.datetime.now().strftime(resFileFormat)
     resDF = resDF.assign(scenarioTimestamp=cm.getConfigVar('scenarioTimestamp'))

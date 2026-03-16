@@ -421,3 +421,97 @@ Sections of this document that capture known methodological differences, design 
 - [CI bounds and `readings` are not zero-filled](#ci-bounds-and-readings-are-not-zero-filled) — percentile/CI columns computed from a shortened `readings` list when some MC runs produce zero emissions; bounds are optimistically narrow for low-prevalence groups
 - [C2/C1 ratio rows in `SimSummary`](#c2c1-ratio-rows-in-simsummary) — simulation-wide C2/C1 recomputed from aggregated totals (emission-weighted) rather than averaged from per-site ratios (unweighted)
 - [Flare equipment and the `includeFugitive=False` filter](#flare-equipment-and-the-includefugitivefalse-filter) — legacy `Summaries.py` retained FUGITIVE-category flare emitters in `abnormal=off` totals due to emitter-ID-based filtering; `Summaries2.py` is correct by construction
+- [Minimum meaningful emission rate in CDF pipeline](#minimum-meaningful-emission-rate-in-cdf-pipeline) — open question: should very small emission rates be filtered before CDF construction?
+- [Blowdown Event exclusion from PDF](#blowdown-event-exclusion-from-pdf) — legacy `Summaries.py` excluded Blowdown Events from all PDFs as "maintenance emissions"; `Summaries2.py` includes them; open question for external review
+- [Sparse heater PDFs — KS sensitivity](#sparse-heater-pdfs--ks-sensitivity) — heater units with 3–6 PDF bins produce elevated KS statistics due to the discrete, step-function nature of very sparse CDFs; pending external review
+
+---
+
+### PDF and PDFCache datasets
+
+#### Terminology
+
+The **PDF** (Probability Mass Function) maps emission rate values to their duration-weighted probability mass across all MC runs. The **CDF** (Cumulative Distribution Function) is derived from the PDF by cumulative summation. Both forms are stored in the `PDF` parquet dataset — the PDF is the primary computational object; the CDF is included for convenience so downstream consumers need no additional computation.
+
+The pipeline datasets were historically named `CDFCache`, `CDFPrecomputed`, and `CDF`. They have been renamed `PDFCache` and `PDF` to reflect the primary terminology. `CDFPrecomputed` has been removed; `createPDFCache` now writes directly to `PDF`.
+
+#### Dataset descriptions
+
+| Dataset | Config key | Resolved path | Description |
+|---|---|---|---|
+| `PDFCache` | `parquetNewPDFCache` | `{parquetDir}/SummaryNew/PDFCache` | Raw RLE interval data (start/end time, emission rate) per emitter per MC run, at all grouping levels. Input to PDF construction. |
+| `PDF` | `parquetNewPDF` | `{parquetDir}/SummaryNew/PDF` | Computed probability distributions at all grouping levels. Stores both `probability` (PDF) and `cumulativeProbability` (CDF) columns. |
+
+Both datasets are partitioned by `site`.
+
+#### `PDF` schema
+
+| Column | Type | Notes |
+|---|---|---|
+| `site` | string | Partition key |
+| `species` | string | Gas species (METHANE, ETHANE) |
+| `operator` | string | |
+| `psno` | string | |
+| `CICategory` | string | Grouping level: `site`, `METype`, `unitID`, or `modelReadableName` |
+| `METype` | string | Present when `CICategory` is `METype` or `modelReadableName` |
+| `unitID` | string | Present when `CICategory` is `unitID` or `modelReadableName` |
+| `modelReadableName` | string | Present when `CICategory` is `modelReadableName` |
+| `includeFugitive` | bool | `True` = all emission categories; `False` = FUGITIVE excluded |
+| `emissionRate_kgPerH` | float64 | Emission rate bin value (kg/h), rounded to 6 decimal places |
+| `probability` | float64 | Fraction of total duration spent at this emission rate (PDF value) |
+| `cumulativeProbability` | float64 | Cumulative probability up to and including this bin (CDF value) |
+
+#### Emission rate rounding convention (`_roundForPDF`)
+
+All `emission_kgPerH` values stored in `PDFCache` and `PDF` are rounded to **6 decimal places** by `_roundForPDF` before storage. Rounding is applied after every `TimeseriesSet.sum()` call, at the point values are written into cache DataFrames.
+
+**Why rounding is necessary:** `TimeseriesSet.sum()` performs floating-point arithmetic that introduces ULP-level noise (~1e-16 for rates in the 0.1–10 kg/h range). Without rounding, what is physically one emission rate may appear as 2–3 distinct float64 values differing only in the 15th–16th decimal place. `TimeseriesPDF.fromDataFrame` groups intervals by exact float64 value, so these ULP variants become separate PDF bins — creating multiple near-identical steps in the CDF.
+
+**Why 6 decimal places:** This matches the precision of the legacy `Summaries.py` CSV output (`PDF_for_*` files), which rounded emission rates to 6 decimal places when writing. Using the same resolution ensures old and new CDFs share the same x-axis binning, keeping the KS validation statistic physically meaningful. Differences below 1e-6 kg/h are not physically significant for emissions reporting.
+
+**Why rounding must happen after `sum()`:** Rounding inputs before `sum()` is not sufficient — `sum()` may reintroduce ULP noise when combining COMBUSTION and FUGITIVE timeseries intervals. Rounding must be applied at every cache write point.
+
+### Minimum meaningful emission rate in CDF pipeline
+
+`TimeseriesSet.sum()` filters floating-point residuals using an absolute threshold of `1e-10` (see comment in `Timeseries.py`). This is a mathematical noise floor, not a physical one — its sole purpose is to discard sub-picogram/hour artifacts from floating-point cancellation. Legitimate emission values in the simulation are many orders of magnitude larger.
+
+**Open question:** Should a separate, physically motivated minimum emission rate threshold be applied earlier in the CDF pipeline — for example, in `_removeZeroEmissionEvents` in `Summaries2.py` — to prevent very small but non-zero emission rates from creating low-density PDF bins near zero that may not be physically meaningful?
+
+Considerations:
+- If such a threshold exists, what is the appropriate value and in what units (kg/s, kg/h)?
+- Should it be a fixed constant, or derived from instrument detection limits / regulatory reporting thresholds?
+- Applying a threshold here would affect the `CDFCache` and all downstream CDFs; it should not be set in `TimeseriesSet.sum()`, which is a general-purpose operation used outside the CDF pipeline.
+
+### Blowdown Event exclusion from PDF
+
+**Legacy behaviour (`Summaries.py`):** `generatePDFs` (line 1825) contains the explicit filter:
+
+```python
+df = df[df['modelReadableName'] != 'Blowdown Event']    # exclude maintenance emissions
+```
+
+This removes all Blowdown Event records before constructing any PDF, for both `abnormal=on` and `abnormal=off`. The comment labels blowdown events as "maintenance emissions."
+
+**New behaviour (`Summaries2.py`):** No such filter exists. All VENTED events — including Blowdown Events — are included when `includeFugitive=False`. All VENTED + FUGITIVE events are included when `includeFugitive=True`.
+
+**Observed impact on validation (2026-03-16):** For compressor units that have Blowdown Events, the legacy and new PDFs differ substantially:
+
+- **Max emission rate:** Old PDF reaches ~10 kg/h (Compressor Rod Packing Vent only); new PDF reaches ~88 kg/h (Blowdown Events at 88.43 kg/h).
+- **Distribution shape:** Blowdown Events co-occur with active packing-vent intervals. The combined timeseries rate during a blowdown is 88.43 + 0.006786 ≈ 88.43 kg/h, absorbing time that would otherwise be at 0.006786 kg/h. This shifts the CDF rightward and reduces the fraction of duration at low rates (e.g., CDF at 0.006786 kg/h drops from 13.1% to 0.8% for `comp_63723.0` at Timberlake).
+- **KS statistic:** Typically 0.85–0.94 for affected compressor units in `off` mode. This is the primary source of the 210 remaining CDF validation failures after the ULP rounding fix.
+
+**Open question for external review:** Should Blowdown Events be included in the emission rate PDF? The legacy exclusion reflects a policy decision that blowdowns are episodic maintenance activities and should not shape the "normal operation" emission rate distribution. The new code treats them as standard non-fugitive VENTED events. The correct treatment depends on how the PDF is intended to be used (e.g., compliance reporting, probabilistic risk assessment, equipment characterisation).
+
+### Sparse heater PDFs — KS sensitivity
+
+Three heater units produce very sparse PDFs (3–6 bins each) and exhibit elevated KS statistics in the old-vs-new comparison:
+
+| Unit | Site | KS (on) | KS (off) | Old bins | New bins |
+|------|------|---------|---------|---------|---------|
+| `HTR_BLU` | Bluestone Gas Processing Plant | 0.465 | 0.465 | 4 | 4 |
+| `HTR_SAR` | Sarsen Gas Processing Plant | 0.177 | 0.177 | 6 | 4 |
+| `HTR_HUM` | Humphreys Compressor Station | 0.709 | 0.709 | 3 | 3 |
+
+With so few bins, the CDF is a step function. A single bin boundary shifting by even one bin position produces a KS jump proportional to the probability mass of that bin. These are not ULP-noise failures — old and new row counts match (or differ by one), and no ULP variants are present in the PDF parquet. The elevated KS reflects a genuine shape difference in how the old and new code partition heater emission intervals into bins.
+
+Root cause has not been fully diagnosed. No code change is proposed at this time. **Pending external review.**

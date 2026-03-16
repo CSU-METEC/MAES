@@ -1657,7 +1657,7 @@ def aggrSet(input_df, value_column, group_options=None):
 def readParquetFiles(config, site, abnormal, mergeGC, additionalEventFilters):
     siteEVDF = Pl.readParquetEvents(config, site=site, mergeGC=mergeGC, species="METHANE", additionalEventFilters=additionalEventFilters)
     siteEVDF = siteEVDF[siteEVDF["nextTS"] - siteEVDF["timestamp"] == siteEVDF["duration"]]
-    siteEVDF = siteEVDF[siteEVDF['duration'] >= 0]
+    siteEVDF = siteEVDF[siteEVDF['duration'] > 0]
     siteEndSimDF = Pl.readParquetSummary(config, site=site)
 
     if abnormal == "OFF":
@@ -1675,7 +1675,7 @@ def grouping(dfToGroup, siteEndSimDF, valueColName, groupOptions=None):
         if valueColName == "emission":
             tdf = totalTimeseriesSet.sum()
             tdf.df = tdf.df[tdf.df['nextTS'] <= simDuration]
-            tdf.df.loc[:, 'tsValue'] = tdf.df['tsValue'] * SECONDSINHOUR
+            tdf.df.loc[:, tdf.valueColName] = tdf.df[tdf.valueColName] * SECONDSINHOUR
             AllMcRuns[mcRun] = tdf
         else:
             for tscat in totalTimeseriesSet.tsSetList:
@@ -1713,10 +1713,10 @@ def plotMeanEmissions(ax, mean_emissions, fac, abnormal):
     ax.grid(alpha=0.3)
 
 def calcProbabilitiesAllMCs(tss):
-    ts_df = pd.concat([t.df for t in tss.values()], ignore_index=True)
-    combined_ts = ts.TimeseriesRLE(ts_df.sort_values(by=['nextTS'], ascending=[True]), filterZeros=False)
-    pdf = combined_ts.toPDF()
-    return pdf.data.rename(columns={"value": "tsValue"})
+    pdf = ts.TimeseriesSet(list(tss.values())).toPDF()
+    result = pdf.data.rename(columns={"value": "tsValue"})
+    total = result['count'].sum()
+    return result.assign(probability=result['count'].cumsum() / total)
 
 def plotTs(allTSs, site, pdf, abnormal, config):
     """Plots emissions time series for all MC runs and mean emissions."""
@@ -1824,6 +1824,7 @@ def plotStateTS(config, AllMCruns_states, abnormal, siteEVDF, siteEndSimDF,site=
 def generatePDFs(config, df, abnormal, site):
     df = df[df['modelReadableName'] != 'Blowdown Event']    # exclude maintenance emissions
     df = df[df['species'] == 'METHANE']
+    df = df[df['nextTS'] > df['timestamp']]
 
     siteEmissions = config['siteEmiss']
     meType = config['METype']

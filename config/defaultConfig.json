@@ -73,7 +73,9 @@
       "parquetNewSummary":       "{parquetDir}/SummaryNew/SiteSummary",
       "parquetNewInstEmissions": "{parquetDir}/SummaryNew/InstEmissions",
       "parquetNewSimSummary":    "{parquetDir}/SummaryNew/SimSummary",
-      "parquetNewEventSummary":  "{parquetDir}/SummaryNew/EventSummary"
+      "parquetNewEventSummary":  "{parquetDir}/SummaryNew/EventSummary",
+      "parquetNewPDF":      "{parquetDir}/SummaryNew/PDF",
+      "parquetNewPDFCache": "{parquetDir}/SummaryNew/PDFCache"
     },
 
     "MCIteration": {

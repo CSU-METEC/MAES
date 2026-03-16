@@ -5,7 +5,6 @@ import scipy.integrate as si
 import scipy.interpolate as sint
 import logging
 # import helper as hp
-from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +21,6 @@ logger = logging.getLogger(__name__)
 HOURS_PER_DAY = 24
 SECONDS_PER_HOUR = 3600
 SECONDS_PER_MINUTE = 60
-
-class Method(Enum):
-    SUM = "sum"
-    MEAN = "mean"
-    MAX = "max"
-    MIN = "min"
-    MEDIAN = "median"
-    STD = "std"
-    LOWER = "lower"
-    UPPER = "upper"
 
 class MalformedTimeseriesError(Exception):
     pass
@@ -251,6 +240,8 @@ class TimeseriesRLE(Timeseries):
         if valueColName not in cols:
             logger.error(f"valueColName {valueColName} not in df columns {cols}")
             initError = True
+        if initError:
+            raise MalformedTimeseriesError
         shiftedTS = df[startTimeColName].shift(-1)
         overlapMask = (df[endTimeColName] > shiftedTS)
         if overlapMask.any():
@@ -267,6 +258,12 @@ class TimeseriesRLE(Timeseries):
 
         if filterZeros:
             self.df = self.df[self.df[self.valueColName] != 0.0].reset_index(drop=True)
+
+        zeroDurMask = self.df[self.endTimeColName] <= self.df[self.startTimeColName]
+        if zeroDurMask.any():
+            msg = f"Zero-duration interval(s) in {self.name}:\n{self.df[zeroDurMask]}"
+            logger.error(msg)
+            raise MalformedTimeseriesError(msg)
 
         self.colList = [self.startTimeColName, self.endTimeColName, self.valueColName]
 
@@ -329,33 +326,27 @@ class TimeseriesRLE(Timeseries):
             and (len(self.df) == len(ts2.df))
             and np.array_equal(self._startTimes.values, ts2._startTimes.values)
             and np.array_equal(self._endTimes, ts2._endTimes)
-            and np.allclose(self._values, ts2._values)
+            and np.allclose(self._values, ts2._values, equal_nan=True)
         )
 
         return ret
 
     def sampleSquare(self, bpList):
-        indVect = self._endTimes.searchsorted(bpList, side='left')
-
-        # filter out indices where bpList value exceeds max end time
-
-        li2 = pd.Series(indVect)
-        li1 = li2[li2.values < len(self.df)]
-        bpl1 = bpList[:len(li1)]
-
-        indDF = self.df.iloc[li1.values]
-        indDF = indDF.assign(bpl1=bpl1, iv=li1.index, ov=li1.values)
-        indDF = indDF.assign(useVal=(indDF[self.startTimeColName] <= indDF['bpl1'])
-                                    & (indDF['bpl1'] < indDF[self.endTimeColName]))
-        mapSeries = indDF.loc[indDF['useVal'], 'bpl1']
-
-        # create new dataframe with startTime, endTime, rate corresponding to bpList
-
-        compDF = pd.DataFrame(data={'calcRate': 0.0}, index=bpList)
-        compDF.loc[self.df[self.startTimeColName], 'calcRate'] = self.df[self.valueColName].values
-        compDF.loc[mapSeries.values, 'calcRate'] = self.df.loc[mapSeries.index][self.valueColName].values
-        ret = compDF['calcRate'].squeeze()
-        return ret
+        startTimes = self.df[self.startTimeColName].values
+        endTimes   = self.df[self.endTimeColName].values
+        values     = self.df[self.valueColName].values
+        bpArr  = np.asarray(bpList)
+        # For each breakpoint t, find the last interval with startTime <= t.
+        # searchsorted(..., side='right') - 1 gives that index (-1 means none).
+        # Then check t < endTime for half-open [startTime, endTime) semantics.
+        idx    = np.searchsorted(startTimes, bpArr, side='right') - 1
+        valid  = idx >= 0
+        vi     = idx[valid]
+        vt     = bpArr[valid]
+        result = np.zeros(len(bpArr))
+        inside = vt < endTimes[vi]
+        result[np.where(valid)[0][inside]] = values[vi[inside]]
+        return pd.Series(result, index=bpArr)
 
     # def sampleSquare(self, bpList):
     #     # times are closed on the bottom end, open on the top end:
@@ -513,10 +504,7 @@ class TimeseriesRLE(Timeseries):
 
 
     def CDFInverse(self, pts=[0.5]):
-        p1 = self.toPDF()
-        cdf = p1.toCDF()
-        r = p1.cdfInverse(cdf, pts)
-        return r
+        return self.toPDF().inverse(pts)
 
     def toRLETimeseries(self):
         return self
@@ -651,34 +639,24 @@ class TimeseriesRLE(Timeseries):
         return ret
 
     def removeErrorValues(self, replace=[]):
-        """
-        Removes time periods with NaN from the time series
-
-        :param replace: if set, replace NaN values with this value.
-        :return:
-        """
-        # todo: destructive
-        # todo: why is replace an empty list?
         idx = ~np.isinf(self.df[self.valueColName]) & ~np.isnan(self.df[self.valueColName])
         if not replace:
-            self.df = self.df[idx]
+            newDF = self.df[idx].reset_index(drop=True)
         else:
-            self.df.loc[~idx, self.valueColName] = replace
-        return self
+            newDF = self.df.copy()
+            newDF.loc[~idx, self.valueColName] = replace
+        return self.__class__(newDF,
+                              startTimeColName=self.startTimeColName,
+                              endTimeColName=self.endTimeColName,
+                              valueColName=self.valueColName)
 
     def removeZeroDuration(self):
-        """
-        Removes time periods with zero duration from the time series
-
-        :return:
-        """
-        # todo: destructive
-        idx = self.df[self.valueColName] != 0
-        self.df = self.df[idx]
-
-        idx = self.df[self.startTimeColName] != self.df[self.endTimeColName]
-        self.df = self.df[idx]
-        return self
+        newDF = self.df[self.df[self.valueColName] != 0]
+        newDF = newDF[newDF[self.startTimeColName] != newDF[self.endTimeColName]].reset_index(drop=True)
+        return self.__class__(newDF,
+                              startTimeColName=self.startTimeColName,
+                              endTimeColName=self.endTimeColName,
+                              valueColName=self.valueColName)
 
     def zeroPeriods(self, startTime=None, endTime=None, maintainOriginalZeros=False):
         """
@@ -791,21 +769,17 @@ class TimeseriesRLE(Timeseries):
             minValue = self.min(omitZero=omitZero)
             maxValue = self.max()
             # Create the stats table
-        # todo: this is a stupid data structure for the return value.
-        statsTab = pd.DataFrame(
-            {
-                'Minimum': [minValue],
-                'Lower': [d[0]],
-                'Mean': [meanValue],
-                'Upper': [d[1]],
-                'Maximum': [maxValue],
-                'StdDev': [stdValue],
-                'Median': [d[2]],
-                'Sum': [totalValue],
-                'OnDuration': [totalDur],
-            }
-        )
-        return statsTab
+        return {
+            'minimum':    minValue,
+            'lower':      d[0],
+            'mean':       meanValue,
+            'upper':      d[1],
+            'maximum':    maxValue,
+            'stdDev':     stdValue,
+            'median':     d[2],
+            'sum':        totalValue,
+            'onDuration': totalDur,
+        }
 
     def hasZeroPeriods(self):
         # returns True if there are any zero periods between the start
@@ -868,6 +842,7 @@ class TimeseriesFull(Timeseries):
         self.df = df
         self.startTimeColName = startTimeColName
         self.valueColName = rateColName
+
 
     @classmethod
     def fromCollections(cls, startTimeCollection, rateCollection, **kwargs):
@@ -1001,15 +976,8 @@ class TimeseriesCategorical(TimeseriesRLE):
         return ret
 
 class TimeseriesPDF():
-    def __init__(self, data, tolerance=[], omitNaN=False):
-        self.tolerance = tolerance
-        self.OmitNaN = omitNaN
-
-        #If data is timeseries object
-        if isinstance(data, Timeseries):
-            self.data = self.fromTS(data)
-        else:
-            self.data = data
+    def __init__(self, data):
+        self.data = data
         #Skipping functions from_vector and from_mc
 
     @property
@@ -1024,7 +992,8 @@ class TimeseriesPDF():
         return self.data.empty
 
     def add(self, pdfObj: "TimeseriesPDF"):
-        self.data = pd.concat([self.data, pdfObj.data], ignore_index=True)
+        merged = pd.concat([self.data[['value', 'count']], pdfObj.data[['value', 'count']]], ignore_index=True)
+        self.data = merged.groupby('value', sort=True)['count'].sum().reset_index()
         return self
     
     @classmethod
@@ -1033,16 +1002,8 @@ class TimeseriesPDF():
             return cls(pd.DataFrame(columns=['value', 'count']))
 
         return cls.fromDataFrame(ts.df,
-                                 tolerance=tolerance, datascale=1,
+                                 tolerance=tolerance, datascale=datascale,
                                  startTimeColName=ts.startTimeColName, endTimeColName=ts.endTimeColName, valueColName=ts.valueColName,)
-
-        data = ts.df[ts.valueColName]
-        if tolerance:
-            data = (data * datascale).round(tolerance[0]) * tolerance[0]
-        counts = ts._durations.groupby(data).sum().reset_index()
-        counts.columns = ['value', 'count']
-        counts["probability"] = counts["count"] / ts.totalDuration()
-        return cls(counts)
 
     @classmethod
     def fromDataFrame(cls, df, tolerance=[],
@@ -1054,58 +1015,48 @@ class TimeseriesPDF():
         durations = df[endTimeColName]-df[startTimeColName]
         counts = durations.groupby(data).sum().reset_index()
         counts.columns = ['value', 'count']
-        counts["probability"] = counts["count"] / durations.sum()
         return cls(counts)
 
 
-    def toCDF(self) -> "pd.DataFrame":
+    def toCDF(self) -> "TimeseriesCDF":
         if self.data.empty:
-            return pd.DataFrame()
-        self.data['cumulative_sum'] = self.data['count'].cumsum() / self.data['count'].sum()
-        r = self.data[['value', 'cumulative_sum']]
-        return r
-    
-    def cdfInverse(self, cdf_df, pts=[0.5]) -> (list | list[None]):
-        if any(pt > 1 or pt < 0 for pt in pts):
-            raise ValueError("cdfInverse(): Sample points must lie between zero and one")
+            return TimeseriesCDF(pd.DataFrame(columns=['value', 'cumulative_probability']))
+        cumprob = self.data['count'].cumsum() / self.data['count'].sum()
+        cdfDF = pd.DataFrame({'value': self.data['value'].values,
+                              'cumulative_probability': cumprob.values})
+        return TimeseriesCDF(cdfDF)
 
-        if cdf_df.shape[0] > 1 and cdf_df['cumulative_sum'].iloc[0] != 0:
-            cdf_df = pd.concat([pd.DataFrame({'value': cdf_df['value'].iloc[0], 'cumulative_sum': 0}, index=[0]), cdf_df])
+    def inverse(self, pts=[0.5]):
+        return self.toCDF().inverse(pts)
 
-        if cdf_df.shape[0] == 1:
-            ci = [cdf_df['value'].iloc[0]] * len(pts)
-        elif cdf_df['cumulative_sum'].isna().any() or cdf_df.empty:
-            ci = [None] * len(pts)
-        else:
-            f = sint.interp1d(cdf_df['cumulative_sum'], cdf_df['value'], bounds_error=False, fill_value=np.nan, kind='linear')
-            ci = f(pts)
-        return ci
+    def std(self):
+        if self.isempty():
+            return np.nan
+        w = self.data['count'].values
+        v = self.data['value'].values
+        return np.sqrt(np.sum(w * (v - self.mean()) ** 2) / np.sum(w))
 
     def statsTable(self, params=[0.025, 0.975]):
         totalValue = self.total()
         totalDur = self.counts()
         meanValue = self.mean()
-        cdf = self.toCDF()
-        ci = self.cdfInverse(cdf, params)
-        medianValue = self.cdfInverse(cdf, [0.5])
+        ci = self.inverse(params)
+        medianValue = self.inverse([0.5])
         minValue = self.min()
         maxValue = self.max()
-        stdValue = np.nan  # no time to figure this one out at the moment
+        stdValue = self.std()
 
-        # todo: this is a stupid data structure for the return value
-        stats = pd.DataFrame({
-            'Minimum': [minValue],
-            'Lower': [ci[0]],
-            'Mean': [meanValue],
-            'Upper': [ci[1]],
-            'Maximum': [maxValue],
-            'StdDev': [stdValue],
-            'Median': medianValue,
-            'Sum': [totalValue],
-            'OnDuration': [totalDur]
-        })
-
-        return stats
+        return {
+            'minimum':    minValue,
+            'lower':      ci[0],
+            'mean':       meanValue,
+            'upper':      ci[1],
+            'maximum':    maxValue,
+            'stdDev':     stdValue,
+            'median':     medianValue[0],
+            'sum':        totalValue,
+            'onDuration': totalDur,
+        }
 
     def total(self):
         if self.isempty():
@@ -1141,6 +1092,40 @@ class TimeseriesPDF():
             return np.sum(self.data['count'])
 
 #
+# TimeseriesCDF
+#
+
+class TimeseriesCDF():
+    def __init__(self, df):    # df columns: value, cumulative_probability
+        self.data = df
+
+    def isempty(self):
+        return self.data.empty
+
+    def inverse(self, pts=[0.5]) -> (list | list[None]):
+        if any(pt > 1 or pt < 0 for pt in pts):
+            raise ValueError("inverse(): Sample points must lie between zero and one")
+
+        cdf_df = self.data
+
+        if cdf_df.empty or cdf_df['cumulative_probability'].isna().any():
+            return [None] * len(pts)
+
+        if cdf_df.shape[0] == 1:
+            return [cdf_df['value'].iloc[0]] * len(pts)
+
+        if cdf_df['cumulative_probability'].iloc[0] != 0:
+            cdf_df = pd.concat([
+                pd.DataFrame({'value': [cdf_df['value'].iloc[0]], 'cumulative_probability': [0]}),
+                cdf_df
+            ], ignore_index=True)
+
+        f = sint.interp1d(cdf_df['cumulative_probability'], cdf_df['value'],
+                          bounds_error=False, fill_value=np.nan, kind='linear')
+        return f(pts)
+
+
+#
 # TimeseriesSet
 #
 
@@ -1154,13 +1139,63 @@ class TimeseriesSet():
         self.tsSetList.append(ts)
 
     def sum(self):
-        sumTS = TimeseriesRLE(pd.DataFrame(columns=['timestamp',
-                                                    'nextTS',
-                                                    'tsValue']))
+        if not self.tsSetList:
+            return TimeseriesRLE(pd.DataFrame(columns=['timestamp', 'nextTS', 'tsValue']))
+
+        first = self.tsSetList[0]
+        startCol = first.startTimeColName
+        endCol = first.endTimeColName
+        valCol = first.valueColName
+
+        # Build signed-event table: +value at interval start, -value at interval end.
+        # Collecting all events then sorting once gives O(M log M) vs O(N*M) for addSquare reduce.
+        dfs = []
+        for singleTS in self.tsSetList:
+            df = singleTS.df
+            vals = df[singleTS.valueColName].values
+            dfs.append(pd.DataFrame({'time': df[singleTS.startTimeColName].values, 'delta': vals}))
+            dfs.append(pd.DataFrame({'time': df[singleTS.endTimeColName].values, 'delta': -vals}))
+
+        eventsDF = pd.concat(dfs, ignore_index=True)
+        grouped = eventsDF.groupby('time', sort=True)['delta'].sum()
+
+        times = grouped.index.values
+        cumsums = grouped.values.cumsum()
+
+        # Interval [times[i], times[i+1]) has value cumsums[i]
+        startTimes = times[:-1]
+        endTimes = times[1:]
+        intervalVals = cumsums[:-1]
+
+        # Filter near-zero FP residuals.  When multiple timeseries share an endpoint (e.g. two
+        # emitters that start and stop at the same simulation tick), their +delta and -delta events
+        # land on the same time bucket.  float64 addition is not associative, so the cumsum after
+        # cancellation produces tiny residuals (~1e-14 for emission rates in the 1-100 kg/h range)
+        # rather than exactly 0.  Without filtering, these residuals create phantom intervals
+        # spanning the large gaps between real events (e.g. 29M-second "intervals" with value
+        # -1.4e-14), which corrupt downstream PDFs.  The threshold 1e-10 is 4+ orders of magnitude
+        # above observed residuals and well below the smallest physically meaningful emission rate.
+        nearZeroMask = np.abs(intervalVals) < 1e-10
+        residualMask = (intervalVals < 0.0) & nearZeroMask
+        if residualMask.any():
+            logger.debug(f"TimeseriesSet.sum: {residualMask.sum()} near-zero FP residuals clipped (min={intervalVals[residualMask].min():.3e})")
+        mask = ~nearZeroMask
+        outDF = pd.DataFrame({startCol: startTimes[mask],
+                               endCol: endTimes[mask],
+                               valCol: intervalVals[mask]})
+
+        if outDF.empty:
+            return TimeseriesRLE(pd.DataFrame(columns=['timestamp', 'nextTS', 'tsValue']))
+
+        return TimeseriesRLE(outDF.reset_index(drop=True),
+                             startTimeColName=startCol,
+                             endTimeColName=endCol,
+                             valueColName=valCol)
+
+    def oldSum(self):
+        sumTS = TimeseriesRLE(pd.DataFrame(columns=['timestamp', 'nextTS', 'tsValue']))
         for singleTS in self.tsSetList:
             sumTS = sumTS.addSquare(singleTS)
-
-
         return sumTS
 
     def sumNew(self):
@@ -1194,10 +1229,14 @@ class TimeseriesSet():
         return sumTS.divideSquare(numTS)
 
     def toPDF(self):
-        dfList = map(lambda x: x.df, self.tsSetList)
-        pdfDF = pd.concat(dfList)
-        ret = TimeseriesPDF.fromDataFrame(pdfDF)
-        return ret
+        if not self.tsSetList:
+            return TimeseriesPDF(pd.DataFrame(columns=['value', 'count']))
+        first = self.tsSetList[0]
+        pdfDF = pd.concat(map(lambda x: x.df, self.tsSetList))
+        return TimeseriesPDF.fromDataFrame(pdfDF,
+                                           startTimeColName=first.startTimeColName,
+                                           endTimeColName=first.endTimeColName,
+                                           valueColName=first.valueColName)
 
 
 

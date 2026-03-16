@@ -1,3 +1,4 @@
+import datetime
 import pandas as pd
 import AppUtils as au
 import os
@@ -30,6 +31,7 @@ US_TONS_PER_YEAR_UNITS_NAME = 'US tons/year'
 METRIC_TONS_PER_YEAR_UNITS_NAME = 'mt/year'
 
 SUMMARY_KEY_COLS = ['site', 'species', 'operator', 'psno']
+CACHE_IDENTITY_COLS = [*SUMMARY_KEY_COLS, 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory']
 
 def _convertkgPerS2kgPerH(x):
     return x * u.SECONDS_PER_HOUR
@@ -75,15 +77,17 @@ def _createEmissionDF(inDF):
 
     return retDF
 
-_DATASET_PARAMS = {
+DATASET_PARAMS = {
     'InstEmissions': {'configKey': 'parquetNewInstEmissions', 'partition_cols': ['site']},
     'SiteSummary':   {'configKey': 'parquetNewSummary',       'partition_cols': ['site']},
     'EventSummary':  {'configKey': 'parquetNewEventSummary',  'partition_cols': ['site']},
     'SimSummary':    {'configKey': 'parquetNewSimSummary',    'partition_cols': []},
+    'PDF':           {'configKey': 'parquetNewPDF',           'partition_cols': ['site']},
+    'PDFCache':      {'configKey': 'parquetNewPDFCache',      'partition_cols': ['site']},
 }
 
 def _saveSummaryDS(config, df, dataset):
-    params = _DATASET_PARAMS[dataset]
+    params = DATASET_PARAMS[dataset]
     pl.toBaseParquetFullConfig(config, df, params['configKey'], partition_cols=params['partition_cols'], basename=dataset)
 
 def _doAgg(df, groupbyCols, aggFieldList, varCol):
@@ -329,6 +333,358 @@ def calculateC2C1Ratios(summaryDF, confidenceLevel):
         ratioDF[c] = ratioDF[c].replace(NULL, np.nan)
 
     return ratioDF
+
+PDF_GROUPINGS = [
+    ('site',              SUMMARY_KEY_COLS),
+    ('METype',            [*SUMMARY_KEY_COLS, 'METype']),
+    ('unitID',            [*SUMMARY_KEY_COLS, 'unitID']),
+    ('modelReadableName', [*SUMMARY_KEY_COLS, 'METype', 'unitID', 'modelReadableName']),
+]
+
+def _cacheGroupToTimeseriesRLE(groupDF):
+    return ts.TimeseriesRLE.fromCollections(
+        groupDF['startTime_s'].values,
+        groupDF['endTime_s'].values,
+        groupDF['emission_kgPerH'].values,
+        startTimeColName='timestamp',
+        endTimeColName='nextTS',
+        valueColName='valueCollection'
+    )
+
+def _roundForPDF(values, decimals=6):
+    """Round emission rates to 6 decimal places before PDF/CDF construction.
+
+    Background
+    ----------
+    MAES computes per-emitter emission rates as emission_kgPerS * SECONDS_PER_HOUR.
+    When multiple emitter timeseries are combined via TimeseriesSet.sum(), the sweep-line
+    algorithm performs floating-point arithmetic that can introduce rounding noise at the
+    ULP (Unit in the Last Place) level — typically ~1e-16 for rates in the 0.1–10 kg/h
+    range.  This means what is physically one emission rate (e.g. a compressor operating
+    at a fixed 0.105718 kg/h) may appear as 2–3 distinct float64 values differing only
+    in the 15th–16th decimal place after summation across MC runs.
+
+    Effect on PDF construction
+    --------------------------
+    TimeseriesPDF.fromDataFrame groups intervals by exact float64 value before summing
+    durations.  Without rounding, ULP-variant values are treated as distinct bins in the
+    PDF, producing multiple near-identical steps in the CDF.  When compared against legacy
+    PDFs (which were written to CSV at 6 decimal places), the x-axis shift between old
+    (6 dp) and new (16 dp) values causes np.interp to linearly interpolate across what
+    should be a single step, inflating the KS statistic by up to ~0.47.
+
+    Why 6 decimal places
+    --------------------
+    Six decimal places (resolution 1e-6 kg/h) matches the precision of the legacy CSV
+    output from Summaries.py, which rounded emission rates when writing PDF_for_* files.
+    This ensures old and new CDFs share the same x-axis binning at the comparison
+    resolution.  Differences smaller than 1e-6 kg/h are physically meaningless for
+    emissions reporting purposes.
+
+    Rounding must be applied AFTER TimeseriesSet.sum() and before storing values to the
+    cache DataFrames.  It cannot be applied only at input because sum() may reintroduce
+    ULP noise when combining COMBUSTION and FUGITIVE timeseries intervals.
+
+    Parameters
+    ----------
+    values : array-like
+        Emission rate values in kg/h (numpy array or pandas Series).
+    decimals : int
+        Number of decimal places to round to.  Default 6.
+
+    Returns
+    -------
+    numpy ndarray
+        Values rounded to the specified number of decimal places.
+    """
+    return np.round(values, decimals)
+
+
+def _buildCoarseCacheLevel(fineDF, groupCols, levelName):
+    aggGroupCols = [*groupCols, 'modelEmissionCategory', 'mcRun']
+    rowsList = []
+    for groupKey, groupDF in fineDF.groupby(aggGroupCols):
+        catTSList = []
+        for _, subDF in groupDF.groupby(CACHE_IDENTITY_COLS):
+            catTSList.append(_cacheGroupToTimeseriesRLE(subDF))
+        summedTS = ts.TimeseriesSet(catTSList).sum()
+        if summedTS.isempty():
+            continue
+        identityDict = dict(zip(aggGroupCols, groupKey))
+        n = len(summedTS.df)
+        rowsList.append(pd.DataFrame({
+            **{col: [val] * n for col, val in identityDict.items()},
+            'startTime_s': summedTS.df[summedTS.startTimeColName].values,
+            'endTime_s': summedTS.df[summedTS.endTimeColName].values,
+            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
+            'cacheLevel': [levelName] * n,
+        }))
+    return pd.concat(rowsList, ignore_index=True) if rowsList else pd.DataFrame()
+
+def createPDFCache(config):
+    logger.info(f"Creating PDF cache for site {config['siteName']}")
+    with Timer("Read InstEmissions") as t0:
+        instEmissionDF = pd.read_parquet(config['parquetNewInstEmissions'],
+                                         filters=[('site', '=', config['siteName'])])
+        if instEmissionDF.empty:
+            logger.info(f"No InstEmissions data for site {config['siteName']}, skipping PDF cache")
+            return pd.DataFrame()
+        t0.setCount(len(instEmissionDF))
+
+    instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    groupCols = [*CACHE_IDENTITY_COLS, 'mcRun']
+    cacheRowsList = []
+    with Timer("Build PDF cache") as t1:
+        for groupKey, groupDF in instEmissionDF.groupby(groupCols):
+            summedTS = _buildMCRunTimeseries(groupDF)
+            if summedTS.isempty():
+                continue
+            n = len(summedTS.df)
+            identityDict = dict(zip(groupCols, groupKey))
+            cacheRowsList.append(pd.DataFrame({
+                **{col: [val] * n for col, val in identityDict.items()},
+                'startTime_s': summedTS.df[summedTS.startTimeColName].values,
+                'endTime_s': summedTS.df[summedTS.endTimeColName].values,
+                'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
+            }))
+        t1.setCount(len(cacheRowsList))
+
+    if not cacheRowsList:
+        logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
+        return pd.DataFrame()
+
+    fineCacheDF = pd.concat(cacheRowsList, ignore_index=True)
+    fineCacheDF = fineCacheDF.assign(cacheLevel='modelReadableName')
+    allLevelDFs = [fineCacheDF]
+    statsRows = [{'cacheLevel': 'modelReadableName', 'groupCount': len(cacheRowsList),
+                  'intervalRows': len(fineCacheDF), 'buildSeconds': t1.deltat.total_seconds()}]
+
+    for levelName, levelGroupCols in PDF_GROUPINGS[:-1]:
+        with Timer(f"Build coarse cache {levelName}", loglevel=logging.DEBUG) as t2:
+            coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName)
+            t2.setCount(len(coarseDF))
+        if not coarseDF.empty:
+            for col in [*CACHE_IDENTITY_COLS, 'mcRun']:
+                if col not in coarseDF.columns:
+                    coarseDF = coarseDF.assign(**{col: ''})
+            allLevelDFs.append(coarseDF)
+            groupCount = coarseDF.groupby([*levelGroupCols, 'modelEmissionCategory', 'mcRun']).ngroups
+            statsRows.append({'cacheLevel': levelName, 'groupCount': groupCount,
+                              'intervalRows': len(coarseDF), 'buildSeconds': t2.deltat.total_seconds()})
+
+    cacheDF = pd.concat(allLevelDFs, ignore_index=True)
+    _saveSummaryDS(config, cacheDF, 'PDFCache')
+    logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
+
+    with Timer("Build PDFs") as tPDF:
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF)
+        fullPDFDF = fullPDFDF.assign(includeFugitive=True)
+        noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
+        pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
+        tPDF.setCount(len(pdfDF))
+    _saveSummaryDS(config, pdfDF, 'PDF')
+    logger.info(f"PDF: {len(pdfDF)} rows for site {config['siteName']}")
+
+    cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
+    pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
+    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True)
+
+def _buildMCRunTimeseries(mcRunDF):
+    zeroDurationDF = mcRunDF[mcRunDF['duration_s'] <= 0]
+    if not zeroDurationDF.empty:
+        site = mcRunDF['site'].iloc[0]
+        mcRun = mcRunDF['mcRun'].iloc[0]
+        logger.warning(f"_buildMCRunTimeseries: {len(zeroDurationDF)} zero-duration events filtered out for site {site}, mcRun {mcRun}")
+        mcRunDF = mcRunDF[mcRunDF['duration_s'] > 0]
+    emitterTSList = []
+    for _, emitterDF in mcRunDF.groupby('emitterID'):
+        starts = emitterDF['timestamp_s'].values
+        ends = starts + emitterDF['duration_s'].values
+        values = emitterDF['emission_kgPerS'].values * u.SECONDS_PER_HOUR
+        emitterTSList.append(ts.TimeseriesRLE.fromCollections(starts, ends, values))
+    with Timer("emitter sum", loglevel=logging.DEBUG) as t:
+        result = ts.TimeseriesSet(emitterTSList).sum()
+        t.setCount(len(emitterTSList))
+    return result
+
+def _buildPDFForGroup(groupDF, identityCols, CICategory):
+    with Timer("build MC run timeseries") as t:
+        mcRunTSList = []
+        for _, mcRunDF in groupDF.groupby('mcRun'):
+            mcTS = _buildMCRunTimeseries(mcRunDF)
+            if not mcTS.isempty():
+                mcRunTSList.append(mcTS)
+        t.setCount(len(mcRunTSList))
+    stats = {
+        'CICategory': CICategory,
+        **identityCols,
+        'mcRunCount': t.counter,
+        'buildSeconds': t.deltat.total_seconds(),
+    }
+    if not mcRunTSList:
+        return None, stats
+    with Timer("mcRun toPDF", loglevel=logging.DEBUG) as t2:
+        pdf = ts.TimeseriesSet(mcRunTSList).toPDF()
+        t2.setCount(len(mcRunTSList))
+    cdf = pdf.toCDF()
+    if cdf.isempty():
+        return None, stats
+    n = len(cdf.data)
+    totalCount = pdf.data['count'].sum()
+    pdfRows = pd.DataFrame({
+        **{col: [val] * n for col, val in identityCols.items()},
+        'CICategory': [CICategory] * n,
+        'emissionRate_kgPerH': cdf.data['value'].values,
+        'probability': (pdf.data['count'] / totalCount).values,
+        'cumulativeProbability': cdf.data['cumulative_probability'].values,
+    })
+    return pdfRows, stats
+
+def calculatePDFSummary(instEmissionDF):
+    instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    resultDFList = []
+    statsList = []
+    for CICategory, groupCols in PDF_GROUPINGS:
+        for _, groupDF in instEmissionDF.groupby(groupCols):
+            identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
+            pdfRows, stats = _buildPDFForGroup(groupDF, identityCols, CICategory)
+            statsList.append(stats)
+            if pdfRows is not None:
+                resultDFList.append(pdfRows)
+    pdfDF = pd.concat(resultDFList) if resultDFList else pd.DataFrame()
+    statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
+    return pdfDF, statsDF
+
+VALIDATE_QUANTILES = [0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
+
+def _makePDFRows(mcRunTSList, identityCols, CICategory):
+    if not mcRunTSList:
+        return None
+    pdf = ts.TimeseriesSet(mcRunTSList).toPDF()
+    cdf = pdf.toCDF()
+    if cdf.isempty():
+        return None
+    n = len(cdf.data)
+    totalCount = pdf.data['count'].sum()
+    return pd.DataFrame({
+        **{col: [val] * n for col, val in identityCols.items()},
+        'CICategory': [CICategory] * n,
+        'emissionRate_kgPerH': cdf.data['value'].values,
+        'probability': (pdf.data['count'] / totalCount).values,
+        'cumulativeProbability': cdf.data['cumulative_probability'].values,
+    })
+
+def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory):
+    fullMCRunTSList = []
+    noFugMCRunTSList = []
+    with Timer("build MC run timeseries from coarse cache", loglevel=logging.DEBUG) as t:
+        for _, mcRunDF in groupDF.groupby('mcRun'):
+            catTSDict = {}
+            for emCat, catDF in mcRunDF.groupby('modelEmissionCategory'):
+                catTSDict[emCat] = _cacheGroupToTimeseriesRLE(catDF)
+            fullTS = ts.TimeseriesSet(list(catTSDict.values())).sum()
+            noFugItems = filter(lambda kv: kv[0] != 'FUGITIVE', catTSDict.items())
+            noFugTS = ts.TimeseriesSet(list(map(lambda kv: kv[1], noFugItems))).sum()
+            if not fullTS.isempty():
+                fullTS.df = fullTS.df.assign(**{fullTS.valueColName: _roundForPDF(fullTS.df[fullTS.valueColName].values)})
+                fullMCRunTSList.append(fullTS)
+            if not noFugTS.isempty():
+                noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values)})
+                noFugMCRunTSList.append(noFugTS)
+        t.setCount(len(fullMCRunTSList))
+    stats = {
+        'CICategory': CICategory,
+        **identityCols,
+        'mcRunCount': len(fullMCRunTSList),
+        'buildSeconds': t.deltat.total_seconds(),
+    }
+    return _makePDFRows(fullMCRunTSList, identityCols, CICategory), _makePDFRows(noFugMCRunTSList, identityCols, CICategory), stats
+
+def calculatePDFSummaryFromCache(cacheDF):
+    fullResultDFList = []
+    noFugResultDFList = []
+    statsList = []
+    for CICategory, groupCols in PDF_GROUPINGS:
+        levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
+        for _, groupDF in levelDF.groupby(groupCols):
+            identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
+            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory)
+            statsList.append(stats)
+            if fullPDFRows is not None:
+                fullResultDFList.append(fullPDFRows)
+            if noFugPDFRows is not None:
+                noFugResultDFList.append(noFugPDFRows)
+    fullPDFDF = pd.concat(fullResultDFList) if fullResultDFList else pd.DataFrame()
+    noFugPDFDF = pd.concat(noFugResultDFList) if noFugResultDFList else pd.DataFrame()
+    statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
+    return fullPDFDF, noFugPDFDF, statsDF
+
+def validatePDFCache(config):
+    logger.info(f"Validating PDF cache for site {config['siteName']}")
+    instEmissionDF = pd.read_parquet(config['parquetNewInstEmissions'],
+                                     filters=[('site', '=', config['siteName'])])
+    instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    cacheDF = pd.read_parquet(config['parquetNewPDFCache'],
+                              filters=[('site', '=', config['siteName'])])
+    fineCacheDF = cacheDF[cacheDF['cacheLevel'] == 'modelReadableName']
+
+    # Intermediate check: compare cached RLE intervals vs freshly built for a random sample of groups
+    groupCols = [*CACHE_IDENTITY_COLS, 'mcRun']
+    allGroups = list(instEmissionDF.groupby(groupCols))
+    rng = np.random.default_rng(42)
+    sampleIdx = rng.choice(len(allGroups), size=min(10, len(allGroups)), replace=False)
+    mismatchCount = 0
+    for idx in sampleIdx:
+        groupKey, rawGroupDF = allGroups[idx]
+        rawTS = _buildMCRunTimeseries(rawGroupDF)
+        filterMask = pd.Series([True] * len(fineCacheDF), index=fineCacheDF.index)
+        for col, val in zip(groupCols, groupKey):
+            filterMask = filterMask & (fineCacheDF[col] == val)
+        cacheGroupDF = fineCacheDF[filterMask]
+        if cacheGroupDF.empty:
+            logger.error(f"Intermediate check: group {groupKey} missing from cache")
+            mismatchCount += 1
+            continue
+        cachedTS = _cacheGroupToTimeseriesRLE(cacheGroupDF)
+        startMatch = np.array_equal(rawTS.df[rawTS.startTimeColName].values,
+                                    cachedTS.df[cachedTS.startTimeColName].values)
+        valueMatch = np.allclose(rawTS.df[rawTS.valueColName].values,
+                                 cachedTS.df[cachedTS.valueColName].values)
+        if not startMatch or not valueMatch:
+            logger.error(f"Intermediate check: RLE mismatch for group {dict(zip(groupCols, groupKey))}")
+            mismatchCount += 1
+    logger.info(f"Intermediate check: {len(sampleIdx)} groups sampled, {mismatchCount} mismatches")
+
+    # End-to-end check: compare CDFs from raw-instEmissions path vs cache path at fixed quantile points
+    pdfFromRaw, _ = calculatePDFSummary(instEmissionDF)
+    pdfFromCache, _, _ = calculatePDFSummaryFromCache(cacheDF)
+
+    joinCols = [c for c in pdfFromRaw.columns if c not in ('emissionRate_kgPerH', 'probability', 'cumulativeProbability')]
+    rawSampled = _sampleCDFAtQuantiles(pdfFromRaw, joinCols)
+    cacheSampled = _sampleCDFAtQuantiles(pdfFromCache, joinCols)
+
+    merged = rawSampled.merge(cacheSampled, on=[*joinCols, 'quantile'], suffixes=('_raw', '_cache'))
+    merged = merged.assign(
+        relDelta=((merged['emissionRate_kgPerH_cache'] - merged['emissionRate_kgPerH_raw']).abs()
+                  / merged['emissionRate_kgPerH_raw'].replace(0, np.nan))
+    )
+    failures = merged[merged['relDelta'] > 1e-6]
+    if failures.empty:
+        logger.info(f"End-to-end check: all {len(merged)} quantile samples match")
+    else:
+        logger.error(f"End-to-end check: {len(failures)} quantile samples differ:\n{failures.to_string()}")
+
+def _sampleCDFAtQuantiles(cdfDF, joinCols):
+    rows = []
+    for _, groupDF in cdfDF.groupby(joinCols):
+        sortedDF = groupDF.sort_values('cumulativeProbability')
+        identityDict = {col: groupDF[col].iloc[0] for col in joinCols}
+        sampled = np.interp(VALIDATE_QUANTILES,
+                            sortedDF['cumulativeProbability'].values,
+                            sortedDF['emissionRate_kgPerH'].values)
+        for q, v in zip(VALIDATE_QUANTILES, sampled):
+            rows.append({**identityDict, 'quantile': q, 'emissionRate_kgPerH': v})
+    return pd.DataFrame(rows)
 
 def summarizeSingleSite(config, instEmissionDF):
     CONFIDENCE_LEVEL = 95

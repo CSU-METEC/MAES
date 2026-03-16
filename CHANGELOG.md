@@ -1,7 +1,27 @@
 # CHANGELOG
 
 
-## v0.3.0 (2026-03-09)
+## v0.3.0 (unreleased)
+
+### Features
+
+- **Summaries2.py** — PDF caching pipeline: added `createPDFCache`, which writes two new
+  parquet datasets per simulation run — `PDFCache` (raw RLE interval data per emitter per MC
+  run at four grouping levels: `site`, `METype`, `unitID`, `modelReadableName`) and `PDF`
+  (computed probability distributions storing both `probability` and `cumulativeProbability`
+  columns). Controlled by a new `createPDFCache` phase in `SiteMain2.py`. Config keys
+  `parquetNewPDFCache` and `parquetNewPDF` added to `defaultConfig.json`.
+
+- **Timeseries.py** — `TimeseriesCDF`: new class with `inverse(pts)` and `isempty()` methods.
+  `TimeseriesPDF.toCDF()` now returns a `TimeseriesCDF` instance without mutating `self.data`.
+  `TimeseriesPDF.inverse(pts)` added as a convenience wrapper for `toCDF().inverse(pts)`.
+
+- **Timeseries.py** — `TimeseriesPDF.std()`: duration-weighted standard deviation of the PDF.
+
+- **Summaries2.py** — `_roundForPDF(values, decimals=6)`: canonical rounding helper applied
+  after every `TimeseriesSet.sum()` call before values are written into cache DataFrames or
+  combined MC-run timeseries lists. Prevents ULP-variant emission rates from being treated as
+  distinct PDF bins by `TimeseriesPDF.fromDataFrame`.
 
 ### Bug Fixes
 
@@ -24,6 +44,142 @@
 - **SummaryTest.py**: Normalise `modelEmissionCategory='TOTAL'` (emitted by legacy `Summaries.py`)
   to `'COMBINED'` (emitted by `Summaries2.py`) inside `doSimSummaryComparison` so that simulation-
   summary rows align correctly during validation comparisons.
+
+- **Timeseries.py** — `TimeseriesRLE.__init__`: `MalformedTimeseriesError` was not raised until
+  after the code attempted to access the missing column, producing an uninformative `KeyError`
+  instead. The error is now raised immediately once any required column is found to be absent.
+
+- **Timeseries.py** — `TimeseriesRLE.equal`: `np.allclose` was called without `equal_nan=True`,
+  causing two timeseries that both contained NaN values to compare as unequal even when otherwise
+  identical.
+
+- **Timeseries.py** — `TimeseriesRLE.removeZeroDuration` / `removeErrorValues`: both methods
+  mutated `self.df` in place and returned `self`. They now return a new `TimeseriesRLE` instance,
+  leaving the original unchanged.
+
+- **Timeseries.py** — `TimeseriesPDF.fromTS`: the `datascale` parameter was silently ignored
+  because the internal call to `fromDataFrame` hard-coded `datascale=1`. The parameter is now
+  forwarded correctly.
+
+- **Timeseries.py** — `TimeseriesSet.sum()`: near-zero floating-point residuals (~1e-14) were
+  retained after shared-endpoint cancellations, creating phantom intervals spanning large gaps
+  between real events and corrupting downstream PDFs. Fixed by replacing `mask = intervalVals
+  != 0.0` with an absolute-value threshold (`abs(val) < 1e-10`), which is four or more orders
+  of magnitude above observed residuals and well below any physically meaningful emission rate.
+
+- **Timeseries.py** — `TimeseriesPDF.add()`: adding two PDFs that shared emission-rate values
+  produced duplicate rows rather than merging the counts. `add()` now re-groups by value after
+  concatenation.
+
+- **Timeseries.py** — `TimeseriesRLE.__init__`: added enforcement that all intervals satisfy
+  `endTime > startTime`. A `MalformedTimeseriesError` is raised immediately on construction if
+  any zero- or negative-duration interval is present, preventing silent data corruption
+  downstream.
+
+- **Summaries2.py** — `_buildMCRunTimeseries`: added a guard that logs a WARNING and filters
+  out any `duration_s <= 0` rows in the instantaneous-emissions input before building emitter
+  timeseries, preventing `MalformedTimeseriesError` from zero-duration events in raw data.
+
+- **Summaries2.py** — `_buildPDFForGroupFromCache`: `_roundForPDF` was not applied to the
+  per-MC-run summed timeseries produced inside this function. When multiple emission categories
+  (e.g., COMBUSTION + FUGITIVE) are summed, the result can reintroduce ULP-level noise even
+  though the individual cache entries were already rounded. `_roundForPDF` is now applied to the
+  value column of both `fullTS` and `noFugTS` immediately after each `TimeseriesSet.sum()` call,
+  before the timeseries is appended to the MC-run list. This eliminated 529 of 739 spurious CDF
+  validation failures.
+
+### Refactoring
+
+- **Timeseries.py** — `TimeseriesPDF` / `TimeseriesCDF`: removed the `Method` enum and the
+  `isinstance` dispatch in `__init__`. `TimeseriesPDF.__init__` now simply stores the provided
+  DataFrame as `self.data`. The `probability` column is no longer stored internally (it is
+  recomputed on demand in `toCDF()`). Dead code after the `return` in `fromTS` removed.
+  `TimeseriesRLE.CDFInverse` updated to call `self.toPDF().inverse(pts)`; the standalone
+  `cdfInverse(cdf_df, pts)` function removed.
+
+- **Timeseries.py** — `TimeseriesRLE.sampleSquare`: replaced the original two-pass
+  implementation with a single-pass binary search using `np.searchsorted`.
+
+- **Summaries2.py** / **SiteMain2.py** / **SummaryTest.py** / **defaultConfig.json**: renamed
+  all `CDF*` datasets, config keys, and functions to `PDF*` to reflect that the primary
+  computational object is the Probability Mass Function, not the Cumulative Distribution
+  Function. Specifically: `CDFCache` → `PDFCache`, `CDF` → `PDF`, `createCDFCache` →
+  `createPDFCache`. The `CDFPrecomputed` intermediate dataset was removed; `createPDFCache` now
+  writes directly to `PDF`. The `createCDF` phase and wrapper function in `SiteMain2.py` were
+  also removed.
+
+### Documentation
+
+- **docs/SummarySchema.md**: added sections documenting the `PDFCache` and `PDF` parquet
+  datasets (schema, config keys, resolved paths), the `_roundForPDF` rounding convention and
+  its rationale, and two open items pending external review: (1) whether Blowdown Events should
+  be included in emission-rate PDFs (legacy code excluded them as "maintenance emissions"; new
+  code includes them as VENTED), and (2) KS-statistic sensitivity for heater units with sparse
+  PDFs (3–6 bins).
+
+- **docs/Timeseries.md**: updated `TimeseriesPDF` and `TimeseriesCDF` API tables to reflect
+  the refactored interface. Also added module-level usage guide, caveats, and design notes
+  covering `TimeseriesRLE`, `TimeseriesSet`, `TimeseriesPDF`, and `TimeseriesCDF`.
+
+### Tests
+
+- **UnitTests/test_Timeseries.py**: Fixed module imports to use the flat `src/` layout
+  (`import Timeseries as ts`, `from Timer import Timer`) rather than a `timeseries` package that
+  no longer exists. Added a `sys.path` insert so the test file can be run directly from the `src/`
+  directory.
+
+- **UnitTests/test_Timeseries.py**: Plotting-backend imports (`TsMatplotlib`, `TsBokeh`,
+  `TsPlotly`) are now guarded with `try/except ImportError`; `TestPlotter` is skipped with
+  `@unittest.skipUnless` when the backends are absent, allowing the remaining 72 tests to run.
+
+- **UnitTests/test_Timeseries.py**: Corrected `LARGE_TSFILE` path from `tests/` to `UnitTests/`.
+
+- **UnitTests/test_Timeseries.py**: Updated three `TestPDF` expected DataFrames to include the
+  `probability` column that `TimeseriesPDF.fromDataFrame` has always produced.
+
+- **UnitTests/test_Timeseries.py** — `TestTimeseriesCDF`: replaced the former `TestCdfInverse`
+  suite with 7 tests covering `TimeseriesCDF.inverse()`, `TimeseriesCDF.isempty()`, and the
+  non-mutation guarantee of `TimeseriesPDF.toCDF()`.
+
+- **UnitTests/test_Timeseries.py** — `TestPDF`: extended to 15 tests, adding coverage for
+  `TimeseriesPDF.std()`, `TimeseriesPDF.add()` (including the duplicate-row fix),
+  `TimeseriesPDF.inverse()`, and `test_PDFStatsTable` (updated expected `stdDev` to 7.9368).
+
+### Performance
+
+- **Timeseries.py** — `TimeseriesSet.sum()`: replaced the sequential `addSquare` reduce
+  (O(K²·M)) with an event-based algorithm (O(K·M log(K·M))). For each interval in each
+  timeseries a `+value` event is emitted at the start time and a `−value` event at the end time;
+  all events are concatenated, grouped by time, and cumsummed to produce the running total at
+  every breakpoint. The old implementation is preserved as `TimeseriesSet.oldSum()` for
+  reference. Benchmarks on 10 timeseries × 100 K intervals: ~52× speedup (17 s → 0.32 s).
+  Full algorithm exposition in **docs/TimeseriesSum.md**.
+
+- **Timeseries.py** — `TimeseriesSet.oldSum()`: the original `addSquare`-reduce implementation
+  is retained under this name for comparison. Note that `oldSum()` also produced **incorrect
+  totals** (overcount of ~34–46%) when timeseries overlapped in time, due to a boundary
+  misassignment in `sampleSquare` that compounded across sequential accumulation steps.
+
+### Tests
+
+- **UnitTests/test_Timeseries.py** — `TestTimeseriesSetSum`: 15 new correctness tests for
+  `TimeseriesSet.sum()` covering disjoint, adjacent, partial overlap, containment, all three
+  breakpoint-alignment cases (start-aligned, end-aligned, both-aligned, A-end = B-start),
+  multi-interval cases, three-way overlap, empty set, single-element set, empty member, and
+  zero-value intervals.
+
+- **UnitTests/test_Timeseries.py** — `TSSetScaleTest`: two timing tests asserting both
+  correctness and throughput for `sum()`:
+  - `test_sumFewWideSeries`: 10 timeseries × 1 M intervals (~8 s)
+  - `test_sumManyNarrowSeries`: 1 K timeseries × 10 K intervals (~8 s)
+  - `test_sumVsOldSum`: side-by-side timing comparison of `sum()` vs `oldSum()` on
+    10 × 100 K intervals; asserts correctness of `sum()` only.
+
+- **UnitTests/demo_oldSumVsNewSum.py**: standalone matplotlib demo showing the `oldSum()`
+  overcounting bug. Generates random overlapping timeseries, runs both implementations, and
+  produces a four-panel plot: individual timeseries, full-range overlay, 200-step zoom of the
+  maximum-divergence window (with error region shaded), and a bar-chart total comparison using
+  the large-scale dataset.
 
 
 ## v0.2.0 (2025-01-12)

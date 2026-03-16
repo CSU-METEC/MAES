@@ -12,7 +12,8 @@ import numpy as np
 
 ABS_EPSILON = 0.01   # absolute tolerance (mt/year or kg/h depending on context)
 REL_EPSILON = 0.01   # 1% relative tolerance — both must be exceeded for a failure
-REGENERATE_SUMMARIES = True
+KS_EPSILON = 0.05    # max CDF deviation (KS statistic) tolerated for PDF comparisons
+REGENERATE_SUMMARIES = False
 
 SUMMARY_LAYOUTS = {
     'AnnualEmissions': {
@@ -518,20 +519,140 @@ def doSimSummaryComparison(siteName, oldSummaryDict, newSummaryDF):
     return retList, detailDFList
 
 
+_ABNORMAL_TO_INCLUDE_FUGITIVE = {'on': True, 'off': False}
+
+
+def _readOldPDFSummaries(config):
+    simulationRoot = config['simulationRoot']
+    siteName = config['siteName']
+    pdfDir = Path(simulationRoot) / 'summaries' / 'PDFs' / f'site={siteName}'
+    results = []
+    for abnormal in ['on', 'off']:
+        siteFile = pdfDir / f'PDF_for_site_abnormal_{abnormal}.csv'
+        if siteFile.exists():
+            results.append({'CICategory': 'site', 'categoryValue': None, 'abnormal': abnormal, 'df': pd.read_csv(siteFile)})
+
+        for f in pdfDir.glob(f'PDF_for_all_*_abnormal_{abnormal}.csv'):
+            meType = f.stem.replace('PDF_for_all_', '').replace(f'_abnormal_{abnormal}', '')
+            results.append({'CICategory': 'METype', 'categoryValue': meType, 'abnormal': abnormal, 'df': pd.read_csv(f)})
+
+        for f in pdfDir.glob(f'PDF_for_*_abnormal_{abnormal}.csv'):
+            if f.stem.startswith('PDF_for_all_') or f.stem.startswith('PDF_for_site_'):
+                continue
+            unitID = f.stem.replace('PDF_for_', '').replace(f'_abnormal_{abnormal}', '')
+            results.append({'CICategory': 'unitID', 'categoryValue': unitID, 'abnormal': abnormal, 'df': pd.read_csv(f)})
+    return results
+
+
+def _readNewPDFSummaries(config):
+    if 'parquetNewPDF' not in config:
+        return pd.DataFrame()
+    pdfPath = Path(config['parquetNewPDF'])
+    if not pdfPath.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(config['parquetNewPDF'], filters=[('site', '=', config['siteName'])])
+
+
+def doPDFComparison(siteName, oldPDFList, newPDFDF):
+    if newPDFDF.empty:
+        return [], []
+    retList = []
+    detailDFList = []
+
+    for entry in oldPDFList:
+        CICategory = entry['CICategory']
+        categoryValue = entry['categoryValue']
+        abnormal = entry['abnormal']
+        oldDF = entry['df']
+        includeFugitive = _ABNORMAL_TO_INCLUDE_FUGITIVE[abnormal]
+        oldSummaryKey = ('CDF', f"{CICategory}/{categoryValue}", abnormal)
+        tag = f"[CDF/{CICategory}/{categoryValue}/{abnormal}/{siteName}]"
+
+        newMask = (
+            (newPDFDF['CICategory'] == CICategory) &
+            (newPDFDF['species'] == 'METHANE') &
+            (newPDFDF['includeFugitive'] == includeFugitive)
+        )
+        if categoryValue is not None:
+            newMask = newMask & (newPDFDF[CICategory] == categoryValue)
+        newSubset = newPDFDF[newMask]
+
+        if newSubset.empty:
+            logging.warning(f"  {tag} no matching new CDF entry")
+            retList.append({
+                'siteName': siteName, 'oldSummaryKey': oldSummaryKey,
+                'comparedItems': 0, 'missingItemCount': 1,
+                'outOfRangeCount': 0, 'maxAbsoluteDelta': np.nan, 'maxRelativeDelta': np.nan,
+            })
+            continue
+
+        # Legacy toPDF() could produce near-duplicate x values (sub-ULP float noise)
+        # representing a point mass. Keep the max (post-jump) probability per bin
+        # before interpolating to avoid a spurious KS distance at the jump point.
+        oldDedup = (oldDF.assign(_key=oldDF['CH4_EmissionRate_kg/h'].round(10))
+                        .groupby('_key', as_index=False)
+                        .agg({'probability': 'max', 'CH4_EmissionRate_kg/h': 'first'})
+                        .sort_values('CH4_EmissionRate_kg/h'))
+        oldX = oldDedup['CH4_EmissionRate_kg/h'].values.astype(float)
+        oldP = oldDedup['probability'].values.astype(float)
+
+        newX = newSubset['emissionRate_kgPerH'].values.astype(float)
+        newP = newSubset['cumulativeProbability'].values.astype(float)
+        newIdx = np.argsort(newX)
+        newX, newP = newX[newIdx], newP[newIdx]
+
+        allX = np.union1d(oldX, newX)
+        oldInterp = np.interp(allX, oldX, oldP)
+        newInterp = np.interp(allX, newX, newP)
+        diff = np.abs(oldInterp - newInterp)
+        ksD = float(diff.max())
+        maxDiffAt = float(allX[diff.argmax()])
+
+        outOfRangeCount = 1 if ksD > KS_EPSILON else 0
+        if outOfRangeCount:
+            logging.warning(f"  {tag} ksD={ksD:.4f} maxDiffAt={maxDiffAt:.4f} kg/h")
+
+        detailDF = pd.DataFrame([{
+            'CICategory': CICategory,
+            'categoryValue': str(categoryValue),
+            'summaryType': 'CDF',
+            'by': CICategory,
+            'abnormal': abnormal,
+            'siteName': siteName,
+            'mergeStatus': 'both',
+            'ksStatistic': ksD,
+            'ksMaxAt_kgPerH': maxDiffAt,
+            'oldRows': len(oldDF),
+            'newRows': len(newSubset),
+        }])
+        detailDFList.append(detailDF)
+
+        retList.append({
+            'siteName': siteName, 'oldSummaryKey': oldSummaryKey,
+            'comparedItems': len(allX), 'missingItemCount': 0,
+            'outOfRangeCount': outOfRangeCount,
+            'maxAbsoluteDelta': ksD, 'maxRelativeDelta': np.nan,
+        })
+
+    return retList, detailDFList
+
+
 def compareSummaries(job):
     siteName = job['siteName']
     logging.info(f"Comparing {siteName=}")
     oldSummaryDict = _readOldSummaries(job)
     newSummaryDF = _readNewSummaries(job)
     newEventSummaryDF = _readNewEventSummaries(job)
+    newPDFDF = _readNewPDFSummaries(job)
 
     annualRet, annualDetail = doAnnualEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
     aggregatedRet, aggregatedDetail = doAggregatedEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
     instRet, instDetail = doInstantaneousEmissionComparison(siteName, oldSummaryDict, newSummaryDF)
     eventRet, eventDetail = doEventComparison(siteName, oldSummaryDict, newEventSummaryDF)
+    pdfRet, pdfDetail = doPDFComparison(siteName, _readOldPDFSummaries(job), newPDFDF)
 
-    summaryList = [*annualRet, *aggregatedRet, *instRet, *eventRet]
-    detailDFList = [*annualDetail, *aggregatedDetail, *instDetail, *eventDetail]
+    summaryList = [*annualRet, *aggregatedRet, *instRet, *eventRet, *pdfRet]
+    detailDFList = [*annualDetail, *aggregatedDetail, *instDetail, *eventDetail, *pdfDetail]
     return summaryList, detailDFList
 
 
@@ -553,7 +674,7 @@ def regenerateOldSummaries(summaryJobs):
     oldSummaryArgs = {
         'annualSummaries': True,
         'instantaneousSummaries': True,
-        'pdfSummaries': False,
+        'pdfSummaries': True,
         'avgDurSummaries': True,
         'statesAndTsPloting': False,
         'simulationEmissions': True,
