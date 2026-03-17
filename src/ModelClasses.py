@@ -721,6 +721,7 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
                  initialState=None,
                  initialStateTime=None,
                  fuzzedInitialTime=None,
+                 _loadingWarnIssued=None,
                  **kwargs):
         operatingFraction = self.resetZeroAndOne(operatingFraction)
         nopFraction = self.resetZeroAndOne(nopFraction)
