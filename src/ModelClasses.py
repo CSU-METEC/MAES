@@ -771,6 +771,7 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
         self.initialState = initialState
         self.initialStateTime = initialStateTime
         self.fuzzedInitialTime = fuzzedInitialTime
+        self._loadingWarnIssued = False
 
         totalHours = self.opModeHours + self.nopModeHours + self.nodModeHours
         self.timeRatios = {'OPERATING': self.opModeHours / totalHours,
@@ -1047,10 +1048,12 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
         else:
             loading_kW, loading_pu = self.calcLoadingNoFF(loading_pu)
             if loading_kW > self.compressorkW:
-                msg = (f'Loading distribution > max rated load. The distribution is wrong, please check average '
-                       f'and standard loading parameters'
-                       f' in compressors tab, unitID: {self.unitID}, will continue using rated load')
-                logging.warning(msg)
+                if not self._loadingWarnIssued:
+                    msg = (f'Loading distribution > max rated load. The distribution is wrong, please check average '
+                           f'and standard loading parameters'
+                           f' in compressors tab, unitID: {self.unitID}, will continue using rated load')
+                    logging.warning(msg)
+                    self._loadingWarnIssued = True
                 loading_kW = self.compressorkW
         return loading_kW, loading_pu, fuelConsump
 

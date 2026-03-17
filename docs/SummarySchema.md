@@ -241,8 +241,8 @@ Derived from `SiteSummary` by `summarizeSimulation`. One file covering all sites
 | `mean` | float64 | `total / count` — mean of per-site corrected means (mirrors `SiteSummary` mean correction: `mean = total / count`) |
 | `min` | float64 | Minimum per-site corrected mean |
 | `max` | float64 | Maximum per-site corrected mean |
-| `lower` | float64 | 25th percentile of per-site corrected means |
-| `upper` | float64 | 75th percentile of per-site corrected means |
+| `lowerQuintile` | float64 | 25th percentile of per-site corrected means |
+| `upperQuintile` | float64 | 75th percentile of per-site corrected means |
 | `lowerCI` | float64 | 2.5th percentile of per-site corrected means (at 95% CI) |
 | `upperCI` | float64 | 97.5th percentile of per-site corrected means (at 95% CI) |
 | `readings` | list\<float64\> | Per-site corrected mean values |
@@ -398,7 +398,7 @@ This is structurally the same discrepancy as `simpleMean` vs `meanEmissionRate` 
 | **Bias** | overweights short, high-rate events | overweights high-C2/C1 sites that emit little methane |
 | **Correct approach** | duration-weighted | emission-weighted |
 
-`SimSummary` C2/C1 rows omit `min`, `max`, `lower`, `upper`, `lowerCI`, `upperCI`, and `readings` (set to `NaN` / empty list). The ratio is deterministic given the site-level means; per-site distribution information is not propagated.
+`SimSummary` C2/C1 rows omit `min`, `max`, `lowerQuintile`, `upperQuintile`, `lowerCI`, `upperCI`, and `readings` (set to `NaN` / empty list). The ratio is deterministic given the site-level means; per-site distribution information is not propagated.
 
 **SummaryTest validation:** The `emissionRateOutOfRangeCount=1` flag for `AggregatedSimulationEmissions / unitID / on / simulation` (species `C2/C1`, `unitID=tnk_flare`, ~10.6% relative delta) is an **expected divergence** caused by this methodological difference. The new emission-weighted value is physically correct; the legacy unweighted value is not a defect target.
 

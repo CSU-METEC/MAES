@@ -23,7 +23,18 @@
   combined MC-run timeseries lists. Prevents ULP-variant emission rates from being treated as
   distinct PDF bins by `TimeseriesPDF.fromDataFrame`.
 
+### Schema Changes
+
+- **Summaries2.py** — `SimSummary` parquet: renamed columns `lower` → `lowerQuintile` and
+  `upper` → `upperQuintile` in both `_filterAndPivot` and `_computeSimC2C1` to match the
+  corresponding column names in `SiteSummary`. Updated `docs/SummarySchema.md` accordingly.
+
 ### Bug Fixes
+
+- **ModelClasses.py** — `MEETCompressor.calcLoading`: the "Loading distribution > max rated
+  load" warning was emitted on every overload sample, producing thousands of identical log lines
+  per simulation. Added `_loadingWarnIssued` instance flag so the warning fires at most once per
+  compressor unit per MC run.
 
 - **Summaries2.py**: Exclude zero-emission events from event count and duration statistics to match
   the behaviour of the legacy `Summaries.py` path, which filtered `emissions_kgPerS > 0` before
