@@ -3,6 +3,49 @@
 
 ## v0.3.0 (unreleased)
 
+### Bug Fixes (2026-03-17)
+
+- **Summaries2.py** — `_filterAndPivot`: fixed incorrect SimSummary statistics (issue #27).
+  The previous implementation aggregated the `mean` column across per-site rows, producing
+  `total = simulation_total / mcIterations` and `mean = total`, while `min`, `max`, and CI
+  columns were computed from the distribution of per-site means. This caused `mean > max` for
+  any multi-site simulation. The function now explodes the per-site `readings` lists from
+  `SiteSummary`, sums by positional MC-run index across sites, and computes all statistics from
+  the resulting distribution of cross-site run totals. Validated on a 26-site and a 50-site
+  simulation: 0 rows where `mean > max` or `upperCI < mean` in either case.
+
+- **ModelClasses.py** — `MEETCompressor.checkForCorrectDriver`: the "Driver Type X does not
+  have a close approximation of load equations" warning was emitted on every call, producing
+  large numbers of identical log lines per simulation. Added `_driverTypeWarnIssued` instance
+  flag so the warning fires at most once per compressor unit, matching the existing
+  `_loadingWarnIssued` throttle pattern.
+
+### Schema Changes (2026-03-17)
+
+- **Summaries2.py** / **docs/SummarySchema.md** / **CLAUDE.md**: renamed `lowerQuintile` →
+  `lowerQuartile` and `upperQuintile` → `upperQuartile` throughout. The columns compute the
+  25th and 75th percentiles (Q1 and Q3), which are quartiles; the previous name was incorrect.
+  Also corrected the percentile values documented in `CLAUDE.md` from 20th/80th to 25th/75th.
+  `SiteSummary` and `SimSummary` parquets must be regenerated to pick up the new column names.
+
+### Validation (2026-03-17)
+
+- **SummaryTest.py** — `checkSimSummaryConsistency`: new function that validates statistical
+  invariants on the new `SimSummary` output independently of old-vs-new comparison. Checks
+  `mean ≤ max`, `lowerCI ≤ mean`, and `mean ≤ upperCI` for all non-C2/C1 rows.
+  `mean > max` is counted as a hard violation (`emissionRateOutOfRangeCount`); CI bound
+  violations are counted separately as warnings (`ciWarningCount`) since they can be
+  statistically valid for heavily right-skewed distributions. Results appear as a
+  `SimSummaryConsistency / self / check` row in the SummaryTest CSV output.
+
+- **docs/SummarySchema.md**: documented the SummaryTest blind spot (old-vs-new comparison
+  cannot detect bugs shared by both implementations), the SimSummary fix, the self-consistency
+  check approach, and two new topics for discussion: extreme outlier MC runs causing
+  `mean > upperCI` in MPLX-Q4, and the general recommendation to extend self-consistency
+  checks to `SiteSummary` and `EventSummary`.
+
+
+
 ### Features
 
 - **Summaries2.py** — PDF caching pipeline: added `createPDFCache`, which writes two new

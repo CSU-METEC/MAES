@@ -656,11 +656,56 @@ def compareSummaries(job):
     return summaryList, detailDFList
 
 
+def checkSimSummaryConsistency(siteName, newSummaryDF):
+    # Self-consistency check on the new SimSummary — validates statistical invariants
+    # that hold regardless of the legacy reference values. This catches bugs that both
+    # old and new implementations share (e.g. mean > max), which old-vs-new comparison
+    # cannot detect. See SummarySchema.md "SummaryTest blind spot" for details.
+    #
+    # mean > max is always a structural bug (counted as a violation).
+    # mean > upperCI or lowerCI > mean is logged as a warning only — it is
+    # statistically valid for heavily right-skewed distributions with extreme outlier
+    # MC runs, but warrants investigation. See SummarySchema.md "Extreme outlier MC runs".
+    #
+    # C2/C1 rows are excluded — their min/max/CI columns are NaN by design.
+    checkDF = newSummaryDF[newSummaryDF['species'] != 'C2/C1']
+    total = len(checkDF)
+
+    meanGtMax = checkDF[checkDF['mean'] > checkDF['max']]
+    lowerCIGtMean = checkDF[checkDF['lowerCI'] > checkDF['mean']]
+    meanGtUpperCI = checkDF[checkDF['mean'] > checkDF['upperCI']]
+    ciWarningCount = len(lowerCIGtMean) + len(meanGtUpperCI)
+
+    tag = f"[SimSummaryConsistency/self/check/{siteName}]"
+    if len(meanGtMax) > 0:
+        logging.warning(f"  {tag} mean > max: {len(meanGtMax)} of {total} rows (violation)")
+    if len(lowerCIGtMean) > 0:
+        logging.warning(f"  {tag} lowerCI > mean: {len(lowerCIGtMean)} of {total} rows (warning — possible extreme outlier MC runs)")
+    if len(meanGtUpperCI) > 0:
+        logging.warning(f"  {tag} mean > upperCI: {len(meanGtUpperCI)} of {total} rows (warning — possible extreme outlier MC runs)")
+
+    thisRet = {
+        'siteName': siteName,
+        'oldSummaryKey': ('SimSummaryConsistency', 'self', 'check'),
+        'comparedItems': total,
+        'emissionRateOutOfRangeCount': len(meanGtMax),
+        'emissionRateOutOfRangeRelativeCount': len(meanGtMax),
+        'ciWarningCount': ciWarningCount,
+        'roNonZeroCount': 0,
+        'loCount': 0,
+        'maxAbsoluteDelta': 0.0,
+        'maxRelativeDelta': 0.0,
+    }
+    return [thisRet], [pd.DataFrame()]
+
+
 def compareSimSummaries(job):
     logging.info(f"Comparing simulation summaries")
     oldSummaryDict = _readOldSummaries(job)
     newSimulationSummaryDF = _readNewSimulationSummary(job)
-    return doSimSummaryComparison('simulation', oldSummaryDict, newSimulationSummaryDF)
+    compResults, detailList = doSimSummaryComparison('simulation', oldSummaryDict, newSimulationSummaryDF)
+    consistencyResults, consistencyDetails = checkSimSummaryConsistency('simulation', newSimulationSummaryDF)
+    return compResults + consistencyResults, detailList + consistencyDetails
 
 
 def _transformResult(inDict):

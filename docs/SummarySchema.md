@@ -109,8 +109,8 @@ Cross-MC statistics; no per-MC-run rows are stored. Each row represents one grou
 | `mean` | float64 | Mean emission corrected for MC iterations (`total / monteCarloIterations`) |
 | `min` | float64 | Minimum per-MC-run total |
 | `max` | float64 | Maximum per-MC-run total |
-| `lowerQuintile` | float64 | 25th percentile of per-MC-run totals |
-| `upperQuintile` | float64 | 75th percentile of per-MC-run totals |
+| `lowerQuartile` | float64 | 25th percentile of per-MC-run totals |
+| `upperQuartile` | float64 | 75th percentile of per-MC-run totals |
 | `lowerCI` | float64 | Lower confidence interval bound (2.5th percentile at 95% CI) |
 | `upperCI` | float64 | Upper confidence interval bound (97.5th percentile at 95% CI) |
 | `readings` | list\<float64\> | Per-MC-run total values (length = `monteCarloIterations`) |
@@ -133,7 +133,7 @@ In addition to the per-species rows, `SiteSummary` contains C2/C1 ethane-to-meth
 | `readings` | Per-MC-run `emission_ETHANE / emission_METHANE` ratios; `NaN` where METHANE emission is zero |
 | `mean` | `nanmean` of `readings` |
 | `min` / `max` | `nanmin` / `nanmax` of `readings` |
-| `lowerQuintile` / `upperQuintile` | 25th / 75th nanpercentile of `readings` |
+| `lowerQuartile` / `upperQuartile` | 25th / 75th nanpercentile of `readings` |
 | `lowerCI` / `upperCI` | 2.5th / 97.5th nanpercentile of `readings` |
 | `rawCount` | `rawCount` from the METHANE source row |
 | `rawMean` | `rawMean_ETHANE / rawMean_METHANE` |
@@ -236,16 +236,16 @@ Derived from `SiteSummary` by `summarizeSimulation`. One file covering all sites
 | `units` | string | Emission units |
 | `includeFugitive` | bool | `True` = all categories; `False` = FUGITIVE excluded |
 | `CICategory` | string | Grouping level (see table above) |
-| `total` | float64 | Sum of per-site corrected means (see [Mean correction](#mean-correction)) |
-| `count` | int64 | Number of unique sites in the simulation (`len(fullSummaryDF['site'].unique())`) |
-| `mean` | float64 | `total / count` — mean of per-site corrected means (mirrors `SiteSummary` mean correction: `mean = total / count`) |
-| `min` | float64 | Minimum per-site corrected mean |
-| `max` | float64 | Maximum per-site corrected mean |
-| `lowerQuintile` | float64 | 25th percentile of per-site corrected means |
-| `upperQuintile` | float64 | 75th percentile of per-site corrected means |
-| `lowerCI` | float64 | 2.5th percentile of per-site corrected means (at 95% CI) |
-| `upperCI` | float64 | 97.5th percentile of per-site corrected means (at 95% CI) |
-| `readings` | list\<float64\> | Per-site corrected mean values |
+| `total` | float64 | Sum of cross-site run totals across all MC runs (true simulation grand total) |
+| `count` | int64 | Number of MC iterations (`monteCarloIterations`) |
+| `mean` | float64 | Mean of the cross-site run-total distribution (`total / mcIterations`) |
+| `min` | float64 | Minimum cross-site run total across all MC runs |
+| `max` | float64 | Maximum cross-site run total across all MC runs |
+| `lowerQuartile` | float64 | 25th percentile of cross-site run totals |
+| `upperQuartile` | float64 | 75th percentile of cross-site run totals |
+| `lowerCI` | float64 | 2.5th percentile of cross-site run totals (95% CI lower bound) |
+| `upperCI` | float64 | 97.5th percentile of cross-site run totals (95% CI upper bound) |
+| `readings` | list\<float64\> | Cross-site run totals, one value per MC run |
 | `modelEmissionCategory` | string | Present for relevant `CICategory` values |
 | `modelReadableName` | string | Present for relevant `CICategory` values |
 | `unitID` | string | Present for relevant `CICategory` values |
@@ -315,7 +315,17 @@ count = monteCarloIterations
 
 The mean correction accounts for absent MC runs, but `readings` only contains values from MC runs where the group had non-zero emissions. `lowerCI`, `upperCI`, and the quintile columns are therefore computed from a list that may be shorter than `monteCarloIterations` when any MC run produces zero emissions for a given group. CI bounds will be optimistically narrow for low-prevalence groups. A future fix would pad `readings` with zeros to length `monteCarloIterations` before computing percentiles.
 
-`SimSummary` applies the same `mean = total / count` pattern at the cross-site level. `count` is the number of unique sites in the simulation, computed explicitly as `len(fullSummaryDF['site'].unique())` before any aggregation and passed into `_filterAndPivot` — it is not derived from the groupby. `total` is the sum of per-site corrected means, and `mean = total / count`. Statistics (`min`, `max`, percentiles, `readings`) are derived from the per-site corrected mean values.
+`SimSummary` follows the approach in issue #27: for each MC run, the per-site values are summed across all sites to produce a distribution of cross-site run totals. All statistics are then computed from that distribution:
+
+- `total` = sum of all cross-site run totals = simulation grand total across all MC runs
+- `mean` = mean of the cross-site run-total distribution = `total / mcIterations`
+- `min`, `max`, `lowerQuartile`, `upperQuartile`, `lowerCI`, `upperCI` = statistics of the cross-site run-total distribution
+- `readings` = list of cross-site run totals, one per MC run
+- `count` = `monteCarloIterations`
+
+This guarantees `mean <= max` and `lowerCI <= mean <= upperCI` for any multi-site simulation.
+
+The cross-site sums are derived by exploding the `readings` lists from `SiteSummary` and summing by positional index. Because `readings` in `SiteSummary` is not zero-filled (see [CI bounds and readings are not zero-filled](#ci-bounds-and-readings-are-not-zero-filled)), the positional index is an approximation of the MC run number for groups where some MC runs have zero emissions. The resulting cross-site sums are slightly misaligned in those cases; the effect is small for well-sampled groups.
 
 ### Per-dataset MC granularity
 
@@ -398,7 +408,7 @@ This is structurally the same discrepancy as `simpleMean` vs `meanEmissionRate` 
 | **Bias** | overweights short, high-rate events | overweights high-C2/C1 sites that emit little methane |
 | **Correct approach** | duration-weighted | emission-weighted |
 
-`SimSummary` C2/C1 rows omit `min`, `max`, `lowerQuintile`, `upperQuintile`, `lowerCI`, `upperCI`, and `readings` (set to `NaN` / empty list). The ratio is deterministic given the site-level means; per-site distribution information is not propagated.
+`SimSummary` C2/C1 rows omit `min`, `max`, `lowerQuartile`, `upperQuartile`, `lowerCI`, `upperCI`, and `readings` (set to `NaN` / empty list). The ratio is deterministic given the site-level means; per-site distribution information is not propagated.
 
 **SummaryTest validation:** The `emissionRateOutOfRangeCount=1` flag for `AggregatedSimulationEmissions / unitID / on / simulation` (species `C2/C1`, `unitID=tnk_flare`, ~10.6% relative delta) is an **expected divergence** caused by this methodological difference. The new emission-weighted value is physically correct; the legacy unweighted value is not a defect target.
 
@@ -424,6 +434,8 @@ Sections of this document that capture known methodological differences, design 
 - [Minimum meaningful emission rate in CDF pipeline](#minimum-meaningful-emission-rate-in-cdf-pipeline) — open question: should very small emission rates be filtered before CDF construction?
 - [Blowdown Event exclusion from PDF](#blowdown-event-exclusion-from-pdf) — legacy `Summaries.py` excluded Blowdown Events from all PDFs as "maintenance emissions"; `Summaries2.py` includes them; open question for external review
 - [Sparse heater PDFs — KS sensitivity](#sparse-heater-pdfs--ks-sensitivity) — heater units with 3–6 PDF bins produce elevated KS statistics due to the discrete, step-function nature of very sparse CDFs; pending external review
+- [SummaryTest blind spot](#summarytest-blind-spot--old-vs-new-comparison-cannot-detect-shared-bugs) — old-vs-new comparison cannot catch bugs shared by both implementations; mitigated by self-consistency checks on new output
+- [Extreme outlier MC runs in SimSummary](#extreme-outlier-mc-runs-in-simsummary) — 2 MC runs in MPLX-Q4 produce cross-site METHANE totals ~34× the median; causes `mean > upperCI` for non-fugitive simulation rows; pending colleague review
 
 ---
 
@@ -515,3 +527,77 @@ Three heater units produce very sparse PDFs (3–6 bins each) and exhibit elevat
 With so few bins, the CDF is a step function. A single bin boundary shifting by even one bin position produces a KS jump proportional to the probability mass of that bin. These are not ULP-noise failures — old and new row counts match (or differ by one), and no ULP variants are present in the PDF parquet. The elevated KS reflects a genuine shape difference in how the old and new code partition heater emission intervals into bins.
 
 Root cause has not been fully diagnosed. No code change is proposed at this time. **Pending external review.**
+
+---
+
+## SimSummary Statistics — Implementation Note
+
+**Status: Fixed (2026-03-17) per [issue #27](https://github.com/CSU-METEC/MAES/issues/27).**
+
+**Previous bug:** `mean` was set to `total` (sum of per-site means), while `min`/`max`/CI were computed from the per-site mean distribution. This caused `mean > max` by construction for any multi-site simulation. Confirmed on a 26-site CNX run: 378 of 2035 rows affected.
+
+**Fix:** `_filterAndPivot` now reconstructs per-run cross-site totals by exploding the `readings` lists from `SiteSummary` and summing by positional MC-run index. All statistics (`mean`, `min`, `max`, CI, `readings`) are computed from the resulting distribution of cross-site run totals, consistent with the approach described in issue #27. See [SimSummary columns](#columns-2) for the full updated column semantics.
+
+---
+
+## Extreme Outlier MC Runs in SimSummary
+
+**Status: Pending colleague review.**
+
+In the MPLX-Q4 simulation (50 sites, 100 MC runs), the `CICategory='simulation'`, `includeFugitive=False` rows for METHANE and ETHANE show `mean > upperCI`. Inspection of the `readings` distribution reveals 2 extreme outlier MC runs:
+
+| Species | Typical run (mt/year) | Outlier run 1 | Outlier run 2 |
+|---|---|---|---|
+| METHANE | ~23,600 | ~426,419 | ~800,188 |
+| ETHANE | proportional | proportional | proportional |
+
+The 98 non-outlier runs are tightly clustered; the 2 outliers are 17–34× the median. This pulls `mean` (35,392) above `upperCI` (24,580 — the 97.5th percentile of the bulk distribution). `mean > upperCI` is **statistically valid** for this distribution shape — it is not a bug in the summarization code.
+
+**Open question:** What simulation events in those 2 MC runs produce totals 17–34× higher than a typical run? Candidates include runaway tank flash events, flare malfunction sequences, or compressor blowdown timing coincidences across multiple sites. Flagged for colleague review before investigating further.
+
+`SummaryTest` reports these as `ciWarningCount` (not `emissionRateOutOfRangeCount`) in the `SimSummaryConsistency` row.
+
+---
+
+## SummaryTest Blind Spot — Old-vs-New Comparison Cannot Detect Shared Bugs
+
+`SummaryTest` validates correctness by comparing new `Summaries2.py` output against legacy `Summaries.py` output. This approach has a fundamental limitation: **if both implementations share the same structural mistake, SummaryTest gives a false clean signal.**
+
+### Example: SimSummary `mean > max` bug
+
+The SimSummary `mean > max` bug (fixed 2026-03-17, see [SimSummary Statistics](#simsummary-statistics--implementation-note)) was not caught by SummaryTest because the legacy `Summaries.py` set `mean = sum(site_means)` and computed `min`/`max`/CI from the per-site distribution — the same structural error as the original `_filterAndPivot`. Both implementations agreed with each other, so all SimSummary comparison rows passed. The bug was only discovered when a colleague directly inspected the `SimSummary-0.parquet` and noticed `mean > max` visually.
+
+### Mitigation: self-consistency checks
+
+`SummaryTest.py` now includes `checkSimSummaryConsistency`, which validates statistical invariants on the **new output alone**, without reference to the legacy values:
+
+- `mean ≤ max` for all non-C2/C1 rows
+- `lowerCI ≤ mean` for all non-C2/C1 rows
+- `mean ≤ upperCI` for all non-C2/C1 rows
+
+Violations appear in the results CSV as `summaryType=SimSummaryConsistency`, `by=self`, `abnormal=check`, with the violation count in `emissionRateOutOfRangeCount`.
+
+This pattern — checking internal invariants independently of old-vs-new comparison — should be applied to other datasets (SiteSummary, EventSummary) as future validation coverage is extended.
+
+---
+
+## SummaryTest Validation Run Log
+
+### Site 1 (2026-03-17, `SummaryTest_results_20260317_063000.csv`)
+
+50 sites, 100 MC iterations.
+
+**Non-CDF (508 rows):** 507 clean. 1 expected divergence: `AggregatedSimulationEmissions / category / off / simulation`, `roNonZeroCount=3` (COMBINED rows absent from legacy code in off mode — documented, not a defect).
+
+**CDF (1,872 rows):** 1,666 clean (ksD ≤ 0.05), 206 failing. KS distribution: 119 in 0.05–0.10, 49 in 0.10–0.20, 11 in 0.20–0.30, 27 in 0.70–1.00. All failures attributable to the two open items above (Blowdown Event exclusion policy; sparse heater PDFs).
+
+### Site 2 (2026-03-17, `SummaryTest_results_20260317_072906.csv`)
+
+~19 sites compared.
+
+**Non-CDF (263 rows):** 255 clean. 8 flagged:
+
+- **Site2.Station1 / AvgEmissionRatesAndDurations / off:** `eventOutOfRangeCount=2` for `Blowdown Event` (old: 1.44 events/run, new: 1.30). Same root cause as CDF Blowdown Event open item — old code excludes blowdown events from event counts.
+- **AggregatedSimulationEmissions:** Large `roNonZeroCount` across all groupings (`unitID/on=378`, `unitID/off=300`, `modelReadableName/on=45`, `METype/on=9`, etc.). Detail parquet shows zero `right_only` merge rows — these are `both` rows where `new_mean > 0` but `old_mean = 0`, i.e., emission categories present in new code that were zero in the legacy path. `maxRelativeDelta` values 70–404% reflect this structural difference. Not a defect.
+
+**CDF (513 rows):** 449 clean, 64 failing. KS distribution: 39 in 0.05–0.10, 17 in 0.10–0.20, 4 in 0.20–0.30, 3 in 0.70–1.00. High-KS failures (0.70–0.92) are compressor `off` mode Blowdown Event cases (`comp_Marshall 3` KS=0.92, `comp_G90` KS=0.88, `comp_IAMS ENG2` KS=0.87). Remaining 61 failures driven by sparse heater PDFs (`WDT_HTR`, `BIG_HTR`, `BP__HTR`) and `Tank_battery_OIL` units (all ksD ≤ 0.21). No regressions.

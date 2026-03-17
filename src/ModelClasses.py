@@ -722,6 +722,7 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
                  initialStateTime=None,
                  fuzzedInitialTime=None,
                  _loadingWarnIssued=None,
+                 _driverTypeWarnIssued=None,
                  **kwargs):
         operatingFraction = self.resetZeroAndOne(operatingFraction)
         nopFraction = self.resetZeroAndOne(nopFraction)
@@ -773,6 +774,7 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
         self.initialStateTime = initialStateTime
         self.fuzzedInitialTime = fuzzedInitialTime
         self._loadingWarnIssued = False
+        self._driverTypeWarnIssued = False
 
         totalHours = self.opModeHours + self.nopModeHours + self.nodModeHours
         self.timeRatios = {'OPERATING': self.opModeHours / totalHours,
@@ -953,10 +955,12 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
 
     def checkForCorrectDriver(self, simdm):
         # if self.driverType not in filename.name:
-        curDataPath = Path(simdm.config['emitterProfileDir']) / 'Common' / 'EnginesfuelConsumpEq'
-        msg = (f'Driver Type {self.driverType} does not have a close approximation of load equations'
-               f' in {curDataPath}, using rated power instead. unitID = {self.unitID}')
-        logging.warning(msg)
+        if not self._driverTypeWarnIssued:
+            curDataPath = Path(simdm.config['emitterProfileDir']) / 'Common' / 'EnginesfuelConsumpEq'
+            msg = (f'Driver Type {self.driverType} does not have a close approximation of load equations'
+                   f' in {curDataPath}, using rated power instead. unitID = {self.unitID}')
+            logging.warning(msg)
+            self._driverTypeWarnIssued = True
         return None
 
     def getLoadConditions(self, loadCondition):

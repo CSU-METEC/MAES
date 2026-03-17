@@ -177,8 +177,8 @@ def calculateEmissionSummary(instEmissionDF, mcIterations):
             mean=('emission_kgPerH', 'mean'),
             min=('emission_kgPerH', 'min'),
             max=('emission_kgPerH', 'max'),
-            lowerQuintile=('emission_kgPerH', lambda x: np.percentile(x, 25)),
-            upperQuintile=('emission_kgPerH', lambda x: np.percentile(x, 75)),
+            lowerQuartile=('emission_kgPerH', lambda x: np.percentile(x, 25)),
+            upperQuartile=('emission_kgPerH', lambda x: np.percentile(x, 75)),
             lowerCI=('emission_kgPerH', lambda x: np.percentile(x, alpha / 2)),
             upperCI=('emission_kgPerH', lambda x: np.percentile(x, 100 - alpha / 2)),
             readings=('emission_kgPerH', list)
@@ -288,7 +288,7 @@ def calculateEventSummary(instEmissionDF, simDurationDays, mcIterations, varCol=
 
 def calculateC2C1Ratios(summaryDF, confidenceLevel):
     alpha = 100 - float(confidenceLevel)
-    STAT_COLS = {'total', 'count', 'mean', 'min', 'max', 'lowerQuintile', 'upperQuintile',
+    STAT_COLS = {'total', 'count', 'mean', 'min', 'max', 'lowerQuartile', 'upperQuartile',
                  'lowerCI', 'upperCI', 'readings', 'rawCount', 'rawMean', 'units', 'species'}
 
     kgDF = summaryDF[summaryDF['units'] == KG_PER_YEAR_UNITS_NAME]
@@ -321,8 +321,8 @@ def calculateC2C1Ratios(summaryDF, confidenceLevel):
         mean=ratioReadings.apply(np.nanmean),
         min=ratioReadings.apply(np.nanmin),
         max=ratioReadings.apply(np.nanmax),
-        lowerQuintile=ratioReadings.apply(lambda x: np.nanpercentile(x, 25)),
-        upperQuintile=ratioReadings.apply(lambda x: np.nanpercentile(x, 75)),
+        lowerQuartile=ratioReadings.apply(lambda x: np.nanpercentile(x, 25)),
+        upperQuartile=ratioReadings.apply(lambda x: np.nanpercentile(x, 75)),
         lowerCI=ratioReadings.apply(lambda x: np.nanpercentile(x, alpha / 2)),
         upperCI=ratioReadings.apply(lambda x: np.nanpercentile(x, 100 - alpha / 2)),
         rawCount=merged['rawCount_ch4'],
@@ -694,8 +694,8 @@ def summarizeSingleSite(config, instEmissionDF):
         'mean': ('emissions_kgPerYear', 'mean'),
         'min': ('emissions_kgPerYear', 'min'),
         'max': ('emissions_kgPerYear', 'max'),
-        'lowerQuintile': ('emissions_kgPerYear', lambda x: np.percentile(x, 25)),
-        'upperQuintile': ('emissions_kgPerYear', lambda x: np.percentile(x, 75)),
+        'lowerQuartile': ('emissions_kgPerYear', lambda x: np.percentile(x, 25)),
+        'upperQuartile': ('emissions_kgPerYear', lambda x: np.percentile(x, 75)),
         'lowerCI': ('emissions_kgPerYear', lambda x: np.percentile(x, alpha / 2)),
         'upperCI': ('emissions_kgPerYear', lambda x: np.percentile(x, (100 - alpha / 2))),
         'readings': ('emissions_kgPerYear', list)
@@ -789,19 +789,20 @@ def summarize(config):
         summarizeSingleSite(config, eventDF)
 
 def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
+    # Implements issue #27: for each MC run, sum values across all sites to produce
+    # a distribution of cross-site run totals, then compute all statistics from that
+    # distribution. This ensures mean <= max and CI bounds are meaningful.
+    #
+    # Note: SiteSummary `readings` lists are not zero-filled (see SummarySchema.md
+    # "CI bounds and readings are not zero-filled"). When a site has zero emissions
+    # for a given group in some MC runs, its readings list is shorter than
+    # mcIterations. The mcIdx assigned here is a positional index within each list,
+    # not the actual mcRun number, so the cross-site sums are approximate when any
+    # site has absent MC-run entries. In practice this affects only low-prevalence
+    # groups; the improvement over the previous implementation (which computed stats
+    # across per-site means rather than per-run totals) is large.
     confidenceLevel = 95
     alpha = 100 - float(confidenceLevel)
-
-    AGG_FIELDS = {
-        'total': ('mean', 'sum'),
-        'min':   ('mean', 'min'),
-        'max':   ('mean', 'max'),
-        'lowerQuintile':  ('mean', lambda x: np.percentile(x, 25)),
-        'upperQuintile':  ('mean', lambda x: np.percentile(x, 75)),
-        'lowerCI':  ('mean', lambda x: np.percentile(x, alpha / 2)),
-        'upperCI':  ('mean', lambda x: np.percentile(x, (100 - alpha / 2))),
-        'readings':  ('mean', list)
-    }
 
     if pivotField is None:
         pivotField = CICategory
@@ -810,15 +811,42 @@ def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
     groupCols = ['species', 'units', 'includeFugitive'] if pivotField == 'simulation' else ['species', pivotField, 'units', 'includeFugitive']
 
     with Timer(CICategory) as t0:
+        # Explode per-site readings to one row per (original_row, MC-run-index).
+        # explode() preserves the original DataFrame index for all elements of each
+        # list, so groupby(level=0).cumcount() gives the position within each row
+        # (0 = first MC run, 1 = second, ...) without needing an explicit mcRun col.
+        explodedDF = filteredDF[groupCols + ['readings']].explode('readings')
+        explodedDF = explodedDF.assign(
+            readings=explodedDF['readings'].astype(float),
+            mcIdx=explodedDF.groupby(level=0).cumcount()
+        )
+
+        # Sum across sites for each (group, mcIdx) → distribution of cross-site run totals.
+        runTotalsDF = (
+            explodedDF
+            .groupby(groupCols + ['mcIdx'], as_index=False)['readings']
+            .sum()
+        )
+
+        # Compute statistics from the distribution of cross-site run totals.
         summaryDF = (
-            filteredDF.groupby(groupCols)
-            .agg(**AGG_FIELDS)
+            runTotalsDF
+            .groupby(groupCols)
+            .agg(
+                total=('readings', 'sum'),
+                mean=('readings', 'mean'),
+                min=('readings', 'min'),
+                max=('readings', 'max'),
+                lowerQuartile=('readings', lambda x: np.percentile(x, 25)),
+                upperQuartile=('readings', lambda x: np.percentile(x, 75)),
+                lowerCI=('readings', lambda x: np.percentile(x, alpha / 2)),
+                upperCI=('readings', lambda x: np.percentile(x, 100 - alpha / 2)),
+                readings=('readings', list)
+            )
             .reset_index()
         )
-        # total = Σ site_mean = simulation_total / mcIterations (mathematically equivalent to old mean_emissions)
         summaryDF = summaryDF.assign(
             count=mcIterations,
-            mean=summaryDF['total'],
             CICategory=CICategory
         )
         t0.setCount(len(summaryDF))
@@ -855,8 +883,8 @@ def _computeSimC2C1(inDF, CICategory, mcIterations, pivotField=None):
         count=mcIterations,
         min=[np.nan] * n,
         max=[np.nan] * n,
-        lowerQuintile=[np.nan] * n,
-        upperQuintile=[np.nan] * n,
+        lowerQuartile=[np.nan] * n,
+        upperQuartile=[np.nan] * n,
         lowerCI=[np.nan] * n,
         upperCI=[np.nan] * n,
         readings=[[] for _ in range(n)],
