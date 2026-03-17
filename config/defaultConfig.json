@@ -75,7 +75,8 @@
       "parquetNewSimSummary":    "{parquetDir}/SummaryNew/SimSummary",
       "parquetNewEventSummary":  "{parquetDir}/SummaryNew/EventSummary",
       "parquetNewPDF":      "{parquetDir}/SummaryNew/PDF",
-      "parquetNewPDFCache": "{parquetDir}/SummaryNew/PDFCache"
+      "parquetNewPDFCache": "{parquetDir}/SummaryNew/PDFCache",
+      "parquetNewSimPDF":   "{parquetDir}/SummaryNew/SimPDF"
     },
 
     "MCIteration": {

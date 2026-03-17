@@ -530,7 +530,7 @@ def _readOldPDFSummaries(config):
     for abnormal in ['on', 'off']:
         siteFile = pdfDir / f'PDF_for_site_abnormal_{abnormal}.csv'
         if siteFile.exists():
-            results.append({'CICategory': 'site', 'categoryValue': None, 'abnormal': abnormal, 'df': pd.read_csv(siteFile)})
+            results.append({'CICategory': 'siteTotals', 'categoryValue': None, 'abnormal': abnormal, 'df': pd.read_csv(siteFile)})
 
         for f in pdfDir.glob(f'PDF_for_all_*_abnormal_{abnormal}.csv'):
             meType = f.stem.replace('PDF_for_all_', '').replace(f'_abnormal_{abnormal}', '')
@@ -551,6 +551,14 @@ def _readNewPDFSummaries(config):
     if not pdfPath.exists():
         return pd.DataFrame()
     return pd.read_parquet(config['parquetNewPDF'], filters=[('site', '=', config['siteName'])])
+
+def _readNewSimPDF(config):
+    if 'parquetNewSimPDF' not in config:
+        return pd.DataFrame()
+    simPDFPath = Path(config['parquetNewSimPDF'])
+    if not simPDFPath.exists():
+        return pd.DataFrame()
+    return pd.read_parquet(config['parquetNewSimPDF'])
 
 
 def doPDFComparison(siteName, oldPDFList, newPDFDF):
@@ -699,13 +707,157 @@ def checkSimSummaryConsistency(siteName, newSummaryDF):
     return [thisRet], [pd.DataFrame()]
 
 
+PROB_SUM_TOL = 1e-6
+CDF_MONO_TOL = -1e-10
+
+
+def checkSimPDFConsistency(simPDFDF):
+    if simPDFDF.empty:
+        return [], []
+
+    groupCols = [c for c in simPDFDF.columns
+                 if c not in ('emissionRate_kgPerH', 'probability', 'cumulativeProbability')]
+
+    probSumViolations = 0
+    monotoneViolations = 0
+    cdfEndViolations = 0
+    totalGroups = 0
+
+    for groupKey, groupDF in simPDFDF.groupby(groupCols, dropna=False):
+        totalGroups += 1
+        groupDF = groupDF.sort_values('emissionRate_kgPerH')
+        tag = f"[SimPDFConsistency/self/check/simulation] {dict(zip(groupCols, groupKey if isinstance(groupKey, tuple) else (groupKey,)))}"
+
+        probSum = groupDF['probability'].sum()
+        if abs(probSum - 1.0) > PROB_SUM_TOL:
+            probSumViolations += 1
+            logging.warning(f"  {tag} probSum={probSum:.8f}")
+
+        cumProb = groupDF['cumulativeProbability'].values
+        if np.any(np.diff(cumProb) < CDF_MONO_TOL):
+            monotoneViolations += 1
+            logging.warning(f"  {tag} non-monotone CDF")
+
+        if abs(cumProb[-1] - 1.0) > PROB_SUM_TOL:
+            cdfEndViolations += 1
+            logging.warning(f"  {tag} CDF ends at {cumProb[-1]:.8f}")
+
+    totalViolations = probSumViolations + monotoneViolations + cdfEndViolations
+    logging.info(f"  [SimPDFConsistency] {totalGroups} groups: probSum={probSumViolations} monotone={monotoneViolations} cdfEnd={cdfEndViolations} violations")
+
+    thisRet = {
+        'siteName': 'simulation',
+        'oldSummaryKey': ('SimPDFConsistency', 'self', 'check'),
+        'comparedItems': totalGroups,
+        'outOfRangeCount': totalViolations,
+        'probSumViolationCount': probSumViolations,
+        'monotoneViolationCount': monotoneViolations,
+        'cdfEndViolationCount': cdfEndViolations,
+        'maxAbsoluteDelta': 0.0,
+        'maxRelativeDelta': 0.0,
+    }
+    return [thisRet], [pd.DataFrame()]
+
+
+def _readOldSimPDFs(config):
+    simRoot = Path(config['simulationRoot'])
+    simPDFDir = simRoot / 'summaries' / 'AggregatedSimulationEmissions'
+    results = []
+    for abnormal in ['on', 'off']:
+        f = simPDFDir / f'aggregated_sim_PDFs_abnormal_{abnormal}.csv'
+        if f.exists():
+            results.append({'abnormal': abnormal, 'df': pd.read_csv(f)})
+    return results
+
+
+def doSimPDFComparison(oldSimPDFList, newSimPDFDF):
+    if newSimPDFDF.empty:
+        return [], []
+    retList = []
+    detailDFList = []
+
+    for entry in oldSimPDFList:
+        abnormal = entry['abnormal']
+        oldDF = entry['df']
+        includeFugitive = _ABNORMAL_TO_INCLUDE_FUGITIVE[abnormal]
+        oldSummaryKey = ('SimCDF', 'simulation', abnormal)
+        tag = f"[SimCDF/simulation/{abnormal}]"
+
+        newSubset = newSimPDFDF[
+            (newSimPDFDF['CICategory'] == 'simulation') &
+            (newSimPDFDF['species'] == 'METHANE') &
+            (newSimPDFDF['includeFugitive'] == includeFugitive)
+        ]
+
+        if newSubset.empty:
+            logging.warning(f"  {tag} no matching new SimPDF entry")
+            retList.append({
+                'siteName': 'simulation', 'oldSummaryKey': oldSummaryKey,
+                'comparedItems': 0, 'missingItemCount': 1,
+                'outOfRangeCount': 0, 'maxAbsoluteDelta': np.nan, 'maxRelativeDelta': np.nan,
+            })
+            continue
+
+        oldDedup = (oldDF.assign(_key=oldDF['CH4_EmissionRate_kg/h'].round(10))
+                       .groupby('_key', as_index=False)
+                       .agg({'probability': 'sum', 'CH4_EmissionRate_kg/h': 'first'})
+                       .sort_values('CH4_EmissionRate_kg/h'))
+        oldX = oldDedup['CH4_EmissionRate_kg/h'].values.astype(float)
+        oldP = oldDedup['probability'].cumsum().values.astype(float)
+
+        newX = newSubset['emissionRate_kgPerH'].values.astype(float)
+        newP = newSubset['cumulativeProbability'].values.astype(float)
+        newIdx = np.argsort(newX)
+        newX, newP = newX[newIdx], newP[newIdx]
+
+        allX = np.union1d(oldX, newX)
+        oldInterp = np.interp(allX, oldX, oldP)
+        newInterp = np.interp(allX, newX, newP)
+        diff = np.abs(oldInterp - newInterp)
+        ksD = float(diff.max())
+        maxDiffAt = float(allX[diff.argmax()])
+
+        outOfRangeCount = 1 if ksD > KS_EPSILON else 0
+        if outOfRangeCount:
+            logging.warning(f"  {tag} ksD={ksD:.4f} maxDiffAt={maxDiffAt:.4f} kg/h")
+        else:
+            logging.info(f"  {tag} ksD={ksD:.4f} (pass)")
+
+        detailDFList.append(pd.DataFrame([{
+            'CICategory': 'simulation',
+            'categoryValue': None,
+            'summaryType': 'SimCDF',
+            'by': 'simulation',
+            'abnormal': abnormal,
+            'siteName': 'simulation',
+            'mergeStatus': 'both',
+            'ksStatistic': ksD,
+            'ksMaxAt_kgPerH': maxDiffAt,
+            'oldRows': len(oldDF),
+            'newRows': len(newSubset),
+        }]))
+
+        retList.append({
+            'siteName': 'simulation', 'oldSummaryKey': oldSummaryKey,
+            'comparedItems': len(allX), 'missingItemCount': 0,
+            'outOfRangeCount': outOfRangeCount,
+            'maxAbsoluteDelta': ksD, 'maxRelativeDelta': np.nan,
+        })
+
+    return retList, detailDFList
+
+
 def compareSimSummaries(job):
     logging.info(f"Comparing simulation summaries")
     oldSummaryDict = _readOldSummaries(job)
     newSimulationSummaryDF = _readNewSimulationSummary(job)
+    newSimPDFDF = _readNewSimPDF(job)
     compResults, detailList = doSimSummaryComparison('simulation', oldSummaryDict, newSimulationSummaryDF)
     consistencyResults, consistencyDetails = checkSimSummaryConsistency('simulation', newSimulationSummaryDF)
-    return compResults + consistencyResults, detailList + consistencyDetails
+    simPDFResults, simPDFDetails = doSimPDFComparison(_readOldSimPDFs(job), newSimPDFDF)
+    simPDFConsistencyResults, simPDFConsistencyDetails = checkSimPDFConsistency(newSimPDFDF)
+    return (compResults + consistencyResults + simPDFResults + simPDFConsistencyResults,
+            detailList + consistencyDetails + simPDFDetails + simPDFConsistencyDetails)
 
 
 def _transformResult(inDict):

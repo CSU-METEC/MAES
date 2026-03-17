@@ -84,6 +84,7 @@ DATASET_PARAMS = {
     'SimSummary':    {'configKey': 'parquetNewSimSummary',    'partition_cols': []},
     'PDF':           {'configKey': 'parquetNewPDF',           'partition_cols': ['site']},
     'PDFCache':      {'configKey': 'parquetNewPDFCache',      'partition_cols': ['site']},
+    'SimPDF':        {'configKey': 'parquetNewSimPDF',        'partition_cols': []},
 }
 
 def _saveSummaryDS(config, df, dataset):
@@ -335,10 +336,21 @@ def calculateC2C1Ratios(summaryDF, confidenceLevel):
     return ratioDF
 
 PDF_GROUPINGS = [
-    ('site',              SUMMARY_KEY_COLS),
+    ('siteTotals',        SUMMARY_KEY_COLS),
     ('METype',            [*SUMMARY_KEY_COLS, 'METype']),
     ('unitID',            [*SUMMARY_KEY_COLS, 'unitID']),
     ('modelReadableName', [*SUMMARY_KEY_COLS, 'METype', 'unitID', 'modelReadableName']),
+]
+
+# Maps per-site PDF CICategory → sim-level CICategory and group columns (no 'site').
+# createSimPDF reads from the PDF dataset and computes the mixture distribution:
+# p_sim(rate) = (1/N) * sum_i p_i(rate), where N = number of (site, operator, psno) components.
+# See issue #30 for discussion of convolution as an alternative for 1000s-of-sites scale.
+SIM_PDF_LEVEL_MAP = [
+    ('siteTotals',        'simulation',        ['species']),
+    ('METype',            'METype',            ['species', 'METype']),
+    ('unitID',            'unitID',            ['species', 'unitID']),
+    ('modelReadableName', 'modelReadableName', ['species', 'METype', 'unitID', 'modelReadableName']),
 ]
 
 def _cacheGroupToTimeseriesRLE(groupDF):
@@ -600,11 +612,13 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory):
     }
     return _makePDFRows(fullMCRunTSList, identityCols, CICategory), _makePDFRows(noFugMCRunTSList, identityCols, CICategory), stats
 
-def calculatePDFSummaryFromCache(cacheDF):
+def calculatePDFSummaryFromCache(cacheDF, groupings=None):
+    if groupings is None:
+        groupings = PDF_GROUPINGS
     fullResultDFList = []
     noFugResultDFList = []
     statsList = []
-    for CICategory, groupCols in PDF_GROUPINGS:
+    for CICategory, groupCols in groupings:
         levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
         for _, groupDF in levelDF.groupby(groupCols):
             identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
@@ -893,6 +907,50 @@ def _computeSimC2C1(inDF, CICategory, mcIterations, pivotField=None):
     return retDF
 
 
+def createSimPDF(config):
+    logger.info("Creating simulation-level PDF (mixture approach)")
+
+    siteList = pd.read_parquet(config['parquetNewPDF'], columns=['site'])['site'].unique().tolist()
+    if not siteList:
+        logger.info("No PDF data, skipping SimPDF")
+        return
+    logger.info(f"SimPDF mixture: {len(siteList)} sites")
+
+    allPDFRowsList = []
+    for siteCacheLevel, simCacheLevel, simGroupCols in SIM_PDF_LEVEL_MAP:
+        logger.info(f"SimPDF mixture: {siteCacheLevel} -> {simCacheLevel}")
+        sitePDFDF = pd.read_parquet(config['parquetNewPDF'],
+                                    filters=[('CICategory', '=', siteCacheLevel)])
+        if sitePDFDF.empty:
+            continue
+
+        identityGroupCols = [*simGroupCols, 'includeFugitive']
+        for groupKey, groupDF in sitePDFDF.groupby(identityGroupCols):
+            identityCols = dict(zip(identityGroupCols, groupKey))
+            nComponents = groupDF.groupby(['site', 'operator', 'psno']).ngroups
+            scaledDF = groupDF.assign(probability=groupDF['probability'] / nComponents)
+            mixtureDF = (scaledDF
+                         .groupby('emissionRate_kgPerH', as_index=False)['probability']
+                         .sum()
+                         .sort_values('emissionRate_kgPerH'))
+            mixtureDF = mixtureDF.assign(cumulativeProbability=mixtureDF['probability'].cumsum())
+            n = len(mixtureDF)
+            allPDFRowsList.append(pd.DataFrame({
+                **{col: [val] * n for col, val in identityCols.items()},
+                'CICategory': [simCacheLevel] * n,
+                'emissionRate_kgPerH': mixtureDF['emissionRate_kgPerH'].values,
+                'probability': mixtureDF['probability'].values,
+                'cumulativeProbability': mixtureDF['cumulativeProbability'].values,
+            }))
+
+    if not allPDFRowsList:
+        logger.info("No SimPDF rows, skipping")
+        return
+
+    pdfDF = pd.concat(allPDFRowsList, ignore_index=True)
+    _saveSummaryDS(config, pdfDF, 'SimPDF')
+    logger.info(f"SimPDF: {len(pdfDF)} rows")
+
 def summarizeSimulation(config):
     # this method depends on site-level simulations (aka 'summarize' function) being performed prior to this call.
     logger.info(f"{config['parquetNewSummary']=}")
@@ -933,5 +991,7 @@ def summarizeSimulation(config):
 
     fullSimSummaryDF = fullSimSummaryDF.assign(simDurationDays=config['simDurationDays'])
     _saveSummaryDS(config, fullSimSummaryDF, 'SimSummary')
+
+    createSimPDF(config)
 
     pass

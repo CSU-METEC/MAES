@@ -434,6 +434,7 @@ Sections of this document that capture known methodological differences, design 
 - [Minimum meaningful emission rate in CDF pipeline](#minimum-meaningful-emission-rate-in-cdf-pipeline) — open question: should very small emission rates be filtered before CDF construction?
 - [Blowdown Event exclusion from PDF](#blowdown-event-exclusion-from-pdf) — legacy `Summaries.py` excluded Blowdown Events from all PDFs as "maintenance emissions"; `Summaries2.py` includes them; open question for external review
 - [Sparse heater PDFs — KS sensitivity](#sparse-heater-pdfs--ks-sensitivity) — heater units with 3–6 PDF bins produce elevated KS statistics due to the discrete, step-function nature of very sparse CDFs; pending external review
+- [SimPDF: mixture vs. sum — semantic difference from legacy](#simpdf-mixture-vs-sum--semantic-difference-from-legacy) — new `SimPDF` uses mixture distribution (average of per-site PDFs); legacy `aggregated_sim_PDFs` was computed by summing timeseries across sites; these answer different questions and are not directly comparable
 - [SummaryTest blind spot](#summarytest-blind-spot--old-vs-new-comparison-cannot-detect-shared-bugs) — old-vs-new comparison cannot catch bugs shared by both implementations; mitigated by self-consistency checks on new output
 - [Extreme outlier MC runs in SimSummary](#extreme-outlier-mc-runs-in-simsummary) — 2 MC runs in MPLX-Q4 produce cross-site METHANE totals ~34× the median; causes `mean > upperCI` for non-fugitive simulation rows; pending colleague review
 
@@ -527,6 +528,27 @@ Three heater units produce very sparse PDFs (3–6 bins each) and exhibit elevat
 With so few bins, the CDF is a step function. A single bin boundary shifting by even one bin position produces a KS jump proportional to the probability mass of that bin. These are not ULP-noise failures — old and new row counts match (or differ by one), and no ULP variants are present in the PDF parquet. The elevated KS reflects a genuine shape difference in how the old and new code partition heater emission intervals into bins.
 
 Root cause has not been fully diagnosed. No code change is proposed at this time. **Pending external review.**
+
+### SimPDF: mixture vs. sum — semantic difference from legacy
+
+The new `SimPDF` dataset (written by `createSimPDF`) computes the **mixture distribution** across sites:
+
+> *Given a randomly selected site (weighted equally), what is the distribution of instantaneous emission rate?*
+
+Formally: `p_sim(rate) = (1/N) × Σ_i p_i(rate)`, where `p_i` is the per-site PDF and `N` is the number of contributing `(site, operator, psno)` components.
+
+The legacy `aggregated_sim_PDFs_abnormal_*.csv` files in `summaries/AggregatedSimulationEmissions/` were computed by **summing timeseries across all sites** before constructing the PDF:
+
+> *What is the distribution of the total instantaneous emission rate across the entire simulation (all sites combined)?*
+
+These are fundamentally different quantities. The sum distribution has a much wider support (emission rates up to the sum of all sites' peak rates), while the mixture distribution reflects the range seen at a single site. SummaryTest reports KS distances of ~0.25–0.30 between the two, which is expected given the semantic difference — not a bug.
+
+**Open question for discussion:** Which quantity is more useful for the intended application?
+
+- The **mixture** is appropriate when characterising a "typical site" — e.g., for regulatory guidance, equipment benchmarking, or site-level risk assessment.
+- The **sum** is appropriate when characterising the aggregate emission behaviour of an entire facility portfolio — e.g., for regional emissions modelling or fleet-level reporting.
+
+Both could be supported. The mixture is already implemented. The sum requires either (a) timeseries summation across sites (expensive at scale, the original approach) or (b) a per-MC-run per-site PDF approach that enables efficient computation of the sum distribution. See issue #30 for the full discussion.
 
 ---
 

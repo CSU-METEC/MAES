@@ -46,6 +46,48 @@
 
 
 
+### Features (2026-03-17, continued)
+
+- **Summaries2.py** — `createSimPDF`: new function that builds simulation-level PDF summaries
+  by computing the **mixture distribution** across all sites. For each grouping level, the
+  per-site `PDF` parquet dataset is read and probabilities are averaged across the
+  `(site, operator, psno)` components that contribute to each group:
+  `p_sim(rate) = (1/N) × Σ_i p_i(rate)`. Four levels are produced: `simulation` (site totals
+  mixed across all sites), `METype`, `unitID`, and `modelReadableName`. The result is written
+  to the `SimPDF` parquet dataset (config key `parquetNewSimPDF`). `createSimPDF` is called
+  from `summarizeSimulation` after `SimSummary` is written.
+
+- **Summaries2.py** — `PDFCache` partitioning: added `cacheLevel` as a second partition column
+  alongside `site`, so PyArrow can prune reads by cache level without loading the entire site
+  partition. Renamed the `'site'` cache level to `'siteTotals'` to avoid confusion with the
+  `site` partition column. `SIM_PDF_CACHE_LEVEL_MAP` replaced by `SIM_PDF_LEVEL_MAP` (no
+  longer references PDFCache; operates on the `PDF` dataset instead).
+
+- **SummaryTest.py** — `doSimPDFComparison`: compares the new `SimPDF` (`CICategory='simulation'`,
+  `species='METHANE'`) against the legacy `aggregated_sim_PDFs_abnormal_*.csv` files in
+  `summaries/AggregatedSimulationEmissions/` using the KS statistic. The legacy files store the
+  PMF (`probability` sums to 1.0), so `doSimPDFComparison` computes the cumsum before
+  interpolating — unlike `doPDFComparison`, which treats the per-site `probability` column as
+  a CDF directly. KS distances of ~0.25–0.30 are expected and are **not** a bug: the new
+  `SimPDF` is a mixture distribution ("typical site"), while the legacy files were computed by
+  summing timeseries across all sites ("total across the simulation"). These answer different
+  questions. See `docs/SummarySchema.md` § *SimPDF: mixture vs. sum* for full discussion.
+
+- **SummaryTest.py** — `checkSimPDFConsistency`: new self-consistency check for the `SimPDF`
+  dataset. For each `(CICategory, species, [METype], includeFugitive)` group, validates three
+  invariants: probability sums ≈ 1, CDF is monotone non-decreasing, and CDF ends at ≈ 1.
+  Results appear as a `SimPDFConsistency / self / check` row in the SummaryTest CSV. Validated
+  on a 50-site simulation: 11,670 groups, 0 violations across all four levels (`simulation`,
+  `METype`, `unitID`, `modelReadableName`).
+
+- **SummaryTest.py** — `_readNewSimPDF`, `_readOldSimPDFs`: read the new `SimPDF` parquet
+  dataset and the legacy `aggregated_sim_PDFs_abnormal_*.csv` files respectively.
+
+- **MAESForTetra** — `moveLegacyPDFCache.py`: utility script that walks a mixed PDFCache
+  directory (containing both old-style flat `PDFCache-0.parquet` files and new-style
+  `cacheLevel=*/` subdirectories) and moves the old-style files to a `PDFCache.old` sibling
+  directory, leaving the new-style partitioned files in place.
+
 ### Features
 
 - **Summaries2.py** — PDF caching pipeline: added `createPDFCache`, which writes two new
