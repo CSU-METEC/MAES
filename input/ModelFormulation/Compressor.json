@@ -262,7 +262,7 @@
             ]
         },
 
-    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compresor Single-Unit Vent Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
+    {"Python Category": "Emitter", "Python Class": "SpecificLeaksProduction", "Readable Name": "Compressor Single-Unit Vent Large Emitter", "Category": "COMPONENT LEAK", "Emission Category": "FUGITIVE",
           "Model Parameters": [
             {                                                                             "Python Parameter": "modelSubcategory",         "Parameter Type": "Constant", "Value": "Compressor Large Emitter"},
 			{"Model Parameter": "Common Single-unit Vent(Large Emitter) Component Count", "Python Parameter": "activityDistribution",     "Parameter Type": "Sheet"},

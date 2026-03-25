@@ -9,6 +9,8 @@ import numpy as np
 import Timeseries as ts
 import ParquetLib as pl
 from scipy.stats import norm
+import pyarrow as _pa
+import pyarrow.dataset as _ds
 
 from ParquetLib import SUMMARY_DS
 from Timer import Timer
@@ -16,6 +18,16 @@ import Units as u
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+def _read_parquet_site(path, site_name):
+    partitioning = _ds.partitioning(
+        _pa.schema([('site', _pa.string())]),
+        flavor='hive',
+    )
+    dataset = _ds.dataset(str(path), format='parquet', partitioning=partitioning)
+    table = dataset.to_table(filter=_ds.field('site') == str(site_name))
+    return table.to_pandas()
 
 
 US_TO_PER_METRIC_TON = 1.10231
@@ -436,8 +448,7 @@ def _buildCoarseCacheLevel(fineDF, groupCols, levelName):
 def createPDFCache(config):
     logger.info(f"Creating PDF cache for site {config['siteName']}")
     with Timer("Read InstEmissions") as t0:
-        instEmissionDF = pd.read_parquet(config['parquetNewInstEmissions'],
-                                         filters=[('site', '=', config['siteName'])])
+        instEmissionDF = _read_parquet_site(config['parquetNewInstEmissions'], config['siteName'])
         if instEmissionDF.empty:
             logger.info(f"No InstEmissions data for site {config['siteName']}, skipping PDF cache")
             return pd.DataFrame()
@@ -635,11 +646,9 @@ def calculatePDFSummaryFromCache(cacheDF, groupings=None):
 
 def validatePDFCache(config):
     logger.info(f"Validating PDF cache for site {config['siteName']}")
-    instEmissionDF = pd.read_parquet(config['parquetNewInstEmissions'],
-                                     filters=[('site', '=', config['siteName'])])
+    instEmissionDF = _read_parquet_site(config['parquetNewInstEmissions'], config['siteName'])
     instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
-    cacheDF = pd.read_parquet(config['parquetNewPDFCache'],
-                              filters=[('site', '=', config['siteName'])])
+    cacheDF = _read_parquet_site(config['parquetNewPDFCache'], config['siteName'])
     fineCacheDF = cacheDF[cacheDF['cacheLevel'] == 'modelReadableName']
 
     # Intermediate check: compare cached RLE intervals vs freshly built for a random sample of groups
@@ -848,7 +857,7 @@ def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
             .groupby(groupCols)
             .agg(
                 total=('readings', 'sum'),
-                mean=('readings', 'mean'),
+                mean=('readings', lambda x: x.sum() / mcIterations),
                 min=('readings', 'min'),
                 max=('readings', 'max'),
                 lowerQuartile=('readings', lambda x: np.percentile(x, 25)),

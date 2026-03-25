@@ -481,7 +481,7 @@ Emitters
 
       *Units:* Dry, Wet, Rod Packing
 
-**Compresor Single-Unit Vent Large Emitter**
+**Compressor Single-Unit Vent Large Emitter**
   Emitter Category: COMPONENT LEAK
   
   Emission Category: FUGITIVE
