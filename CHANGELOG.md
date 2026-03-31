@@ -1,7 +1,7 @@
 # CHANGELOG
 
 
-## v0.3.0 (unreleased)
+## v0.4.0 (unreleased)
 
 ### Schema Changes (2026-03-31)
 
