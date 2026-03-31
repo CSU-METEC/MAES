@@ -18,19 +18,6 @@ InstEmissions  ──►  SiteSummary  ──►  SimSummary
 - **`EventSummary`** — event-level statistics (count, duration, rate) aggregated across MC runs, at multiple grouping levels per site.
 - **`SimSummary`** — simulation-wide statistics rolled up across all sites, derived by reading `SiteSummary`.
 
-## Config Keys and Resolved Paths
-
-| Dataset | Config key | Resolved path |
-|---|---|---|
-| `InstEmissions` | `parquetNewInstEmissions` | `{parquetDir}/SummaryNew/InstEmissions` |
-| `SiteSummary` | `parquetNewSummary` | `{parquetDir}/SummaryNew/SiteSummary` |
-| `EventSummary` | `parquetNewEventSummary` | `{parquetDir}/SummaryNew/EventSummary` |
-| `SimSummary` | `parquetNewSimSummary` | `{parquetDir}/SummaryNew/SimSummary` |
-
-`parquetDir` resolves to `{simulationRoot}/parquet` (e.g. `output/<studyName>/MC_<timestamp>/parquet`). The `SummaryNew` subdirectory name is subject to change.
-
----
-
 ## Partition Scheme
 
 | Dataset | Partition columns |
@@ -39,6 +26,54 @@ InstEmissions  ──►  SiteSummary  ──►  SimSummary
 | `SiteSummary` | `site` |
 | `EventSummary` | `site` |
 | `SimSummary` | *(none — single unpartitioned file)* |
+
+### Example — hypothetical site `MySite`
+
+For a run with `studyName=MyStudy` and timestamp `20260331_120000`, the `Summary` datasets for `MySite` would live at:
+
+```
+output/MyStudy/MC_20260331_120000/parquet/Summary/
+├── InstEmissions/
+│   └── site=MySite/
+│       └── InstEmissions-0.parquet
+├── SiteSummary/
+│   └── site=MySite/
+│       └── SiteSummary-0.parquet
+├── EventSummary/
+│   └── site=MySite/
+│       └── EventSummary-0.parquet
+├── SimSummary/
+│   └── SimSummary-0.parquet          ← unpartitioned; covers all sites
+├── PDF/
+│   └── site=MySite/
+│       └── PDF-0.parquet
+├── PDFCache/
+│   └── site=MySite/
+│       └── PDFCache-0.parquet
+└── SimPDF/
+    └── SimPDF-0.parquet              ← unpartitioned; covers all sites
+```
+
+`SimSummary` and `SimPDF` have no `site` partition because they aggregate across all sites in the run.
+
+---
+
+## Examples
+
+Five example programs are provided in `src/Examples/`. Each targets one dataset and is self-contained. Run from the project directory (e.g. `MAESForTetra/`) with the conda environment active:
+
+```bash
+PYTHONPATH=/home/dugganj/MAES/src python /home/dugganj/MAES/src/Examples/<ExampleName>.py \
+    -s <study>.xlsx -or ./output
+```
+
+| Example file | Dataset | Question answered |
+|---|---|---|
+| `AnnualEmissionsExample.py` | `SiteSummary` | Mean annual CH4 emissions and 95% CI by equipment type at each site |
+| `MCVariabilityExample.py` | `SiteSummary` (`readings`) | Full MC distribution per equipment type; flags outlier MC runs (>3σ above mean) |
+| `EmissionEventStatsExample.py` | `EventSummary` | Which equipment has the most events per MC run; average durations and emission rates |
+| `SimulationTotalsExample.py` | `SimSummary` | Simulation-wide total emissions per species and MC distribution |
+| `EmissionRateDistributionExample.py` | `PDF` | Fraction of operating time each site emits CH4 above a threshold rate |
 
 ---
 
@@ -53,8 +88,8 @@ One row per emission event per MC iteration. This is the timeseries source; no r
 | `mcRun` | int64 | MC iteration number (0-based) |
 | `site` | string | Facility/site identifier (also the partition key) |
 | `species` | string | Gas species (e.g. `METHANE`, `ETHANE`) |
-| `operator` | string | Operator name; empty string if not set |
-| `psno` | string | Permit/source number; empty string if not set |
+| `operator` | string | Operator field from the site definition file |
+| `psno` | string | Prototypical site number from the site definition file |
 | `emitterID` | string | Individual emitter identifier |
 | `timestamp_s` | int64 | Event start time (seconds from simulation start) |
 | `duration_s` | float64 | Event duration (seconds) |
@@ -71,38 +106,51 @@ One row per emission event per MC iteration. This is the timeseries source; no r
 
 Cross-MC statistics; no per-MC-run rows are stored. Each row represents one grouping level × one unit conversion.
 
+#### Using `CICategory`
+
+`CICategory` is a row-type discriminator. Every row in `SiteSummary` belongs to exactly one grouping level, identified by its `CICategory` value. The intended workflow is:
+
+1. Read the desired partition(s) from the `SiteSummary` parquet dataset into a DataFrame.
+2. Filter to the `CICategory` value representing the grouping level of interest — for example, `df[df['CICategory'] == 'METype']`.
+3. Use the statistical columns (`mean`, `min`, `max`, `lowerQuartile`, `upperQuartile`, `lowerCI`, `upperCI`, `readings`) for that level.
+
+The statistical columns have the same names and types for every `CICategory` value — they are the same physical columns in the dataset. However, their values are not comparable across `CICategory` values, because each level aggregates data at a different granularity. A `mean` from a `METype` row covers all equipment of that type; a `mean` from a `modelReadableName` row covers a single equipment model within one unit. Mixing rows from different `CICategory` values — for example, summing or averaging `mean` across multiple `CICategory` values — will produce incorrect results.
+
 #### `CICategory` values and their grouping levels
 
-| `CICategory` | Groupby columns (beyond `SUMMARY_KEY_COLS`) | Description |
-|---|---|---|
-| `METype` | `METype` | Per major equipment type |
-| `METype` | *(none)* | Site-level rollup for METype hierarchy |
-| `unitID` | `unitID` | Per equipment unit |
-| `unitID` | *(none)* | Site-level rollup for unitID hierarchy |
-| `modelEmissionCategory` | `modelEmissionCategory` | Per emission category (VENTED, FUGITIVE, etc.) |
-| `modelEmissionCategory` | *(none)* | Site-level rollup for modelEmissionCategory hierarchy |
-| `modelReadableName` | `modelReadableName`, `unitID`, `METype` | Per readable name × unit × equipment type |
-| `modelReadableName` | `unitID`, `METype` | Rollup: readable name removed |
-| `modelReadableName` | `METype` | Rollup: readable name and unitID removed |
-| `modelReadableName` | *(none)* | Site-level rollup for modelReadableName hierarchy |
-| `instantEmissionsByModelReadableName` | `METype`, `unitID`, `modelReadableName` | Instantaneous emissions, full detail |
-| `instantEmissionsByModelReadableName` | `METype`, `unitID` | Rollup: readable name removed |
-| `instantEmissionsByModelReadableName` | `METype` | Rollup: readable name and unitID removed |
-| `instantEmissionsByModelReadableName` | *(none)* | Site-level rollup |
+`SUMMARY_KEY_COLS` = `['site', 'species', 'operator', 'psno']` are always present. Beyond those, each `CICategory` value produces rows at multiple levels of detail by applying `_doAggHierarchy`: the most-detailed level is written first, then progressively coarser rollups are appended by dropping one groupby column at a time.
 
-`SUMMARY_KEY_COLS` = `['site', 'species', 'operator', 'psno']`. Site-level rollup rows have no value in the extra groupby columns (those columns are absent from the row).
+#### Summarization hierarchy per `CICategory`
+
+All levels include `SUMMARY_KEY_COLS` (`site`, `species`, `operator`, `psno`). The table shows only the additional columns that are populated at each level, from broadest to most detailed. *(site rollup)* means all additional columns are absent — the row represents the total across all values of the dropped dimension.
+
+| `CICategory` | Level 1 (site rollup) | Level 2 | Level 3 | Level 4 (most detail) |
+|---|---|---|---|---|
+| `METype` | *(site rollup)* | `METype` | — | — |
+| `unitID` | *(site rollup)* | `unitID` | — | — |
+| `modelEmissionCategory` | *(site rollup)* | `modelEmissionCategory` | — | — |
+| `modelReadableName` | *(site rollup)* | `METype` | `METype`, `unitID` | `METype`, `unitID`, `modelReadableName` |
+| `instantEmissionsByModelReadableName` | *(site rollup)* | `METype` | `METype`, `unitID` | `METype`, `unitID`, `modelReadableName` |
+
+**Note on `modelEmissionCategory` — COMBINED rows:** In addition to the per-category rows (VENTED, FUGITIVE, COMBUSTION), the `modelEmissionCategory` hierarchy also contains rows where `modelEmissionCategory='COMBINED'` (sum of all categories). COMBINED rows are produced with `rollupCols=[]`, so they appear only at Level 1 — there is no COMBINED site rollup row.
+
+To select only site-level rollup rows for a given hierarchy, filter on `CICategory` and check that the relevant additional column is null — for example, `df[(df['CICategory'] == 'METype') & df['METype'].isna()]`.
+
+> **TODO:** In theory, the site-level rollup rows across all `CICategory` values should produce identical totals for the same `(site, species, operator, psno, units, includeFugitive)` key — they each represent the full site total, just arrived at via different aggregation hierarchies. This has not been verified. Add a `SummaryTest` self-consistency check that confirms the site-level rollup values agree across `CICategory` values.
 
 #### Columns
 
 | Column | Type | Notes |
 |---|---|---|
+| **Key columns** | | |
 | `site` | string | Partition key |
 | `species` | string | Gas species |
-| `operator` | string | |
-| `psno` | string | |
+| `operator` | string | Operator field from the site definition file |
+| `psno` | string | Prototypical site number from the site definition file |
 | `CICategory` | string | Grouping level identifier (see table above) |
 | `units` | string | Emission units for this row (see Unit Conventions) |
 | `includeFugitive` | bool | `True` = all categories included; `False` = FUGITIVE excluded |
+| **Summary values** | | |
 | `confidenceLevel` | int64 | CI confidence level (95) |
 | `total` | float64 | Sum of per-MC-run totals across all MC runs |
 | `count` | int64 | Number of MC iterations contributing (= `monteCarloIterations`) |
@@ -116,6 +164,7 @@ Cross-MC statistics; no per-MC-run rows are stored. Each row represents one grou
 | `readings` | list\<float64\> | Per-MC-run total values (length = `monteCarloIterations`) |
 | `rawCount` | float64 | Raw number of emitter-level observations before MC rollup |
 | `rawMean` | float64 | Raw mean before MC mean correction |
+| **CICategory selectors** | | |
 | `METype` | string | Present when `CICategory` groups by METype; absent at site-level rollup rows |
 | `unitID` | string | Present when `CICategory` groups by unitID; absent at site-level rollup rows |
 | `modelEmissionCategory` | string | Present when `CICategory` groups by modelEmissionCategory; absent at site-level rollup rows |
@@ -134,6 +183,8 @@ In addition to the per-species rows, `SiteSummary` contains C2/C1 ethane-to-meth
 | `mean` | `nanmean` of `readings` |
 | `min` / `max` | `nanmin` / `nanmax` of `readings` |
 | `lowerQuartile` / `upperQuartile` | 25th / 75th nanpercentile of `readings` |
+
+> **Note:** `nanmean`, `nanmin`, `nanmax`, and `nanpercentile` are NumPy functions that compute the statistic while ignoring `NaN` values. They are used here because a C2/C1 ratio is undefined (and stored as `NaN`) for any MC run where the METHANE emission is zero. The standard `mean`, `min`, `max` functions would propagate those `NaN`s and produce a `NaN` result for the whole statistic.
 | `lowerCI` / `upperCI` | 2.5th / 97.5th nanpercentile of `readings` |
 | `rawCount` | `rawCount` from the METHANE source row |
 | `rawMean` | `rawMean_ETHANE / rawMean_METHANE` |
@@ -162,8 +213,8 @@ Each level appears twice: once with `emissionRateUnits='kg/s'` and once with `em
 |---|---|---|
 | `site` | string | Partition key |
 | `species` | string | Gas species |
-| `operator` | string | |
-| `psno` | string | |
+| `operator` | string | Operator field from the site definition file |
+| `psno` | string | Prototypical site number from the site definition file |
 | `unitID` | string | Present at equipment level; absent at site level |
 | `modelReadableName` | string | Present at equipment level; absent at site level |
 | `CICategory` | string | Always `eventSummary` |
@@ -217,16 +268,18 @@ For equipment like `Compressor Dry Seal Vent (OP)`, some MC runs sample a zero g
 
 Derived from `SiteSummary` by `summarizeSimulation`. One file covering all sites.
 
-#### `CICategory` values
+#### `CICategory` values and summarization hierarchy
 
-| `CICategory` | Pivot field | Description |
+`SimSummary` is derived from `SiteSummary` by `_filterAndPivot`: for each `CICategory`, the corresponding `SiteSummary` rows are filtered and then summed across sites by MC run index to produce cross-site run-total distributions. There is one aggregation level per `CICategory` — no within-category rollup hierarchy.
+
+| `CICategory` | Populated column | Description |
 |---|---|---|
-| `modelEmissionCategory` | `modelEmissionCategory` | Cross-site totals per emission category |
-| `modelReadableName` | `modelReadableName` | Cross-site totals per readable name |
-| `unitID` | `unitID` | Cross-site totals per unit |
-| `METype` | `METype` | Cross-site totals per equipment type |
-| `pneumatic` | `METype` | Pneumatic-filtered cross-site totals per equipment type |
-| `simulation` | *(none)* | Single simulation-wide total per species/units/includeFugitive |
+| `METype` | `METype` | One row per equipment type, summed across all sites |
+| `unitID` | `unitID` | One row per equipment unit, summed across all sites |
+| `modelReadableName` | `modelReadableName` | One row per readable name, summed across all sites |
+| `modelEmissionCategory` | `modelEmissionCategory` | One row per emission category, summed across all sites |
+| `pneumatic` | `METype` | Pneumatic-filtered rows only; one row per equipment type |
+| `simulation` | *(none)* | Single simulation-wide total per `species`/`units`/`includeFugitive` |
 
 #### Columns
 
@@ -250,6 +303,24 @@ Derived from `SiteSummary` by `summarizeSimulation`. One file covering all sites
 | `modelReadableName` | string | Present for relevant `CICategory` values |
 | `unitID` | string | Present for relevant `CICategory` values |
 | `METype` | string | Present for relevant `CICategory` values |
+
+---
+
+## Config Keys and Resolved Paths
+
+| Dataset | Config key | Resolved path |
+|---|---|---|
+| `InstEmissions` | `parquetNewInstEmissions` | `{parquetDir}/Summary/InstEmissions` |
+| `SiteSummary` | `parquetNewSummary` | `{parquetDir}/Summary/SiteSummary` |
+| `EventSummary` | `parquetNewEventSummary` | `{parquetDir}/Summary/EventSummary` |
+| `SimSummary` | `parquetNewSimSummary` | `{parquetDir}/Summary/SimSummary` |
+| `PDF` | `parquetNewPDF` | `{parquetDir}/Summary/PDF` |
+| `PDFCache` | `parquetNewPDFCache` | `{parquetDir}/Summary/PDFCache` |
+| `SimPDF` | `parquetNewSimPDF` | `{parquetDir}/Summary/SimPDF` |
+
+`parquetDir` resolves to `{simulationRoot}/parquet` (e.g. `output/<studyName>/MC_<timestamp>/parquet`).
+
+The legacy per-MC-run summary dataset written by `ParquetLib.py` uses config key `parquetSummaryDS` and resolves to `{parquetDir}/SummaryLegacy`.
 
 ---
 
@@ -313,7 +384,7 @@ count = monteCarloIterations
 
 ##### CI bounds and `readings` are not zero-filled
 
-The mean correction accounts for absent MC runs, but `readings` only contains values from MC runs where the group had non-zero emissions. `lowerCI`, `upperCI`, and the quintile columns are therefore computed from a list that may be shorter than `monteCarloIterations` when any MC run produces zero emissions for a given group. CI bounds will be optimistically narrow for low-prevalence groups. A future fix would pad `readings` with zeros to length `monteCarloIterations` before computing percentiles.
+The mean correction accounts for absent MC runs, but `readings` only contains values from MC runs where the group had non-zero emissions. `lowerCI`, `upperCI`, and the quartile columns are therefore computed from a list that may be shorter than `monteCarloIterations` when any MC run produces zero emissions for a given group. CI bounds will be optimistically narrow for low-prevalence groups. A future fix would pad `readings` with zeros to length `monteCarloIterations` before computing percentiles.
 
 `SimSummary` follows the approach in issue #27: for each MC run, the per-site values are summed across all sites to produce a distribution of cross-site run totals. All statistics are then computed from that distribution:
 
@@ -424,19 +495,19 @@ The legacy pipeline does **not** emit a `TOTAL` row for `abnormal=OFF` (it only 
 
 Sections of this document that capture known methodological differences, design trade-offs, or deferred work items:
 
-- [`meanEmissionRate` vs. `simpleMean`](#meanemissionrate-vs-simplemean) — emission-rate averaging: duration-weighted (correct) vs. arithmetic mean (legacy)
-- [`eventsPerMCRun` vs. `nonZeroEventsPerMCRun`](#eventsperMCRun-vs-nonzeroeventspermcrun) — event counting: all events vs. non-zero-emission events only
-- [Root cause of discrepancy in `Summaries.py` validation](#root-cause-of-discrepancy-in-summariespy-validation) — zero-emission events from zero gas-composition MC runs silently filtered by legacy code
-- [Mean correction](#mean-correction) — `mean = total / monteCarloIterations` corrects for MC runs with no emissions; `rawMean` retains the uncorrected value
-- [CI bounds and `readings` are not zero-filled](#ci-bounds-and-readings-are-not-zero-filled) — percentile/CI columns computed from a shortened `readings` list when some MC runs produce zero emissions; bounds are optimistically narrow for low-prevalence groups
-- [C2/C1 ratio rows in `SimSummary`](#c2c1-ratio-rows-in-simsummary) — simulation-wide C2/C1 recomputed from aggregated totals (emission-weighted) rather than averaged from per-site ratios (unweighted)
-- [Flare equipment and the `includeFugitive=False` filter](#flare-equipment-and-the-includefugitivefalse-filter) — legacy `Summaries.py` retained FUGITIVE-category flare emitters in `abnormal=off` totals due to emitter-ID-based filtering; `Summaries2.py` is correct by construction
-- [Minimum meaningful emission rate in CDF pipeline](#minimum-meaningful-emission-rate-in-cdf-pipeline) — open question: should very small emission rates be filtered before CDF construction?
-- [Blowdown Event exclusion from PDF](#blowdown-event-exclusion-from-pdf) — legacy `Summaries.py` excluded Blowdown Events from all PDFs as "maintenance emissions"; `Summaries2.py` includes them; open question for external review
-- [Sparse heater PDFs — KS sensitivity](#sparse-heater-pdfs--ks-sensitivity) — heater units with 3–6 PDF bins produce elevated KS statistics due to the discrete, step-function nature of very sparse CDFs; pending external review
-- [SimPDF: mixture vs. sum — semantic difference from legacy](#simpdf-mixture-vs-sum--semantic-difference-from-legacy) — new `SimPDF` uses mixture distribution (average of per-site PDFs); legacy `aggregated_sim_PDFs` was computed by summing timeseries across sites; these answer different questions and are not directly comparable
-- [SummaryTest blind spot](#summarytest-blind-spot--old-vs-new-comparison-cannot-detect-shared-bugs) — old-vs-new comparison cannot catch bugs shared by both implementations; mitigated by self-consistency checks on new output
-- [Extreme outlier MC runs in SimSummary](#extreme-outlier-mc-runs-in-simsummary) — 2 MC runs in MPLX-Q4 produce cross-site METHANE totals ~34× the median; causes `mean > upperCI` for non-fugitive simulation rows; pending colleague review
+- [ ] [`meanEmissionRate` vs. `simpleMean`](#meanemissionrate-vs-simplemean) — emission-rate averaging: duration-weighted (correct) vs. arithmetic mean (legacy)
+- [ ] [`eventsPerMCRun` vs. `nonZeroEventsPerMCRun`](#eventsperMCRun-vs-nonzeroeventspermcrun) — event counting: all events vs. non-zero-emission events only
+- [ ] [Root cause of discrepancy in `Summaries.py` validation](#root-cause-of-discrepancy-in-summariespy-validation) — zero-emission events from zero gas-composition MC runs silently filtered by legacy code
+- [ ] [Mean correction](#mean-correction) — `mean = total / monteCarloIterations` corrects for MC runs with no emissions; `rawMean` retains the uncorrected value
+- [ ] [CI bounds and `readings` are not zero-filled](#ci-bounds-and-readings-are-not-zero-filled) — percentile/CI columns computed from a shortened `readings` list when some MC runs produce zero emissions; bounds are optimistically narrow for low-prevalence groups
+- [ ] [C2/C1 ratio rows in `SimSummary`](#c2c1-ratio-rows-in-simsummary) — simulation-wide C2/C1 recomputed from aggregated totals (emission-weighted) rather than averaged from per-site ratios (unweighted)
+- [ ] [Flare equipment and the `includeFugitive=False` filter](#flare-equipment-and-the-includefugitivefalse-filter) — legacy `Summaries.py` retained FUGITIVE-category flare emitters in `abnormal=off` totals due to emitter-ID-based filtering; `Summaries2.py` is correct by construction
+- [ ] [Minimum meaningful emission rate in CDF pipeline](#minimum-meaningful-emission-rate-in-cdf-pipeline) — open question: should very small emission rates be filtered before CDF construction?
+- [ ] [Blowdown Event exclusion from PDF](#blowdown-event-exclusion-from-pdf) — legacy `Summaries.py` excluded Blowdown Events from all PDFs as "maintenance emissions"; `Summaries2.py` includes them; open question for external review
+- [ ] [Sparse heater PDFs — KS sensitivity](#sparse-heater-pdfs--ks-sensitivity) — heater units with 3–6 PDF bins produce elevated KS values due to the discrete, step-function nature of very sparse CDFs; pending external review
+- [ ] [SimPDF: mixture vs. sum — semantic difference from legacy](#simpdf-mixture-vs-sum--semantic-difference-from-legacy) — new `SimPDF` uses mixture distribution (average of per-site PDFs); legacy `aggregated_sim_PDFs` was computed by summing timeseries across sites; these answer different questions and are not directly comparable
+- [ ] [SummaryTest blind spot](#summarytest-blind-spot--old-vs-new-comparison-cannot-detect-shared-bugs) — old-vs-new comparison cannot catch bugs shared by both implementations; mitigated by self-consistency checks on new output
+- [ ] [Extreme outlier MC runs in SimSummary](#extreme-outlier-mc-runs-in-simsummary) — 2 MC runs in MPLX-Q4 produce cross-site METHANE totals ~34× the median; causes `mean > upperCI` for non-fugitive simulation rows; pending colleague review
 
 ---
 
@@ -448,12 +519,14 @@ The **PDF** (Probability Mass Function) maps emission rate values to their durat
 
 The pipeline datasets were historically named `CDFCache`, `CDFPrecomputed`, and `CDF`. They have been renamed `PDFCache` and `PDF` to reflect the primary terminology. `CDFPrecomputed` has been removed; `createPDFCache` now writes directly to `PDF`.
 
+The **Kolmogorov-Smirnov statistic** (KS) measures the maximum absolute difference between two CDFs: `KS = max |F₁(x) − F₂(x)|`. It ranges from 0 (the two CDFs are identical) to 1 (no overlap). This document uses KS as the validation metric when comparing old and new CDFs; the threshold for a passing comparison is **KS ≤ 0.05**.
+
 #### Dataset descriptions
 
 | Dataset | Config key | Resolved path | Description |
 |---|---|---|---|
-| `PDFCache` | `parquetNewPDFCache` | `{parquetDir}/SummaryNew/PDFCache` | Raw RLE interval data (start/end time, emission rate) per emitter per MC run, at all grouping levels. Input to PDF construction. |
-| `PDF` | `parquetNewPDF` | `{parquetDir}/SummaryNew/PDF` | Computed probability distributions at all grouping levels. Stores both `probability` (PDF) and `cumulativeProbability` (CDF) columns. |
+| `PDFCache` | `parquetNewPDFCache` | `{parquetDir}/Summary/PDFCache` | Raw RLE interval data (start/end time, emission rate) per emitter per MC run, at all grouping levels. Input to PDF construction. |
+| `PDF` | `parquetNewPDF` | `{parquetDir}/Summary/PDF` | Computed probability distributions at all grouping levels. Stores both `probability` (PDF) and `cumulativeProbability` (CDF) columns. |
 
 Both datasets are partitioned by `site`.
 
@@ -463,8 +536,8 @@ Both datasets are partitioned by `site`.
 |---|---|---|
 | `site` | string | Partition key |
 | `species` | string | Gas species (METHANE, ETHANE) |
-| `operator` | string | |
-| `psno` | string | |
+| `operator` | string | Operator field from the site definition file |
+| `psno` | string | Prototypical site number from the site definition file |
 | `CICategory` | string | Grouping level: `site`, `METype`, `unitID`, or `modelReadableName` |
 | `METype` | string | Present when `CICategory` is `METype` or `modelReadableName` |
 | `unitID` | string | Present when `CICategory` is `unitID` or `modelReadableName` |
@@ -478,7 +551,7 @@ Both datasets are partitioned by `site`.
 
 All `emission_kgPerH` values stored in `PDFCache` and `PDF` are rounded to **6 decimal places** by `_roundForPDF` before storage. Rounding is applied after every `TimeseriesSet.sum()` call, at the point values are written into cache DataFrames.
 
-**Why rounding is necessary:** `TimeseriesSet.sum()` performs floating-point arithmetic that introduces ULP-level noise (~1e-16 for rates in the 0.1–10 kg/h range). Without rounding, what is physically one emission rate may appear as 2–3 distinct float64 values differing only in the 15th–16th decimal place. `TimeseriesPDF.fromDataFrame` groups intervals by exact float64 value, so these ULP variants become separate PDF bins — creating multiple near-identical steps in the CDF.
+**Why rounding is necessary:** `TimeseriesSet.sum()` performs floating-point arithmetic that introduces unit in the last place (ULP)-level noise (~1e-16 for rates in the 0.1–10 kg/h range). Without rounding, what is physically one emission rate may appear as 2–3 distinct float64 values differing only in the 15th–16th decimal place. `TimeseriesPDF.fromDataFrame` groups intervals by exact float64 value, so these ULP variants become separate PDF bins — creating multiple near-identical steps in the CDF.
 
 **Why 6 decimal places:** This matches the precision of the legacy `Summaries.py` CSV output (`PDF_for_*` files), which rounded emission rates to 6 decimal places when writing. Using the same resolution ensures old and new CDFs share the same x-axis binning, keeping the KS validation statistic physically meaningful. Differences below 1e-6 kg/h are not physically significant for emissions reporting.
 

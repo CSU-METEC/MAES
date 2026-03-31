@@ -19,7 +19,7 @@ EVENT_DS = 'events'
 TIMESERIES_DS = 'timeseries'
 GC_DS = 'gascomposition'
 METADATA_DS = 'metadata'
-SUMMARY_DS = 'simsummary'
+SUMMARY_DS = 'SummaryLegacy'
 
 SUMMARY_STATE_DS = 'summaryState'
 SUMMARY_FLUIDFLOW_DS = 'summaryFluidFlow'
@@ -560,7 +560,7 @@ def getParquetMetadata(parquetDir):
         "parquetTimeseriesDS":                  f"{parquetDir}/timeseries",
         "parquetGasCompositionDS":              f"{parquetDir}/gascomposition",
         "parquetMetadataDS":                    f"{parquetDir}/metadata",
-        "parquetSummaryDS":                     f"{parquetDir}/simsummary",
+        "parquetSummaryDS":                     f"{parquetDir}/SummaryLegacy",
         "parquetEventListDS":                   f"{parquetDir}/eventList",
         "parquetFilteredEventSummaryDS":        f"{parquetDir}/filteredEventSummary",
         "parquetSiteInstantaneousEmissionsDS":  f"{parquetDir}/siteInstantaneousEmissions",

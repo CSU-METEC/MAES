@@ -3,6 +3,69 @@
 
 ## v0.3.0 (unreleased)
 
+### Schema Changes (2026-03-31)
+
+- **defaultConfig.json** / **ParquetLib.py**: renamed the new Parquet summary directory
+  from `SummaryNew` to `Summary`. All `parquetNew*` config keys now resolve to
+  `{parquetDir}/Summary/<dataset>` (e.g. `{parquetDir}/Summary/SiteSummary`).
+  Existing `SummaryNew` output directories must be renamed or regenerated.
+
+- **defaultConfig.json** / **ParquetLib.py**: renamed the legacy per-MC-run parquet
+  summary directory from `simsummary` to `SummaryLegacy`. The `parquetSummaryDS` config
+  key now resolves to `{parquetDir}/SummaryLegacy`. Existing `simsummary` output
+  directories must be renamed or left in place (reads will fail until renamed or
+  regenerated).
+
+### Documentation (2026-03-31)
+
+- **docs/SummarySchema.md**: added "Examples" section before Dataset Schemas, describing
+  the five example programs in `src/Examples/` with a table mapping each file to its
+  target dataset and the question it answers.
+
+- **docs/SummarySchema.md**: added summarization hierarchy tables for `SiteSummary` and
+  `SimSummary`. The `SiteSummary` table shows the level-by-level groupby columns for
+  each `CICategory` value (from site rollup to most detailed), and documents the
+  COMBINED-only Level 1 exception for the `modelEmissionCategory` hierarchy. The
+  `SimSummary` table lists the populated column and description for each `CICategory`
+  and explains that there is no within-category rollup.
+
+- **docs/SummarySchema.md**: added a directory-tree example under Partition Scheme
+  showing the full `Summary/` layout for a hypothetical site `MySite`, including correct
+  dataset-named filenames (e.g. `SiteSummary-0.parquet`).
+
+- **docs/SummarySchema.md**: moved "Config Keys and Resolved Paths" section to after
+  Dataset Schemas; expanded it to include `PDF`, `PDFCache`, and `SimPDF` rows and a
+  note about the `SummaryLegacy` path for the legacy dataset. Updated all resolved paths
+  to reflect the `Summary` rename.
+
+### Bug Fixes (2026-03-25)
+
+- **Summaries2.py** — `_filterAndPivot`: fixed mean denominator bug (issue #33, Bug 2).
+  `mean` was computed as `sum(readings) / len(readings)`, but `readings` only contains
+  values from MC runs that produced non-zero emissions for the group. For low-prevalence
+  sources firing in only k of N MC runs, this inflated the reported mean by N/k. Fixed
+  by using `sum(readings) / mcIterations`, treating non-firing runs as zero — consistent
+  with the mean correction already applied in `calculateEmissionSummary`.
+
+- **Summaries2.py** — `createPDFCache` / `validatePDFCache`: replaced
+  `pd.read_parquet(..., filters=[('site', '=', site_name)])` calls with a new
+  `_read_parquet_site` helper that reads a site partition using PyArrow's native dataset
+  API with an explicit Hive partitioning schema. The `pd.read_parquet` filter path
+  failed when PyArrow could not infer the partition schema from an empty or schema-less
+  directory. The new helper is robust to that case.
+
+- **input/ModelFormulation/Compressor.json** — corrected typo in readable name:
+  `"Compresor Single-Unit Vent Large Emitter"` → `"Compressor Single-Unit Vent Large
+  Emitter"`.
+
+### Tests (2026-03-25)
+
+- **test/test_simsummary_mean.py**: new test file covering the `_filterAndPivot` mean
+  denominator fix (issue #33, Bug 2). Tests construct minimal `SiteSummary`-shaped
+  DataFrames with controlled `readings` lists and assert that `mean = total /
+  mcIterations` in the output, including cases where fewer than `mcIterations` MC runs
+  contributed readings.
+
 ### Bug Fixes (2026-03-17)
 
 - **Summaries2.py** — `_filterAndPivot`: fixed incorrect SimSummary statistics (issue #27).
@@ -44,9 +107,7 @@
   `mean > upperCI` in MPLX-Q4, and the general recommendation to extend self-consistency
   checks to `SiteSummary` and `EventSummary`.
 
-
-
-### Features (2026-03-17, continued)
+### Features (2026-03-17)
 
 - **Summaries2.py** — `createSimPDF`: new function that builds simulation-level PDF summaries
   by computing the **mixture distribution** across all sites. For each grouping level, the
