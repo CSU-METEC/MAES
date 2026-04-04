@@ -123,16 +123,13 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     filteredCommandLineArgs = dict(filter(lambda x: x[1], args.__dict__.items()))
     cm.expandPhase("arguments", **filteredCommandLineArgs)
 
-    # Process arguments out of the study definition file
+    # Process arguments out of the study definition file.
+    # Exclude any keys already set by CLI args so the study file cannot override them.
 
     studyFilename = cm.getConfigVar("studyFilename")
     studyVars = readVarsFromStudy(studyFilename, config['intakeSpreadsheetConfigParams'])
-    filteredStudyVars = dict(filter(lambda x: x[1], studyVars.items()))
+    filteredStudyVars = dict(filter(lambda x: x[1] and x[0] not in filteredCommandLineArgs, studyVars.items()))
     cm.expandPhase("siteDefinitionParams", **filteredStudyVars)
-
-    # even though we processed the command line arguments first, then the values out of the study definition file,
-    # values specified as arguments will take precedence over values in the study definition file because of the
-    # order defined in the defaultConfig.json file.
 
     studyName = cm.getConfigVar('studyName')  # could be set with -sn / studyName argument
     if studyName is None:

@@ -1043,12 +1043,12 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
             loading_kW, loading_pu = self.calcLoadingNoFF(loading_pu)
             return loading_kW, loading_pu, 0
         if self.inletFluidFlows:
-            if not self.inletFluidFlows['Vapor']:
+            if not self.inletFluidFlows.get('Vapor', []):
                 msg = f'No inlet vapors found for compressor {self.unitID}, switching to rated power'
                 logging.warning(msg)
                 loading_kW, loading_pu = self.calcLoadingNoFF(loading_pu)
             else:
-                fuelConsump, compressorLoad = self.calcCompressorLoad(self.inletFluidFlows['Vapor'], loading_pu)
+                fuelConsump, compressorLoad = self.calcCompressorLoad(self.inletFluidFlows.get('Vapor', []), loading_pu)
                 loading_kW = compressorLoad
         else:
             loading_kW, loading_pu = self.calcLoadingNoFF(loading_pu)
@@ -3338,7 +3338,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
         
     def getTimeForState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
         cs = currentStateInfo.stateName
-        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows['Vapor']))  # assume no mixing of gcs
+        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))  # assume no mixing of gcs
         if cs == 'OPERATING':
             delay = int(self.opDurDist.pick())
         elif cs == 'MALFUNCTIONING':
@@ -3348,7 +3348,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
         return delay
 
     def initialStateTimes(self, **kwargs):
-        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows['Vapor']))
+        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))
         ret = {'OPERATING': int(self.opDurDist.pick()),
                'MALFUNCTIONING': int(self.malfDurDist.pick()),
                'SHUT_IN': int(self.shutInDurDist.pick())}
@@ -4396,9 +4396,12 @@ class MEETFFEmitter(mc.EmissionManager):
         if stateInfo.stateName not in self.activeStatesList:
             return
 
-        deltat = min(map(lambda x: x.changeTimeAbsolute, self.majorEquipment.outletFluidFlows['Vapor'])) - currentTime
+        vaporFlows = self.majorEquipment.outletFluidFlows.get('Vapor', [])
+        if not vaporFlows:
+            return
+        deltat = min(map(lambda x: x.changeTimeAbsolute, vaporFlows)) - currentTime
 
-        for singleFlow in self.majorEquipment.outletFluidFlows.get('Vapor', []):
+        for singleFlow in vaporFlows:
             # deltat = singleFlow.changeTimeAbsolute - currentTime
             if singleFlow.secondaryID not in self.secondaryID:
                 continue
@@ -4590,17 +4593,17 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
     #     return cs
 
     def getTimeForState(self, currentTime=0, currentStateData=None, currentStateInfo=None):
-        timeToStateChange = min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows['Vapor']))
+        timeToStateChange = min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows.get('Vapor', [])))
         delay = timeToStateChange - currentTime
 
         return delay
 
     def initialStateTimes(self):
-        ret = {'OPERATING': min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows['Vapor']))}
+        ret = {'OPERATING': min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows.get('Vapor', [])))}
         return ret
 
     def initialStateUpdate(self, stateName, stateDuration, currentTime):
-        outflowCounts = len(self.outletFluidFlows['Vapor'])
+        outflowCounts = len(self.outletFluidFlows.get('Vapor', []))
         # self.strippingGasFlowRate = self.strippingGasFlowRate * 3/outflowCounts  # distribute the stripping gas to the still vent outlet flows
         # self.glycolPumpInjectionRate = self.glycolPumpInjectionRate * 3/outflowCounts  # distribute the pump injection rate to the flash tank outlet flows
         ret = sm.StateInfo(stateName, deltaTimeInState=stateDuration, absoluteTimeInState=currentTime + stateDuration)
