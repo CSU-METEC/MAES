@@ -7,6 +7,7 @@ import json
 import MEETExceptions as me
 import AppUtils as au
 import re
+import ParamUtils as pu
 
 import MEETClasses    # Don't delete this -- classmap creation in instantiateIntake depends on it
 import MEETProductionWells
@@ -21,6 +22,10 @@ import MEETSamples
 import MEETTestEquipment
 import MEETFFClasses
 import ModelClasses
+
+UNITS_RE = pu.UNITS_RE  # retained for any callers that reference ModelFormulation.UNITS_RE directly
+toParamKey = pu.toParamKey
+colNameToPythonVar = pu.colNameToPythonVar
 
 MODEL_PARAMETER_FORMAT = "Model Parameter {idx}"
 PYTHON_PARAMETER_FORMAT = "Python Parameter {idx}"
@@ -99,27 +104,6 @@ def lookupMajorEquipment(elt):
     mEquipment = et.getEquipmentByName(meName)
     return mEquipment
 
-def toParamKey(param):
-    try:
-        m = re.match(UNITS_RE, param)
-        val = m.group('val')
-        valLower = val.lower()
-        valElts = valLower.split(' ')
-        valKey = '_'.join(filter(lambda x: x != '', valElts))
-        units = m.group('units')
-        if units:
-            units = units.strip('[]')
-        val = val.strip()
-        return {'valKey': valKey, 'val': val, 'units': units}
-    except AttributeError:
-        raise Exception("Unable to parameter key {param}; check syntax")
-
-def colNameToPythonVar(colName):
-    fields = colName.split(' ')
-    ucFields = list(map(lambda x: x.capitalize(), fields))
-    ucFields[0] = ucFields[0].lower()
-    ret = ''.join(ucFields)
-    return ret
 
 def siteSheetRowToParamKeys(ssr):
     ret = {}
