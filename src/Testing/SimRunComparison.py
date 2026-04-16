@@ -60,6 +60,7 @@ import pandas as pd
 import scipy.stats
 
 import SiteMain2 as sm
+import AppUtils as au
 
 LOG_PREFIX_FMT = "%(asctime)s %(process)d %(thread)d"
 LOG_DATEFMT = "%Y-%m-%dT%H:%M:%S%z"
@@ -90,12 +91,12 @@ class KSResult:
 
 def getParser() -> argparse.ArgumentParser:
     """Build the argument parser, inheriting core SiteMain2 arguments."""
-    siteParser = sm.getParser(sm.DEFAULT_CONFIG)
+    siteParser = au.getParser(au.DEFAULT_CONFIG)
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         parents=[siteParser],
-        add_help=True,
+        conflict_handler='resolve',
     )
     parser.add_argument(
         '--mode', choices=MODE_CHOICES, default='run-and-compare',
@@ -202,18 +203,6 @@ def readSiteSummary(outputDir: Path) -> pd.DataFrame:
     return ret
 
 
-def extractSiteTotal(outputDir: Path, species: str) -> np.ndarray:
-    """
-    Extract per-MC-run total emissions (kg) across all equipment types.
-
-    Aggregates totalEmission_kg from InstEmissions grouped by mcRun.
-    """
-    df = readInstEmissions(outputDir, species)
-    grouped = df.groupby('mcRun')['totalEmission_kg'].sum()
-    ret = grouped.values
-    return ret
-
-
 def extractByMEType(outputDir: Path, species: str, meType: str) -> np.ndarray:
     """
     Extract per-MC-run emission totals for a single METype from SiteSummary.
@@ -246,6 +235,82 @@ def extractByUnitID(outputDir: Path, species: str, unitID: str) -> np.ndarray:
     return ret
 
 
+def detectOutputFormat(outputDir: Path) -> str:
+    """
+    Detect whether an output directory contains parquet summary or per-run CSV files.
+
+    Returns 'parquet' if parquet/Summary/ exists, 'csv' if numbered run subdirs exist.
+    """
+    if (outputDir / 'parquet' / 'Summary').exists():
+        return 'parquet'
+    studyDir = _findStudyDir(outputDir)
+    if studyDir is not None:
+        return 'csv'
+    raise FileNotFoundError(f"Cannot detect output format for {outputDir}")
+
+
+def _findStudyDir(outputDir: Path):
+    """
+    Find the study subdirectory containing numbered MC run folders.
+
+    Returns the Path to the study dir, or None if not found.
+    """
+    # Numbered run dirs may be directly under outputDir or one level deeper (study dir)
+    for candidate in [outputDir] + list(outputDir.iterdir() if outputDir.is_dir() else []):
+        if not candidate.is_dir():
+            continue
+        numbered = [d for d in candidate.iterdir() if d.is_dir() and d.name.isdigit()]
+        if numbered:
+            return candidate
+    return None
+
+
+def extractSiteTotalFromCSV(outputDir: Path, species: str) -> np.ndarray:
+    """
+    Extract per-MC-run total emissions from per-run CSV files (main branch format).
+
+    Reads instantaneousEvents.csv, emissionTimeseries.csv, and gasCompositions.csv
+    from each numbered run directory, joins them, and sums emission_kg = tsValue * gcValue * duration.
+    """
+    studyDir = _findStudyDir(outputDir)
+    if studyDir is None:
+        raise FileNotFoundError(f"No numbered run dirs found under {outputDir}")
+    runDirs = sorted(
+        [d for d in studyDir.iterdir() if d.is_dir() and d.name.isdigit()],
+        key=lambda d: int(d.name)
+    )
+    perRunTotals = []
+    for runDir in runDirs:
+        eventsDF = pd.read_csv(runDir / 'instantaneousEvents.csv')
+        tsDF = pd.read_csv(runDir / 'emissionTimeseries.csv')
+        gcDF = pd.read_csv(runDir / 'gasCompositions.csv')
+        emissDF = eventsDF[eventsDF['command'] == 'EMISSION'].copy()
+        if emissDF.empty:
+            perRunTotals.append(0.0)
+            continue
+        emissDF = emissDF.merge(tsDF[['tsKey', 'tsValue']], on='tsKey', how='left')
+        gcSpeciesDF = gcDF[gcDF['species'] == species][['gcKey', 'gcValue']]
+        emissDF = emissDF.merge(gcSpeciesDF, on='gcKey', how='left')
+        emissDF['emission_kg'] = emissDF['tsValue'] * emissDF['gcValue'] * emissDF['duration']
+        perRunTotals.append(emissDF['emission_kg'].sum())
+    return np.array(perRunTotals)
+
+
+def extractSiteTotal(outputDir: Path, species: str) -> np.ndarray:
+    """
+    Extract per-MC-run total emissions (kg) across all equipment types.
+
+    Auto-detects output format (parquet or per-run CSV) and dispatches accordingly.
+    """
+    fmt = detectOutputFormat(outputDir)
+    if fmt == 'csv':
+        return extractSiteTotalFromCSV(outputDir, species)
+    df = readInstEmissions(outputDir, species)
+    grouped = df.groupby('mcRun')['totalEmission_kg'].sum()
+    ret = grouped.values
+    return ret
+
+
 def extractMetric(outputDir: Path, species: str, groupBy: str, groupValue: str) -> np.ndarray:
     """
     Extract the configured metric distribution from a simulation output directory.
@@ -255,8 +320,14 @@ def extractMetric(outputDir: Path, species: str, groupBy: str, groupValue: str) 
     if groupBy == 'site-total':
         ret = extractSiteTotal(outputDir, species)
     elif groupBy == 'metype':
+        fmt = detectOutputFormat(outputDir)
+        if fmt == 'csv':
+            raise ValueError("metype groupBy is not supported for CSV output format")
         ret = extractByMEType(outputDir, species, groupValue)
     elif groupBy == 'unitid':
+        fmt = detectOutputFormat(outputDir)
+        if fmt == 'csv':
+            raise ValueError("unitid groupBy is not supported for CSV output format")
         ret = extractByUnitID(outputDir, species, groupValue)
     else:
         raise ValueError(f"Unknown groupBy: {groupBy}")
