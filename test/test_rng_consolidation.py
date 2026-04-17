@@ -31,6 +31,7 @@ import SimRNG
 MAES_ROOT = pathlib.Path(__file__).parent.parent
 
 MIGRATED_MODULES = [
+    MAES_ROOT / "src" / "Chooser.py",
     MAES_ROOT / "src" / "Distribution.py",
     MAES_ROOT / "src" / "ModelClasses.py",
     MAES_ROOT / "src" / "MEETLinkedProductionEq.py",
@@ -142,6 +143,7 @@ def test_seeded_sim_run_reproducible(tmp_path: pathlib.Path) -> None:
 # Test 2: no stdlib random in migrated modules
 # ---------------------------------------------------------------------------
 
+STDLIB_RANDOM_IMPORT = re.compile(r'\bimport\s+random\b')
 STDLIB_RANDOM_CALL = re.compile(
     r'\brandom\.(random|choice|choices|randint|randrange|uniform)\b'
 )
@@ -149,14 +151,16 @@ STDLIB_RANDOM_CALL = re.compile(
 
 @pytest.mark.parametrize("module_path", MIGRATED_MODULES, ids=lambda p: p.name)
 def test_no_stdlib_random_in_module(module_path: pathlib.Path) -> None:
-    """Assert that no live code in migrated modules calls stdlib random directly."""
+    """Assert that no live code in migrated modules imports or calls stdlib random directly."""
     source = module_path.read_text()
     live_lines = [
         (i + 1, line)
         for i, line in enumerate(source.splitlines())
         if not line.lstrip().startswith("#")
-        and STDLIB_RANDOM_CALL.search(line)
-        and "SimRNG" not in line
+        and (
+            STDLIB_RANDOM_IMPORT.search(line)
+            or (STDLIB_RANDOM_CALL.search(line) and "SimRNG" not in line)
+        )
     ]
     assert not live_lines, (
         f"{module_path.name} still contains stdlib random calls:\n"
