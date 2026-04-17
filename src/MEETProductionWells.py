@@ -10,7 +10,7 @@ import Units as u
 from EmitterProfile import EmitterProfile
 from Chooser import EmpiricalDistChooser
 from Distribution import Uniform
-import random
+import SimRNG
 import MEETClasses as mc
 import MEETExceptions as me
 
@@ -407,7 +407,7 @@ class WellAutomatedLiquidUnloading(mc.MajorEquipment, mc.StateChangeInitiator, W
             newInst.calcALUCycleTimes()  # calculate state times for cycle
             cycleDuration = newInst.stateTimes['LU_PRODUCTION'] + newInst.stateTimes['LU_SHUTIN'] + newInst.stateTimes[
                 'LU_VENT']  # calculate duration of full cycle
-            timeIntoCycle = random.randint(1,
+            timeIntoCycle = SimRNG.randint(1,
                                            cycleDuration - 1)  # start at a random time into cycle (minus 1 to prevent time into cycle = cycle duration)
             if timeIntoCycle < newInst.stateTimes['LU_PRODUCTION']:
                 newInst.initialState = "LU_PRODUCTION"
@@ -640,7 +640,7 @@ class WellManualLiquidUnloading(mc.MajorEquipment, mc.StateChangeInitiator, Well
             newInst.calcMLUCycleTimes()
             cycleDuration = newInst.stateTimes['LU_PRODUCTION'] + newInst.stateTimes['LU_SHUTIN'] + newInst.stateTimes[
                 'LU_VENT']
-            timeIntoCycle = random.randint(1, cycleDuration)
+            timeIntoCycle = SimRNG.randint(1, cycleDuration)
             if timeIntoCycle < newInst.stateTimes['LU_PRODUCTION']:
                 newInst.initialState = "LU_PRODUCTION"
                 newInst.initialStateTime = int(newInst.stateTimes['LU_PRODUCTION'] - timeIntoCycle)
@@ -796,7 +796,7 @@ class WellCyclic(mc.MajorEquipment, mc.StateChangeInitiator):
         tLiq = self.LiqProdDurDist.pick()
         tGas = self.GasProdDurDist.pick()
         tCycle = tSI + tLiq + tGas
-        tIntoCycle = int(random.random()*tCycle)
+        tIntoCycle = int(SimRNG.random()*tCycle)
         if tIntoCycle < tSI:
             newInst.initialState = "SHUTIN"
             newInst.initialStateTime = int(tSI-tIntoCycle)

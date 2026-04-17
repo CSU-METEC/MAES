@@ -22,7 +22,7 @@ import EquipmentTable as et
 import csv
 from Chooser import UnscaledEmpiricalDistChooser
 from Chooser import EmpiricalDistChooser
-import random
+import SimRNG
 import DistributionProfile as dp
 import itertools
 import pandas as pd
@@ -907,10 +907,10 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
     def nextStateNoOverload2(self, currentTime, currentStateData, currentStateInfo):
         cs = currentStateInfo.stateName
         if cs == 'OPERATING':
-            nextState = random.choices(['NOT_OPERATING_PRESSURIZED', 'BLOWDOWN'], weights=(self.nopPct, self.nodPct), k=1)[0]
+            nextState = SimRNG.choices(['NOT_OPERATING_PRESSURIZED', 'BLOWDOWN'], weights=(self.nopPct, self.nodPct), k=1)[0]
             # add OPERATING here for the sum = 1
         elif cs == 'NOT_OPERATING_PRESSURIZED':
-            nextState = random.choices(['STARTING', 'BLOWDOWN'], weights=(1.0, 0), k=1)[0]
+            nextState = SimRNG.choices(['STARTING', 'BLOWDOWN'], weights=(1.0, 0), k=1)[0]
         elif cs == 'NOT_OPERATING_DEPRESSURIZED':
             nextState = 'STARTING'
         elif cs == 'STARTING':
@@ -1112,7 +1112,7 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
         initialStateChooser = EmpiricalDistChooser(self.timeRatios)
         self.initialState = initialStateChooser.randomChoice()
         self.initialStateTime = self.stateTimes[self.initialState]
-        self.fuzzedInitialTime = int(self.initialStateTime * random.uniform(0, 1))
+        self.fuzzedInitialTime = int(self.initialStateTime * SimRNG.uniform(0, 1))
         # self.fuzzedInitialTime = self.initialStateTime
         self.stateTimes[self.initialState] = self.fuzzedInitialTime
 
@@ -1560,9 +1560,9 @@ class MEETContinuousSeparator2(mc.MajorEquipment, mc.StateChangeInitiator, ff.Vo
 
         self.currentGasFraction = 0
         try:
-            # delay = random.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
+            # delay = SimRNG.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
             #                                 self.getMinChangeTimeLiquids(self.outletFluidFlows)))
-            delay = random.randrange(1, min(self.containedSeparators['Condensate'].getChangeTime(),
+            delay = SimRNG.randrange(1, min(self.containedSeparators['Condensate'].getChangeTime(),
                                             self.containedSeparators['Water'].getChangeTime()))
         except:
             delay = 1
@@ -1851,7 +1851,7 @@ class LiquidContained(Contained):
         initialStateTimes = {f'{self.fluidName}_OPERATING': self.opDurDist.high,
                              f'{self.fluidName}_STUCK_DUMP_VALVE': self.sdvDurDist.high}
         randomState = UnscaledEmpiricalDistChooser(initialStateTimes).randomChoice()
-        randomStateTime = random.randrange(1, initialStateTimes[randomState])
+        randomStateTime = SimRNG.randrange(1, initialStateTimes[randomState])
         self.currentStateDur = randomStateTime
         self.currentState = randomState
         if randomState == f'{self.fluidName}_STUCK_DUMP_VALVE':
@@ -2261,7 +2261,7 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
     def initialStateUpdate(self, stateName, stateDuration, currentTime):
         self.currentGasFraction = 0
         try:
-            delay = random.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
+            delay = SimRNG.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
                                             self.getMinChangeTimeLiquids(self.outletFluidFlows)))
         except:
             delay = 1
@@ -2637,7 +2637,7 @@ class MEETDumpingSeparator(MEETContinuousSeparator):
         return nextState
 
     def initialStateTimes(self):
-        self.currentVolume = round(random.uniform(1, self.dumpVolume), 1)
+        self.currentVolume = round(SimRNG.uniform(1, self.dumpVolume), 1)
         if self.currentVolume >= self.dumpVolume:
             self.stateTimes = {'DUMPING': self.dumpTime}
         else:
@@ -3011,7 +3011,7 @@ class MEETContinuousPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
         cs = currentStateInfo.stateName
         # nextState = 'CONTINUOUS_VENT'
         if self.prevState is None:
-            nextState = random.choice(['CONTINUOUS_VENT', 'CONTINUOUS_VENT_ABNORMAL'])
+            nextState = SimRNG.choice(['CONTINUOUS_VENT', 'CONTINUOUS_VENT_ABNORMAL'])
             # nextState = 'CONTINUOUS_VENT'    # only for debugging
             if nextState == 'CONTINUOUS_VENT_ABNORMAL':
                 self.getNextStateAb(currentStateData, currentStateInfo, currentTime)
@@ -3069,11 +3069,11 @@ class MEETContinuousPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
             self.currentStateDur = int(self.opDurDist.pick())
         else:
             self.currentStateDur = int(self.abnormalDurDist.pick())
-        # random.randrange(1, stateTimes[randomState])
+        # SimRNG.randrange(1, stateTimes[randomState])
         if self.inletFluidFlows:
-            self.currentStateDelay = random.randrange(1, self.getMinChangeTimeLiquids(self.inletFluidFlows))
+            self.currentStateDelay = SimRNG.randrange(1, self.getMinChangeTimeLiquids(self.inletFluidFlows))
         else:
-            self.currentStateDelay = random.randrange(1, self.currentStateDur)
+            self.currentStateDelay = SimRNG.randrange(1, self.currentStateDur)
 
         self.trackingTimeAbnormal = self.currentStateDelay
         ret = super().initialStateUpdate(stateName, stateDuration=self.currentStateDelay, currentTime=currentTime)

@@ -8,7 +8,7 @@ import logging
 from StateManager import StateManager, StateInfo
 import Units as u
 from Chooser import EmpiricalDistChooser, UnscaledEmpiricalDistChooser
-import random
+import SimRNG
 import StoredProfile as sp
 from EmitterProfile import EmitterProfile
 import SimDataManager as sdm
@@ -309,7 +309,7 @@ class DESStateEnabled(DESEnabled):
         if len(stateTimes) == 1:
             randomStateDelay = stateTimes[randomState]  # sim time for 1-state equipment or user specified state (ex: wells)
         else:
-            randomStateDelay = random.randrange(1, stateTimes[randomState])
+            randomStateDelay = SimRNG.randrange(1, stateTimes[randomState])
             # randomStateDelay = stateTimes[randomState]
         initialState = self.initialStateUpdate(randomState, randomStateDelay, 0)
         return initialState
@@ -615,7 +615,7 @@ class StateBasedEmitter(Emitter, DESEnabled, EmissionDistributionEnabled, StateC
 # todo: directory content picking needs to be "promoted" to be a standard feature of reading a distribution
 def pickOPCycleTimes(epPath, epDir):
     epDirPath = epPath / epDir
-    distToUse = random.choice(list(epDirPath.glob("*.csv")))
+    distToUse = SimRNG.choice(list(epDirPath.glob("*.csv")))
     dist = EmitterProfile.readEmitterFile(distToUse)
     return dist, str(distToUse)
 

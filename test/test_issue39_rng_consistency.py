@@ -1,15 +1,15 @@
 """
 Regression test for GitHub issue #39 — RNG mismatch in MEETComponentLeaks.
 
-MEETComponentLeaks.pickFromMTTR and calcLeakList must draw from np.random,
+MEETComponentLeaks.pickFromMTTR and calcLeakList must draw from SimRNG,
 not Python's stdlib random module. These tests verify determinism by seeding
-np.random and confirming that two runs with the same seed produce identical
-results. If the functions use stdlib random (which is not seeded), results
+SimRNG and confirming that two runs with the same seed produce identical results.
+If the functions use stdlib random (which is unaffected by SimRNG.seed()), results
 will differ across runs.
 
-RED:   before fix — functions use random.random(); np.random seeding has no
+RED:   before fix — functions use random.random(); SimRNG seeding has no
        effect; results differ across identically-seeded runs.
-GREEN: after fix  — functions use np.random.random(); seeding np.random
+GREEN: after fix  — functions use SimRNG.random(); seeding SimRNG
        produces identical results across runs.
 """
 import sys
@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 import numpy as np
 import pytest
 import MEETComponentLeaks as mcl
+import SimRNG
 
 
 SEED = 42
@@ -43,19 +44,19 @@ def _pickFromMTTR(scale: float) -> int:
 
 
 def _drawN(n: int, seed: int) -> list:
-    """Seed np.random then draw n values via pickFromMTTR."""
-    np.random.seed(seed)
+    """Seed SimRNG then draw n values via pickFromMTTR."""
+    SimRNG.seed(seed)
     ret = list(map(lambda _: _pickFromMTTR(SCALE), range(n)))
     return ret
 
 
 def _calcLeakListTrials(n: int, seed: int) -> list:
-    """Seed np.random then run calcLeakList n times, returning leak counts."""
+    """Seed SimRNG then run calcLeakList n times, returning leak counts."""
     PPLEAK = 0.1
     MTBF_HOURS = 24.0 * 30
     MTTR_HOURS = 24.0 * 7
     TMAX_S = 365 * 24 * 3600
-    np.random.seed(seed)
+    SimRNG.seed(seed)
     ret = list(map(
         lambda _: len(mcl.ComponentLeaks.calcLeakList(
             _Dummy(),
@@ -69,29 +70,29 @@ def _calcLeakListTrials(n: int, seed: int) -> list:
     return ret
 
 
-def test_pickFromMTTR_deterministic_under_numpy_seed() -> None:
+def test_pickFromMTTR_deterministic_under_simrng_seed() -> None:
     """
-    Two runs of pickFromMTTR with the same np.random seed must produce
+    Two runs of pickFromMTTR with the same SimRNG seed must produce
     identical results. Fails if the implementation uses stdlib random,
-    which is unaffected by np.random.seed().
+    which is unaffected by SimRNG.seed().
     """
     run_a = _drawN(N_DRAWS, SEED)
     run_b = _drawN(N_DRAWS, SEED)
     assert run_a == run_b, (
-        "pickFromMTTR is not deterministic under np.random seeding — "
-        "implementation is using stdlib random instead of np.random.random()"
+        "pickFromMTTR is not deterministic under SimRNG seeding — "
+        "implementation is using stdlib random instead of SimRNG.random()"
     )
 
 
-def test_calcLeakList_deterministic_under_numpy_seed() -> None:
+def test_calcLeakList_deterministic_under_simrng_seed() -> None:
     """
-    Two sets of calcLeakList calls with the same np.random seed must produce
+    Two sets of calcLeakList calls with the same SimRNG seed must produce
     identical per-trial leak counts. Fails if the implementation uses stdlib
-    random, which is unaffected by np.random.seed().
+    random, which is unaffected by SimRNG.seed().
     """
     run_a = _calcLeakListTrials(N_DRAWS, SEED)
     run_b = _calcLeakListTrials(N_DRAWS, SEED)
     assert run_a == run_b, (
-        "calcLeakList is not deterministic under np.random seeding — "
-        "implementation is using stdlib random instead of np.random.random()"
+        "calcLeakList is not deterministic under SimRNG seeding — "
+        "implementation is using stdlib random instead of SimRNG.random()"
     )

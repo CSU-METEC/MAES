@@ -2,9 +2,9 @@ import numbers
 import logging
 import numpy as np
 import math
-import random
 import json
 import pandas as pd
+import SimRNG
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class Normal(Distribution):
             return self.mu
         mu = self.mu
         sigma = self.sigma
-        ret = np.random.normal(mu, sigma)
+        ret = SimRNG.normal(mu, sigma)
         return ret
 
     def test(self, seq):
@@ -130,7 +130,7 @@ class Lognormal(Distribution):
         self.sigma = json['sigma']
 
     def pick(self, _=None):
-        ret = np.random.lognormal(self.mean, self.sigma)
+        ret = SimRNG.lognormal(self.mean, self.sigma)
         return ret
 
     def test(self, seq):
@@ -158,7 +158,7 @@ class Triangular(Distribution):
         self.right = json['max']
 
     def pick(self, _=None):
-        ret = np.random.triangular(self.left, self.mode, self.right)
+        ret = SimRNG.triangular(self.left, self.mode, self.right)
         return ret
 
     def test(self, seq):
@@ -187,7 +187,7 @@ class Uniform(Distribution):
         if DISTRIBUTION_DEBUG:
             return (self.high + self.low) / 2.0
         # Samples are uniformly distributed over the half-open interval [low, high) (includes low, but excludes high).
-        ret = np.random.uniform(self.low, self.high)
+        ret = SimRNG.uniform(self.low, self.high)
         return ret
 
     def test(self, seq):
@@ -232,11 +232,11 @@ class Exponential(Distribution):
         self.scale = json['scale']
 
     def pick(self, _=None):
-        ret = np.random.exponential(self.scale)
+        ret = SimRNG.exponential(self.scale)
         return ret
 
     def pick_residualtime(self):
-        return np.random.exponential(self.scale)
+        return SimRNG.exponential(self.scale)
 
     def expected_value(self):
         return self.scale
@@ -272,7 +272,7 @@ class Sampled(Distribution):
             obsForPick = self.obs[keyNames[0]]
         else:
             obsForPick = self.obs[obsName]
-        ret = random.choice(obsForPick)
+        ret = SimRNG.choice(obsForPick)
         return ret
 
     @classmethod
@@ -294,7 +294,7 @@ class Histogram(Distribution):
         self.defaultCol = defaultCol
 
     def pick(self, col=None):
-        r = random.random()
+        r = SimRNG.random()
         ndx = self.df['cProb'].searchsorted(r)
         valCol = col if col is not None else self.defaultCol
         pk = self.df.loc[ndx][valCol]

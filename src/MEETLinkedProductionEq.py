@@ -2,7 +2,7 @@ import math
 import MEETClasses as mc
 import Units as u
 from Distribution import Uniform
-import random
+import SimRNG
 import EmissionDriver as ed
 import SimDataManager as sdm
 import MEETProductionWells as mp
@@ -70,7 +70,7 @@ class LinkedProductionSeparator(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.S
         newInst.lastDumpVolBbl = 0
         # select initial level (start at random fraction full)
         newInst.resetDumpVolBbl(0)
-        fractionFull = random.random()
+        fractionFull = SimRNG.random()
         newInst.volUntilDump = newInst.nextDumpVolBbl * (1 - fractionFull)
         newInst.lastVolAdjTime = 0
         # set initial fillrate
@@ -414,7 +414,7 @@ class LinkedProductionVRU(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.StateCh
         self.resetNextTankTS()
         self.nextTS = self.nextTankTS  # will try to restart VRU next time tank(s) state change
         self.delay = self.nextTS - currentTime  # delay (time in the idle state we're currently entering)
-        if random.random() <= self.pMalf:
+        if SimRNG.random() <= self.pMalf:
             self.nextState = 'MALFUNCTIONING'
             self.nextRepairTS = currentTime + self.delay + int(self.malfDurDist.pick())
         else:
@@ -525,7 +525,7 @@ class LinkedProductionVRU_VariationA(mc.MajorEquipment, mc.LinkedEquipmentMixin,
         newInst.nextTS = 0
         newInst.nextTankTS = 0
         newInst.nextRepairTS = 0  # timestamp of next repair
-        newInst.nextMalfTS = int(random.random()*self.opDurDist.pick())  # timestamp of next malfunciton (start a random point into cycle)
+        newInst.nextMalfTS = int(SimRNG.random()*self.opDurDist.pick())  # timestamp of next malfunciton (start a random point into cycle)
         newInst.condensateFlashDriverRateBblPerSec = 0
         newInst.waterFlashDriverRateBblPerSec = 0
         newInst.initialState = 'OPERATING'

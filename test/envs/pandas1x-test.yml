@@ -1,0 +1,16 @@
+name: MAES-pandas1x-test
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pandas=1.5.3
+  - numpy=1.24
+  - openpyxl
+  - xlrd
+  - simpy
+  - scipy
+  - pyarrow
+  - pip
+  - pip:
+    - pytest>=8.0.0
