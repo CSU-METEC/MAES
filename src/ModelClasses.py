@@ -3705,7 +3705,7 @@ class MEETCommonHeader(mc.MajorEquipment, ff.Volume, mc.DESEnabled):
         return super().instantiateFromTemplate(simdm, **kwargs)
 
 
-class MEETBattery2(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
+class MEETBattery2BKP(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
 
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'slope', 'yIntercept', 'currentYIntercept',
                                          'upstreamEquipment', 'sumOfVaporOutletFlows', 'prvSwitch',
@@ -4154,7 +4154,7 @@ def getpLeakTank(gasFracDistName, simdm):
             return dist
 
 
-class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
+class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
 
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'slope', 'yIntercept', 'currentYIntercept',
                                          'upstreamEquipment', 'sumOfVaporOutletFlows', 'prvSwitch',
@@ -4536,7 +4536,7 @@ class MEETBattery3(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolum
         return inst
 
 
-class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
+class MEETBatteryBKP(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
 
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'slope', 'yIntercept', 'currentYIntercept',
                                          'upstreamEquipment', 'sumOfVaporOutletFlows', 'prvSwitch',

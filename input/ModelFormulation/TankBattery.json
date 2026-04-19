@@ -1,6 +1,6 @@
 {
   "Python Category": "MajorEquipment",
-  "Python Class":    "MEETBattery3",
+  "Python Class":    "MEETBattery",
   "Readable Name":   "Tank Battery",
   
   "Description": "Tank Battery is a group of tanks that are used for storing liquids for sale. Tank Batteries are filling most of the time denoted by 'OPERATING' state. Overpressure situation in tanks is modelled as 'OVERPRESSURE_VENT', where excess of gas is released through the prvs. 'OVERPRESSURE_LEAK' refers to accidental opening of the vents leading to leaks.",
