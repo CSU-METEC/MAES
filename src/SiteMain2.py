@@ -19,6 +19,10 @@ ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDF
 
 logger = logging.getLogger(__name__)
 
+# Shared workitem base set once per Pool worker via initWorker; avoids pickling the
+# full config dict through the inter-process pipe for every task.
+workerBase: dict = {}
+
 def MCInit(simdm):
     studyFile = simdm.config['studyFullName']
     rawIntake = mf.parseIntakeSpreadsheet(studyFile)
@@ -224,6 +228,35 @@ def configFromConfigMgr(cMgr):
     config = workItems[3][0]
     return config
 
+def initWorker(base: dict) -> None:
+    """Set the shared workitem base dict in each Pool worker process."""
+    global workerBase
+    workerBase = base
+
+
+def makeSlimWorkitem(base: dict, workitem: dict) -> dict:
+    """Return a copy of workitem containing only fields that differ from base.
+
+    Fields that cannot be compared (e.g. complex objects) are always included.
+    """
+    slim = {}
+    for k, v in workitem.items():
+        try:
+            differs = (v != base.get(k))
+        except Exception:
+            differs = True
+        if differs:
+            slim[k] = v
+    ret = slim
+    return ret
+
+
+def runWorkitemSlim(slim: dict) -> dict:
+    """Merge slim per-iteration fields with the shared workerBase and run the workitem."""
+    ret = runWorkitem({**workerBase, **slim})
+    return ret
+
+
 def runLocal(workQueue):
     t_start = dt.datetime.now()
     retList = []
@@ -242,13 +275,13 @@ def runLocal(workQueue):
 
 def runMultiprocessing(workQueue, workers):
     import multiprocessing as mp
-    workType = 'UNKNOWN'
-    if len(workQueue) > 0:
-        workType = workQueue[0].get('workType', 'UNKNOWN')
+    workType = workQueue[0].get('workType', 'UNKNOWN') if workQueue else 'UNKNOWN'
     logger.info(f"multiprocessing w/ work type: {workType}, workers: {workers}")
+    base = workQueue[0]
+    slimQueue = list(map(lambda wi: makeSlimWorkitem(base, wi), workQueue))
     with Timer(f"{workType}") as t0:
-        with mp.Pool(workers) as p:
-            res = list(p.imap_unordered(runWorkitem, workQueue))
+        with mp.Pool(workers, initializer=initWorker, initargs=(base,)) as p:
+            res = list(p.imap_unordered(runWorkitemSlim, slimQueue))
         t0.setCount(len(res))
     for r in res:
         r['wallClockTime'] = t0.deltat.total_seconds()
