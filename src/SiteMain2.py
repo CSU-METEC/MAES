@@ -52,6 +52,8 @@ def initializeSim(config, simdm):
         rawIntake = mf.parseIntakeSpreadsheet(studyFile)
         mf.instantiateIntake(simdm, rawIntake)
         simdm.dumpTemplates()
+    eqCount = len(simdm.getEquipmentTable().getTemplates())
+    logger.info(f"Equipment instances: {eqCount}")
     return t0.deltat.total_seconds()
 
 def runSim(config, simdm):
@@ -223,6 +225,7 @@ def configFromConfigMgr(cMgr):
     return config
 
 def runLocal(workQueue):
+    t_start = dt.datetime.now()
     retList = []
     for singleWorkitem in workQueue:
         # try:
@@ -232,6 +235,9 @@ def runLocal(workQueue):
         #     msg = f'MC STOP ERROR: mcRun {singleWorkitem["MCScenario"]} did not exit cleanly, continuing with next MC'
         #     logging.error(f'{msg} Error: {e}')
         #     save this mc for review/debugging
+    wallClock = (dt.datetime.now() - t_start).total_seconds()
+    for r in retList:
+        r['wallClockTime'] = wallClock
     return retList
 
 def runMultiprocessing(workQueue, workers):
@@ -244,8 +250,9 @@ def runMultiprocessing(workQueue, workers):
         with mp.Pool(workers) as p:
             res = list(p.imap_unordered(runWorkitem, workQueue))
         t0.setCount(len(res))
-        return res
-    pass
+    for r in res:
+        r['wallClockTime'] = t0.deltat.total_seconds()
+    return res
 
 def defineConvenienceConfigVars(cMgr):
     simDurationDays = cMgr.getConfigVar("simDurationDays")
@@ -262,7 +269,7 @@ def main(cm, workitemQueues=None):
         listOfWorkitemQueues = workitemQueues
     resList = []
     workers = cm.getConfigVar("workers")
-    parallel = workers and (workers > 0)
+    parallel = workers and (workers > 1)
     # if parallel:
     #     db = initializeDask(cm)
     with Timer("Run simulations") as t0:
