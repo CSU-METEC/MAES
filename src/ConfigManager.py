@@ -39,11 +39,16 @@ class ConfigManager():
         return cls._getSingleton()._serialize()
 
 
+    @classmethod
+    def freeze(cls):
+        cls._getSingleton()._frozen = True
+
     def __init__(self, config):
         self.defaultConfig = config
         self.phaseList = list(self.defaultConfig.get('phaseValues', {}).keys())
         self.reversedPhaseList = list(reversed(self.phaseList))
         self.configForPhases = {}
+        self._frozen = False
 
     def _getConfigVar(self, varName):
         cContext, _ = self._getExpansionContext(None)
@@ -63,6 +68,8 @@ class ConfigManager():
         return retContext, thisContext
 
     def _expandPhase(self, phaseName, **kwargsForPhase):
+        if self._frozen:
+            raise RuntimeError(f"ConfigManager is frozen — expandPhase('{phaseName}') called after freeze()")
         prevPhasesContext, thisPhaseContext = self._getExpansionContext(phaseName)
         configForPhase = {**thisPhaseContext, **kwargsForPhase}
         valsToExpand = self.defaultConfig.get("phaseValues", {}).get(phaseName, {})

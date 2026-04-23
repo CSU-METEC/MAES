@@ -150,7 +150,7 @@ def coalescePseudoEvents(eventTSDF):
 
     with Timer("  Filter events") as t0:
         debugTable = []
-        for unitID, filtTable in stateEvents.groupby('unitID', sort=False):
+        for (facilityID, unitID), filtTable in stateEvents.groupby(['facilityID', 'unitID'], sort=False):
             debugTable.append(filtTable)
             filtTable = filtTable.assign(stateCode=pd.Categorical(filtTable.state).codes)
             scd = filtTable.stateCode.diff(1)
