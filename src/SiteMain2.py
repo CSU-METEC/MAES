@@ -15,7 +15,7 @@ import pandas as pd
 import datetime as dt
 import Summaries2 as sum
 
-ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDFCache', 'simSummary']
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize']
 
 logger = logging.getLogger(__name__)
 
