@@ -293,11 +293,17 @@ def defineConvenienceConfigVars(cMgr):
     cMgr.expandPhase("start", simDurationSeconds=simDurationSeconds)
     pass
 
-def main(cm, workitemQueues=None):
+def main(cm, workitemQueues=None, parquetWorkers=None):
+    """Run the full MAES simulation pipeline.
+
+    parquetWorkers overrides the worker count for the parquet phase only; useful when
+    parquet is I/O-bound and benefits from fewer concurrent writers than simulation.
+    """
     logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
     defineConvenienceConfigVars(cm)
     if workitemQueues is None:
         listOfWorkitemQueues = generateWorkitems(cm)
+        cm.freeze()
     else:
         listOfWorkitemQueues = workitemQueues
     resList = []
@@ -307,9 +313,11 @@ def main(cm, workitemQueues=None):
     #     db = initializeDask(cm)
     with Timer("Run simulations") as t0:
         for singleWorkitemQueue in listOfWorkitemQueues:
-            if parallel:
+            workType = singleWorkitemQueue[0]['workType'] if singleWorkitemQueue else None
+            effectiveWorkers = parquetWorkers if (workType == 'parquet' and parquetWorkers is not None) else workers
+            if effectiveWorkers and effectiveWorkers > 1 and len(singleWorkitemQueue) > 1:
                 # queueResults = runDask(singleWorkitemQueue, db)
-                queueResults = runMultiprocessing(singleWorkitemQueue, workers)
+                queueResults = runMultiprocessing(singleWorkitemQueue, effectiveWorkers)
             else:
                 queueResults = runLocal(singleWorkitemQueue)
             resList.extend(queueResults)
@@ -336,7 +344,7 @@ def main(cm, workitemQueues=None):
 
 def preMain():
     cm, args = au.getConfig()
-    main(cm)
+    main(cm, parquetWorkers=args.parquetWorkers)
 
 if __name__ == "__main__":
     preMain()
