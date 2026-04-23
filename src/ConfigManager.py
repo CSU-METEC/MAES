@@ -1,5 +1,16 @@
 from datetime import datetime
 
+
+class _PartialFormatMap(dict):
+    """Format-map that leaves unresolvable keys intact rather than raising KeyError.
+
+    Allows template strings containing variables not yet set (e.g. {scenarioTimestamp}
+    during siteDefinitionParams expansion) to pass through without error.
+    """
+    def __missing__(self, key):
+        return '{' + key + '}'
+
+
 class ConfigManager():
 
     CONFIG_MANAGER_SINGLETON = None
@@ -78,7 +89,7 @@ class ConfigManager():
         lookupMap = {**prevPhasesContext, **configForPhase, **kwargsForPhase}
         for singleVal, singleValTemplate in valsToExpand.items():
             if isinstance(singleValTemplate, str):
-                expandedVal = singleValTemplate.format_map(lookupMap)
+                expandedVal = singleValTemplate.format_map(_PartialFormatMap(lookupMap))
             else:
                 expandedVal = singleValTemplate
             configForPhase[singleVal] = expandedVal
