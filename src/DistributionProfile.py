@@ -7,7 +7,8 @@ import MEETExceptions as me
 METADATA_END_TOKEN = "%%%ENDOFMETADATA%%%"                  # needs to be at beginning of row
 
 def readRawDistributionFile(filename):
-    metadata = {'filename': str(filename)}
+    filename = str(filename).replace('\\', '/')
+    metadata = {'filename': filename}
     with open(filename, 'r') as distyFile:
 
         csvInput = csv.reader(distyFile)
