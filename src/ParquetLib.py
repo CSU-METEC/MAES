@@ -145,7 +145,10 @@ def toParquet(config):
         toBaseParquetFullConfig(config, metadata,         'parquetMetadataDS')
         toBaseParquetFullConfig(config, summaryDF,        'parquetSummaryDS')
 
-    mergedEmissionDF = buildMergedEmissionDF(coalescedEventDF, tsTable, gascomp, metadata)
+    emissionOnlyDF = coalescedEventDF[coalescedEventDF['command'] == 'EMISSION'].copy()
+    del coalescedEventDF, eventListDF, summaryDF, eventDF
+    mergedEmissionDF = buildMergedEmissionDF(emissionOnlyDF, tsTable, gascomp, metadata)
+    del emissionOnlyDF
     return mergedEmissionDF
 
 
