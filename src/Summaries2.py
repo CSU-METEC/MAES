@@ -1023,6 +1023,13 @@ def computePartialAccumulator(config, mergedEmissionDF):
     _accumulateEventData(nonZeroDF,    eventEmitterAccAll,        eventSiteAccAll)
     _accumulateEventData(noFugitiveDF, eventEmitterAccNoFugitive, eventSiteAccNoFugitive)
 
+    # Free the large source DataFrames before returning. CPython's arena allocator never
+    # returns freed pages to the OS, so RSS grows monotonically within a process. In the
+    # w>1 multiprocessing case each Pool worker runs several mc iterations sequentially;
+    # without these deletes the worker's RSS accumulates across runs and can exhaust physical
+    # RAM before the pool closes, causing swap-thrashing that looks like a deadlock.
+    del instEmissionDF, nonZeroDF, noFugitiveDF
+
     return {
         'site':                     config['siteName'],
         'emitterTotalsDF':          emitterTotalsDF,
