@@ -3,6 +3,7 @@ import pandas as pd
 import AppUtils as au
 import os
 import glob
+import shutil
 import json
 import logging
 import numpy as np
@@ -1104,6 +1105,185 @@ def finalizeAccumulators(config, partials):
         prebuiltEventSummaryAll=eventSummaryAll,
         prebuiltEventSummaryNoFugitive=eventSummaryNoFugitive,
     )
+
+
+def _emissionAccToDF(acc: defaultdict, groupCols: list) -> pd.DataFrame:
+    """Flatten a defaultdict(list) emission accumulator to a tidy DataFrame.
+
+    Each key-value pair expands to rows with groupCols columns and an emission_kgPerH column.
+    Returns an empty DataFrame with the correct schema when acc is empty.
+    """
+    parts = []
+    for key, vals in acc.items():
+        keyDict = dict(zip(groupCols, key))
+        parts.append(pd.DataFrame({'emission_kgPerH': vals}).assign(**keyDict))
+    if not parts:
+        ret = pd.DataFrame(columns=groupCols + ['emission_kgPerH'])
+        return ret
+    ret = pd.concat(parts, ignore_index=True)
+    return ret
+
+
+def _eventAccToDF(acc: defaultdict, groupCols: list) -> pd.DataFrame:
+    """Flatten a defaultdict(_newEventAccDict) event accumulator to a tidy DataFrame.
+
+    Each key-value pair expands to rows with groupCols columns and duration_s,
+    totalEmission_kg, emission_kgPerS columns. Returns an empty DataFrame with the
+    correct schema when acc is empty.
+    """
+    parts = []
+    for key, fields in acc.items():
+        keyDict = dict(zip(groupCols, key))
+        parts.append(pd.DataFrame(fields).assign(**keyDict))
+    if not parts:
+        ret = pd.DataFrame(columns=groupCols + ['duration_s', 'totalEmission_kg', 'emission_kgPerS'])
+        return ret
+    ret = pd.concat(parts, ignore_index=True)
+    return ret
+
+
+def _dfToEmissionAcc(df: pd.DataFrame, groupCols: list) -> defaultdict:
+    """Reconstruct a defaultdict(list) emission accumulator from a tidy DataFrame.
+
+    Inverse of _emissionAccToDF.
+    """
+    acc = defaultdict(list)
+    if df.empty:
+        return acc
+    for key, grp in df.groupby(groupCols):
+        acc[key].extend(grp['emission_kgPerH'].tolist())
+    return acc
+
+
+def _dfToEventAcc(df: pd.DataFrame, groupCols: list) -> defaultdict:
+    """Reconstruct a defaultdict(_newEventAccDict) event accumulator from a tidy DataFrame.
+
+    Inverse of _eventAccToDF.
+    """
+    acc = defaultdict(_newEventAccDict)
+    if df.empty:
+        return acc
+    for key, grp in df.groupby(groupCols):
+        entry = acc[key]
+        entry['duration_s'].extend(grp['duration_s'].tolist())
+        entry['totalEmission_kg'].extend(grp['totalEmission_kg'].tolist())
+        entry['emission_kgPerS'].extend(grp['emission_kgPerS'].tolist())
+    return acc
+
+
+def _writePartialAccumulator(partialAcc: dict, partialDir: Path) -> None:
+    """Write a partial accumulator dict to 7 compact parquet files in partialDir."""
+    partialDir.mkdir(parents=True, exist_ok=True)
+    partialAcc['emitterTotalsDF'].to_parquet(partialDir / 'emitter_totals.parquet', index=False)
+    _emissionAccToDF(partialAcc['emissionAccAll'],        EMISSION_SUMMARY_GROUP_COLS).to_parquet(partialDir / 'emission_all.parquet',               index=False)
+    _emissionAccToDF(partialAcc['emissionAccNoFugitive'], EMISSION_SUMMARY_GROUP_COLS).to_parquet(partialDir / 'emission_no_fugitive.parquet',        index=False)
+    _eventAccToDF(partialAcc['eventEmitterAccAll'],         EVENT_EMITTER_GROUP_COLS).to_parquet(partialDir / 'event_emitter_all.parquet',            index=False)
+    _eventAccToDF(partialAcc['eventEmitterAccNoFugitive'],  EVENT_EMITTER_GROUP_COLS).to_parquet(partialDir / 'event_emitter_no_fugitive.parquet',    index=False)
+    _eventAccToDF(partialAcc['eventSiteAccAll'],            SUMMARY_KEY_COLS).to_parquet(partialDir / 'event_site_all.parquet',                      index=False)
+    _eventAccToDF(partialAcc['eventSiteAccNoFugitive'],     SUMMARY_KEY_COLS).to_parquet(partialDir / 'event_site_no_fugitive.parquet',               index=False)
+
+
+def _loadPartialAccumulator(partialDir: Path) -> dict:
+    """Load a partial accumulator from the 7 parquet files written by _writePartialAccumulator."""
+    emitterTotalsDF           = pd.read_parquet(partialDir / 'emitter_totals.parquet')
+    emissionAccAll            = _dfToEmissionAcc(pd.read_parquet(partialDir / 'emission_all.parquet'),            EMISSION_SUMMARY_GROUP_COLS)
+    emissionAccNoFugitive     = _dfToEmissionAcc(pd.read_parquet(partialDir / 'emission_no_fugitive.parquet'),    EMISSION_SUMMARY_GROUP_COLS)
+    eventEmitterAccAll        = _dfToEventAcc(pd.read_parquet(partialDir / 'event_emitter_all.parquet'),          EVENT_EMITTER_GROUP_COLS)
+    eventEmitterAccNoFugitive = _dfToEventAcc(pd.read_parquet(partialDir / 'event_emitter_no_fugitive.parquet'),  EVENT_EMITTER_GROUP_COLS)
+    eventSiteAccAll           = _dfToEventAcc(pd.read_parquet(partialDir / 'event_site_all.parquet'),             SUMMARY_KEY_COLS)
+    eventSiteAccNoFugitive    = _dfToEventAcc(pd.read_parquet(partialDir / 'event_site_no_fugitive.parquet'),     SUMMARY_KEY_COLS)
+    ret = {
+        'emitterTotalsDF':           emitterTotalsDF,
+        'emissionAccAll':            emissionAccAll,
+        'emissionAccNoFugitive':     emissionAccNoFugitive,
+        'eventEmitterAccAll':        eventEmitterAccAll,
+        'eventEmitterAccNoFugitive': eventEmitterAccNoFugitive,
+        'eventSiteAccAll':           eventSiteAccAll,
+        'eventSiteAccNoFugitive':    eventSiteAccNoFugitive,
+    }
+    return ret
+
+
+def computeAndWritePartialAccumulator(config: dict, mergedEmissionDF: pd.DataFrame | None, partialDir: Path) -> dict | None:
+    """Compute a partial accumulator, write it to disk, and return a lightweight path reference.
+
+    Writes 7 compact parquet files to partialDir and returns
+    {'site': siteName, 'path': str(partialDir)}. Returns None when mergedEmissionDF is
+    empty or None. The caller should del mergedEmissionDF after this call.
+    """
+    partial = computePartialAccumulator(config, mergedEmissionDF)
+    if partial is None:
+        return None
+    _writePartialAccumulator(partial, partialDir)
+    del partial
+    ret = {'site': config['siteName'], 'path': str(partialDir)}
+    return ret
+
+
+def finalizeAccumulatorsFromPaths(config: dict, partialPaths: list) -> None:
+    """Merge partial accumulator parquet files one at a time and write summary datasets.
+
+    Reads each partial directory sequentially, merges into running accumulators, and
+    frees each partial immediately after merging to bound peak memory. Deletes the
+    partial directories after successful finalization; leaves them on failure for debugging.
+    """
+    if not partialPaths:
+        return
+
+    numMCRuns                 = int(config['monteCarloIterations'])
+    emitterTotalsList         = []
+    emissionAccAll            = defaultdict(list)
+    emissionAccNoFugitive     = defaultdict(list)
+    eventEmitterAccAll        = defaultdict(_newEventAccDict)
+    eventEmitterAccNoFugitive = defaultdict(_newEventAccDict)
+    eventSiteAccAll           = defaultdict(_newEventAccDict)
+    eventSiteAccNoFugitive    = defaultdict(_newEventAccDict)
+
+    for pathStr in partialPaths:
+        partial = _loadPartialAccumulator(Path(pathStr))
+        emitterTotalsList.append(partial['emitterTotalsDF'])
+        for key, vals in partial['emissionAccAll'].items():
+            emissionAccAll[key].extend(vals)
+        for key, vals in partial['emissionAccNoFugitive'].items():
+            emissionAccNoFugitive[key].extend(vals)
+        for merged, src in [
+            (eventEmitterAccAll,        partial['eventEmitterAccAll']),
+            (eventEmitterAccNoFugitive, partial['eventEmitterAccNoFugitive']),
+            (eventSiteAccAll,           partial['eventSiteAccAll']),
+            (eventSiteAccNoFugitive,    partial['eventSiteAccNoFugitive']),
+        ]:
+            for key, fields in src.items():
+                entry = merged[key]
+                entry['duration_s'].extend(fields['duration_s'])
+                entry['totalEmission_kg'].extend(fields['totalEmission_kg'])
+                entry['emission_kgPerS'].extend(fields['emission_kgPerS'])
+        del partial
+
+    allEmitterTotals = pd.concat(emitterTotalsList, ignore_index=True)
+
+    _convertEmissionAccToNumpy(emissionAccAll)
+    _convertEmissionAccToNumpy(emissionAccNoFugitive)
+    _convertEventAccToNumpy(eventEmitterAccAll)
+    _convertEventAccToNumpy(eventEmitterAccNoFugitive)
+    _convertEventAccToNumpy(eventSiteAccAll)
+    _convertEventAccToNumpy(eventSiteAccNoFugitive)
+
+    emissionSummaryAll        = _finalizeEmissionSummary(emissionAccAll,        numMCRuns)
+    emissionSummaryNoFugitive = _finalizeEmissionSummary(emissionAccNoFugitive, numMCRuns)
+    eventSummaryAll           = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns)
+    eventSummaryNoFugitive    = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns)
+
+    summarizeSingleSite(
+        config,
+        emitterTotals=allEmitterTotals,
+        prebuiltEmissionSummaryAll=emissionSummaryAll,
+        prebuiltEmissionSummaryNoFugitive=emissionSummaryNoFugitive,
+        prebuiltEventSummaryAll=eventSummaryAll,
+        prebuiltEventSummaryNoFugitive=eventSummaryNoFugitive,
+    )
+
+    for pathStr in partialPaths:
+        shutil.rmtree(pathStr, ignore_errors=True)
 
 
 def summarize(config):

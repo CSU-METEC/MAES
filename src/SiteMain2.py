@@ -97,7 +97,8 @@ def generateEmissions(config, simdm):
 def toParquet(config, simdm):
     with Timer("Validate and write emissions") as t0:
         mergedEmissionDF = pl.toParquet(config)
-    partial = sum.computePartialAccumulator(config, mergedEmissionDF)
+    partialDir = Path(config['parquetNewInstEmissions']).parent / '_partials' / str(config['siteName']) / str(config['MCScenario'])
+    partial = sum.computeAndWritePartialAccumulator(config, mergedEmissionDF, partialDir)
     del mergedEmissionDF
     elapsed = t0.deltat.total_seconds()
     return elapsed, partial
@@ -344,7 +345,7 @@ def main(cm, workitemQueues=None, parquetWorkers=None):
                     partials = pendingSitePartials.pop(site, [])
                     if partials:
                         with Timer("Summarize") as tSummarize:
-                            sum.finalizeAccumulators(wi, partials)
+                            sum.finalizeAccumulatorsFromPaths(wi, list(map(lambda p: p['path'], partials)))
                         resList.append({
                             'worktype': 'summarize',
                             'studyShortname': wi['studyName'],
