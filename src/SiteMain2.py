@@ -96,10 +96,11 @@ def generateEmissions(config, simdm):
 
 def toParquet(config, simdm):
     with Timer("Validate and write emissions") as t0:
-        mergedEmissionDF = pl.toParquet(config)
-    partialAcc = sum.computePartialAccumulator(config, mergedEmissionDF)
+        pl.toParquet(config)
+    # Issue #53: computePartialAccumulator disabled — buildMergedEmissionDF uses full
+    # uncompressed coalescedEventDF; OOM on w=1 sequential runs. Fix pending.
     elapsed = t0.deltat.total_seconds()
-    return elapsed, partialAcc
+    return elapsed, None
 
 def summarize(config, simdm):
     with Timer("Summarize") as t0:
