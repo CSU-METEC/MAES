@@ -294,7 +294,13 @@ def runMultiprocessing(workQueue, workers):
     base = workQueue[0]
     slimQueue = list(map(lambda wi: makeSlimWorkitem(base, wi), workQueue))
     with Timer(f"{workType}") as t0:
-        with mp.Pool(workers, initializer=initWorker, initargs=(base,)) as p:
+        # maxtasksperchild=1 forces each worker process to exit after one mc run and be
+        # replaced by a fresh process. CPython's arena allocator never returns freed pages
+        # to the OS, so without this, worker RSS grows monotonically across sequential mc
+        # runs within a process. For N5+ workloads this exhausts physical RAM + swap before
+        # the pool closes. The fork cost (~50-100 ms) is negligible vs simulation run times.
+        with mp.Pool(workers, initializer=initWorker, initargs=(base,),
+                     maxtasksperchild=1) as p:
             res = list(p.imap_unordered(runWorkitemSlim, slimQueue))
         t0.setCount(len(res))
     for r in res:
