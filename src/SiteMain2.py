@@ -15,7 +15,7 @@ import pandas as pd
 import datetime as dt
 import Summaries2 as sum
 
-ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize']
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'computeSimSummary']
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +96,10 @@ def generateEmissions(config, simdm):
 
 def toParquet(config, simdm):
     with Timer("Validate and write emissions") as t0:
-        pl.toParquet(config)  # Don't summarize
-
-    return t0.deltat.total_seconds()
+        mergedEmissionDF = pl.toParquet(config)
+    partialAcc = sum.computePartialAccumulator(config, mergedEmissionDF)
+    elapsed = t0.deltat.total_seconds()
+    return elapsed, partialAcc
 
 def summarize(config, simdm):
     with Timer("Summarize") as t0:
@@ -108,6 +109,11 @@ def summarize(config, simdm):
 def summarizeSimulation(config, simdm):
     with Timer("Summarize") as t0:
         sum.summarizeSimulation(config)
+    return t0.deltat.total_seconds()
+
+def computeSimSummary(config, simdm):
+    with Timer("SimSummary") as t0:
+        sum.computeSimSummary(config)
     return t0.deltat.total_seconds()
 
 def createPDFCache(config, simdm):
@@ -121,18 +127,21 @@ def runWorkitem(workitem):
         logger.info(f"runWorkitem: {worktype}, file: {workitem['studyFilename']}, mcIter: {workitem['MCIteration']}, pid: {os.getpid()}")
         runtime = 0
         statsDF = pd.DataFrame()
+        partialAcc = None
         if worktype == 'initialization':
             runtime = initializeSim(workitem, simdm)
         elif worktype == 'simulation':
             runtime = runSim(workitem, simdm)
         elif worktype == 'parquet':
-            runtime = toParquet(workitem, simdm)
+            runtime, partialAcc = toParquet(workitem, simdm)
         elif worktype == 'summarize':
             runtime = summarize(workitem, simdm)
         elif worktype == 'createPDFCache':
             runtime, statsDF = createPDFCache(workitem, simdm)
         elif worktype == 'simSummary':
             runtime = summarizeSimulation(workitem, simdm)
+        elif worktype == 'computeSimSummary':
+            runtime = computeSimSummary(workitem, simdm)
         else:
             logger.error(f"Unknown worktype: {worktype}")
 
@@ -143,6 +152,7 @@ def runWorkitem(workitem):
         'MCScenario': workitem['MCScenario'],
         'runtime': runtime,
         'statsDF': statsDF,
+        'partialAcc': partialAcc,
         'pid': os.getpid()
     }
 
@@ -179,6 +189,7 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     summaryWorkitems = []
     createPDFCacheWorkitems = []
     simSummaryWorkitems = []
+    computeSimSummaryWorkitems = []
 
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
@@ -198,9 +209,9 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
         createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCache'))
-    # simSummary happens once per simulation
-    simSummaryWI = generateSingleWorkitem(cm, 'simSummary')
-    simSummaryWorkitems.append(simSummaryWI)
+    # simulation-level summaries happen once per simulation
+    simSummaryWorkitems.append(generateSingleWorkitem(cm, 'simSummary'))
+    computeSimSummaryWorkitems.append(generateSingleWorkitem(cm, 'computeSimSummary'))
 
     retWorkitems = []
     if 'initialization' in phasesToInclude:
@@ -215,6 +226,8 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         retWorkitems.append(createPDFCacheWorkitems)
     if 'simSummary' in phasesToInclude:
         retWorkitems.append(simSummaryWorkitems)
+    if 'computeSimSummary' in phasesToInclude:
+        retWorkitems.append(computeSimSummaryWorkitems)
 
     return retWorkitems
 
@@ -309,18 +322,52 @@ def main(cm, workitemQueues=None, parquetWorkers=None):
     resList = []
     workers = cm.getConfigVar("workers")
     parallel = workers and (workers > 1)
+    pendingSitePartials = {}  # site -> [partialAcc, ...] collected from parquet phase
     # if parallel:
     #     db = initializeDask(cm)
     with Timer("Run simulations") as t0:
         for singleWorkitemQueue in listOfWorkitemQueues:
             workType = singleWorkitemQueue[0]['workType'] if singleWorkitemQueue else None
             effectiveWorkers = parquetWorkers if (workType == 'parquet' and parquetWorkers is not None) else workers
+
+            if workType == 'summarize' and pendingSitePartials:
+                # Use in-memory accumulators built during the parquet phase instead of re-reading parquet.
+                for wi in singleWorkitemQueue:
+                    site = wi['siteName']
+                    partials = pendingSitePartials.pop(site, [])
+                    if partials:
+                        with Timer("Summarize") as tSummarize:
+                            sum.finalizeAccumulators(wi, partials)
+                        resList.append({
+                            'worktype': 'summarize',
+                            'studyShortname': wi['studyName'],
+                            'studyFilename': wi['studyFilename'],
+                            'MCScenario': wi['MCScenario'],
+                            'runtime': tSummarize.deltat.total_seconds(),
+                            'statsDF': pd.DataFrame(),
+                            'partialAcc': None,
+                            'wallClockTime': tSummarize.deltat.total_seconds(),
+                            'pid': os.getpid(),
+                        })
+                    else:
+                        queueResults = runLocal([wi])
+                        resList.extend(queueResults)
+                continue
+
             if effectiveWorkers and effectiveWorkers > 1 and len(singleWorkitemQueue) > 1:
                 # queueResults = runDask(singleWorkitemQueue, db)
                 queueResults = runMultiprocessing(singleWorkitemQueue, effectiveWorkers)
             else:
                 queueResults = runLocal(singleWorkitemQueue)
             resList.extend(queueResults)
+
+            if workType == 'parquet':
+                for r in queueResults:
+                    partialAcc = r.get('partialAcc')
+                    if partialAcc is not None:
+                        site = partialAcc['site']
+                        pendingSitePartials.setdefault(site, []).append(partialAcc)
+
         t0.count = len(resList)
     totalRuntime = functools.reduce(lambda cumulative, incr: cumulative + incr, map(lambda x: x['runtime'], resList))
     clocktime = t0.deltat.total_seconds()
@@ -333,7 +380,7 @@ def main(cm, workitemQueues=None, parquetWorkers=None):
             pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
             logger.info(f"Wrote {statsFilename}")
 
-    resDF = pd.DataFrame(resList).drop(columns=['statsDF'])
+    resDF = pd.DataFrame(resList).drop(columns=['statsDF', 'partialAcc'])
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
     resFilename = dt.datetime.now().strftime(resFileFormat)
     resDF = resDF.assign(scenarioTimestamp=cm.getConfigVar('scenarioTimestamp'))

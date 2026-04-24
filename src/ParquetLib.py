@@ -85,6 +85,45 @@ def dumpSummary(df, config, tagName):
     outFile = config[tagName]
     df.to_csv(outFile, index=False)
 
+def buildMergedEmissionDF(coalescedEventDF, tsTable, gcDF, metadata, species=None):
+    """Build merged emission event DF from in-memory tables.
+
+    Equivalent to readParquetEvents(mergeGC=True, additionalEventFilters=[('command','=','EMISSION')])
+    but uses tables already held in memory rather than re-reading from parquet.
+    species filters gcDF to the given list when provided; pass None to include all species.
+    Returns None when gcDF is absent or there are no emission events after merging.
+    """
+    if gcDF is None or gcDF.empty:
+        return None
+    filteredGC = gcDF[gcDF['species'].isin(species)] if species is not None else gcDF
+    if filteredGC.empty:
+        return None
+
+    emissionEventDF = gu.mergeEmissionRecords(coalescedEventDF, tsTable, filteredGC)
+    if emissionEventDF is None or emissionEventDF.empty:
+        return None
+
+    mdDF = metadata.assign(site=metadata['site'].astype('str'))
+    emissionEventDF = emissionEventDF.assign(site=emissionEventDF['site'].astype('str'))
+    emissionEventDF = emissionEventDF.merge(
+        mdDF,
+        how='left',
+        on=['facilityID', 'unitID', 'emitterID', 'mcRun', 'site'],
+    )
+
+    operatorInfo = mdDF[mdDF['equipmentType'] == 'MEETFacility'][
+        ['facilityID', 'operator', 'psno']
+    ].drop_duplicates()
+    psno_map = operatorInfo.set_index('facilityID')['psno']
+    op_map = operatorInfo.set_index('facilityID')['operator']
+    emissionEventDF = emissionEventDF.assign(
+        psno=emissionEventDF['psno'].fillna(emissionEventDF['facilityID'].map(psno_map)),
+        operator=emissionEventDF['operator'].fillna(emissionEventDF['facilityID'].map(op_map)),
+    )
+
+    return emissionEventDF
+
+
 def toParquet(config):
     with Timer("Read event log") as t0:
         eventDF, tsTable, gascomp, metadata = au.readCoreTables(config)
@@ -105,6 +144,9 @@ def toParquet(config):
         toBaseParquetFullConfig(config, gascomp,          'parquetGasCompositionDS')
         toBaseParquetFullConfig(config, metadata,         'parquetMetadataDS')
         toBaseParquetFullConfig(config, summaryDF,        'parquetSummaryDS')
+
+    mergedEmissionDF = buildMergedEmissionDF(coalescedEventDF, tsTable, gascomp, metadata)
+    return mergedEmissionDF
 
 
 

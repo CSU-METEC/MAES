@@ -988,6 +988,117 @@ def summarizeSingleSite(config, instEmissionDF=None, emitterTotals=None,
 
     pass
 
+def _newEventAccDict():
+    return {'duration_s': [], 'totalEmission_kg': [], 'emission_kgPerS': []}
+
+
+def computePartialAccumulator(config, mergedEmissionDF):
+    """Compute a per-mc-run partial accumulator from an in-memory merged emission event DF.
+
+    mergedEmissionDF must be the output of ParquetLib.buildMergedEmissionDF — EMISSION events
+    already merged with GC, timeseries, and metadata. Writes the InstEmissions parquet partition
+    for this mc run and returns a partial accumulator dict suitable for merging across all mc
+    runs via finalizeAccumulators. Returns None when mergedEmissionDF is None or empty.
+    """
+    if mergedEmissionDF is None or mergedEmissionDF.empty:
+        return None
+
+    simDurationDays = config['simDurationDays']
+    instEmissionDF = _createEmissionDF(mergedEmissionDF)
+    _saveSummaryDS(config, instEmissionDF, 'InstEmissions')
+    emitterTotalsDF = _aggregateEmittersByRun(instEmissionDF, simDurationDays)
+
+    nonZeroDF = _removeZeroEmissionEvents(instEmissionDF)
+    noFugitiveDF = nonZeroDF[nonZeroDF['modelEmissionCategory'] != 'FUGITIVE']
+
+    emissionAccAll        = defaultdict(list)
+    emissionAccNoFugitive = defaultdict(list)
+    eventEmitterAccAll        = defaultdict(_newEventAccDict)
+    eventEmitterAccNoFugitive = defaultdict(_newEventAccDict)
+    eventSiteAccAll           = defaultdict(_newEventAccDict)
+    eventSiteAccNoFugitive    = defaultdict(_newEventAccDict)
+
+    _accumulateEmissionData(nonZeroDF,    emissionAccAll)
+    _accumulateEmissionData(noFugitiveDF, emissionAccNoFugitive)
+    _accumulateEventData(nonZeroDF,    eventEmitterAccAll,        eventSiteAccAll)
+    _accumulateEventData(noFugitiveDF, eventEmitterAccNoFugitive, eventSiteAccNoFugitive)
+
+    return {
+        'site':                     config['siteName'],
+        'emitterTotalsDF':          emitterTotalsDF,
+        'emissionAccAll':           emissionAccAll,
+        'emissionAccNoFugitive':    emissionAccNoFugitive,
+        'eventEmitterAccAll':       eventEmitterAccAll,
+        'eventEmitterAccNoFugitive': eventEmitterAccNoFugitive,
+        'eventSiteAccAll':          eventSiteAccAll,
+        'eventSiteAccNoFugitive':   eventSiteAccNoFugitive,
+    }
+
+
+def finalizeAccumulators(config, partials):
+    """Merge partial accumulators from all mc runs for one site and write summary datasets.
+
+    partials is a list of dicts returned by computePartialAccumulator, one per mc run.
+    Merges the per-run accumulators, converts to numpy, finalizes summary DataFrames, and
+    calls summarizeSingleSite to write SiteSummary and EventSummary parquet.
+    """
+    nonNullPartials = list(filter(lambda p: p is not None, partials))
+    if not nonNullPartials:
+        return
+
+    numMCRuns = int(config['monteCarloIterations'])
+
+    allEmitterTotals = pd.concat(
+        list(map(lambda p: p['emitterTotalsDF'], nonNullPartials)),
+        ignore_index=True,
+    )
+
+    emissionAccAll        = defaultdict(list)
+    emissionAccNoFugitive = defaultdict(list)
+    eventEmitterAccAll        = defaultdict(_newEventAccDict)
+    eventEmitterAccNoFugitive = defaultdict(_newEventAccDict)
+    eventSiteAccAll           = defaultdict(_newEventAccDict)
+    eventSiteAccNoFugitive    = defaultdict(_newEventAccDict)
+
+    for p in nonNullPartials:
+        for key, vals in p['emissionAccAll'].items():
+            emissionAccAll[key].extend(vals)
+        for key, vals in p['emissionAccNoFugitive'].items():
+            emissionAccNoFugitive[key].extend(vals)
+        for merged, partial in [
+            (eventEmitterAccAll,        p['eventEmitterAccAll']),
+            (eventEmitterAccNoFugitive, p['eventEmitterAccNoFugitive']),
+            (eventSiteAccAll,           p['eventSiteAccAll']),
+            (eventSiteAccNoFugitive,    p['eventSiteAccNoFugitive']),
+        ]:
+            for key, fields in partial.items():
+                entry = merged[key]
+                entry['duration_s'].extend(fields['duration_s'])
+                entry['totalEmission_kg'].extend(fields['totalEmission_kg'])
+                entry['emission_kgPerS'].extend(fields['emission_kgPerS'])
+
+    _convertEmissionAccToNumpy(emissionAccAll)
+    _convertEmissionAccToNumpy(emissionAccNoFugitive)
+    _convertEventAccToNumpy(eventEmitterAccAll)
+    _convertEventAccToNumpy(eventEmitterAccNoFugitive)
+    _convertEventAccToNumpy(eventSiteAccAll)
+    _convertEventAccToNumpy(eventSiteAccNoFugitive)
+
+    emissionSummaryAll        = _finalizeEmissionSummary(emissionAccAll,        numMCRuns)
+    emissionSummaryNoFugitive = _finalizeEmissionSummary(emissionAccNoFugitive, numMCRuns)
+    eventSummaryAll        = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns)
+    eventSummaryNoFugitive = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns)
+
+    summarizeSingleSite(
+        config,
+        emitterTotals=allEmitterTotals,
+        prebuiltEmissionSummaryAll=emissionSummaryAll,
+        prebuiltEmissionSummaryNoFugitive=emissionSummaryNoFugitive,
+        prebuiltEventSummaryAll=eventSummaryAll,
+        prebuiltEventSummaryNoFugitive=eventSummaryNoFugitive,
+    )
+
+
 def summarize(config):
     """Load parquet events one mc run at a time and compute site summary statistics.
 
@@ -1209,8 +1320,14 @@ def createSimPDF(config):
     _saveSummaryDS(config, pdfDF, 'SimPDF')
     logger.info(f"SimPDF: {len(pdfDF)} rows")
 
-def summarizeSimulation(config):
-    # this method depends on site-level simulations (aka 'summarize' function) being performed prior to this call.
+def computeSimSummary(config):
+    """Compute cross-site simulation summary statistics and write SimSummary parquet.
+
+    Reads SiteSummary parquet, aggregates per-MC-run cross-site totals for each emission
+    grouping (modelEmissionCategory, modelReadableName, unitID, METype, pneumatics,
+    simulation), computes C2/C1 ratios, and writes SimSummary. No PDF/CDF dependency.
+    Depends on site-level summarize having been run first.
+    """
     logger.info(f"{config['parquetNewSummary']=}")
     with Timer("Read summaries") as t0:
         logging.info("Read summary parquet files")
@@ -1250,6 +1367,12 @@ def summarizeSimulation(config):
     fullSimSummaryDF = fullSimSummaryDF.assign(simDurationDays=config['simDurationDays'])
     _saveSummaryDS(config, fullSimSummaryDF, 'SimSummary')
 
-    createSimPDF(config)
 
-    pass
+def summarizeSimulation(config):
+    """Run computeSimSummary then createSimPDF.
+
+    Preserved for backward compatibility with external callers. New code should call
+    computeSimSummary and createSimPDF directly as separate phases.
+    """
+    computeSimSummary(config)
+    createSimPDF(config)
