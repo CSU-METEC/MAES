@@ -337,9 +337,13 @@ def _convertEmissionAccToNumpy(emissionAcc: dict) -> None:
 def _convertEventAccToNumpy(eventAcc: dict) -> None:
     """Convert all Python list fields in each event accumulator entry to numpy arrays in-place.
 
-    Same pop-before-convert strategy as _convertEmissionAccToNumpy.
+    Slim entries (identified by an 'n' key) are already scalars and are left unchanged.
+    Same pop-before-convert strategy as _convertEmissionAccToNumpy for fat entries.
     """
     for key in list(eventAcc.keys()):
+        entry = eventAcc[key]
+        if 'n' in entry:
+            continue
         entry = eventAcc.pop(key)
         eventAcc[key] = {
             'duration_s':        np.array(entry['duration_s']),
@@ -396,54 +400,91 @@ def _finalizeEmissionSummary(emissionAcc: dict, mcIterations: int) -> pd.DataFra
     return ret
 
 
-def _accumulateEventData(instEmissionDF: pd.DataFrame, emitterAcc: dict, siteAcc: dict) -> None:
+def _accumulateEventData(instEmissionDF: pd.DataFrame, emitterAcc: dict, siteAcc: dict, storeArrays: bool = True) -> None:
     """Extend per-group event field lists in emitterAcc and siteAcc from one mc run's events.
 
     instEmissionDF must already have zero-emission rows removed. emitterAcc is keyed by
-    EVENT_EMITTER_GROUP_COLS tuples; siteAcc by SUMMARY_KEY_COLS tuples. Both are
-    defaultdict(lambda: {'duration_s': [], 'totalEmission_kg': [], 'emission_kgPerS': []}).
+    EVENT_EMITTER_GROUP_COLS tuples; siteAcc by SUMMARY_KEY_COLS tuples.
+
+    When storeArrays is True both dicts are defaultdict(_newEventAccDict) and per-event values
+    are appended. When False both are defaultdict(_newSlimEventAccDict) and only running sums
+    are updated — no per-event Python objects are allocated.
     """
-    for key, grp in instEmissionDF.groupby(EVENT_EMITTER_GROUP_COLS):
-        entry = emitterAcc[key]
-        entry['duration_s'].extend(grp['duration_s'].tolist())
-        entry['totalEmission_kg'].extend(grp['totalEmission_kg'].tolist())
-        entry['emission_kgPerS'].extend(grp['emission_kgPerS'].tolist())
-    for key, grp in instEmissionDF.groupby(SUMMARY_KEY_COLS):
-        entry = siteAcc[key]
-        entry['duration_s'].extend(grp['duration_s'].tolist())
-        entry['totalEmission_kg'].extend(grp['totalEmission_kg'].tolist())
-        entry['emission_kgPerS'].extend(grp['emission_kgPerS'].tolist())
+    if storeArrays:
+        for key, grp in instEmissionDF.groupby(EVENT_EMITTER_GROUP_COLS):
+            entry = emitterAcc[key]
+            entry['duration_s'].extend(grp['duration_s'].tolist())
+            entry['totalEmission_kg'].extend(grp['totalEmission_kg'].tolist())
+            entry['emission_kgPerS'].extend(grp['emission_kgPerS'].tolist())
+        for key, grp in instEmissionDF.groupby(SUMMARY_KEY_COLS):
+            entry = siteAcc[key]
+            entry['duration_s'].extend(grp['duration_s'].tolist())
+            entry['totalEmission_kg'].extend(grp['totalEmission_kg'].tolist())
+            entry['emission_kgPerS'].extend(grp['emission_kgPerS'].tolist())
+    else:
+        for key, grp in instEmissionDF.groupby(EVENT_EMITTER_GROUP_COLS):
+            entry = emitterAcc[key]
+            entry['n'] += len(grp)
+            entry['sum_duration_s'] += float(grp['duration_s'].sum())
+            entry['sum_emission_kg'] += float(grp['totalEmission_kg'].sum())
+            entry['sum_emission_kgPerS'] += float(grp['emission_kgPerS'].sum())
+        for key, grp in instEmissionDF.groupby(SUMMARY_KEY_COLS):
+            entry = siteAcc[key]
+            entry['n'] += len(grp)
+            entry['sum_duration_s'] += float(grp['duration_s'].sum())
+            entry['sum_emission_kg'] += float(grp['totalEmission_kg'].sum())
+            entry['sum_emission_kgPerS'] += float(grp['emission_kgPerS'].sum())
 
 
-def _buildEventSummaryLevel(acc: dict, groupCols: list, mcIterations: int) -> pd.DataFrame:
+def _buildEventSummaryLevel(acc: dict, groupCols: list, mcIterations: int, storeArrays: bool = True) -> pd.DataFrame:
     """Build eventSummary + eventSummary_kgPerh rows from one level of accumulated event data.
 
     Produces the same two-unit-variant output that calculateEventSummary generates for
     a single groupby level. Returns an empty DataFrame if acc is empty.
+
+    When storeArrays is False the acc values are slim dicts (n, sum_*) and the output
+    omits durationEvents and totalEmissionEvents columns.
     """
     if not acc:
         ret = pd.DataFrame()
         return ret
     rows = []
     for key, fields in acc.items():
-        emCount = len(fields['emission_kgPerS'])
-        totalEmission = float(sum(fields['totalEmission_kg']))
-        totalDuration = float(sum(fields['duration_s']))
         row = dict(zip(groupCols, key))
-        row.update({
-            'eventCount':            emCount,
-            'totalEmission_kg':      totalEmission,
-            'totalEventDuration_s':  totalDuration,
-            'meanEventDuration_s':   float(np.mean(fields['duration_s'])),
-            'simpleMean':            float(np.mean(fields['emission_kgPerS'])),
-            'durationEvents':        fields['duration_s'],
-            'totalEmissionEvents':   fields['totalEmission_kg'],
-            'CICategory':            'eventSummary',
-            'mcRuns':                mcIterations,
-            'emissionRateUnits':     'kg/s',
-            'eventsPerMCRun':        emCount / mcIterations,
-            'meanEmissionRate':      totalEmission / totalDuration,
-        })
+        if storeArrays:
+            emCount = len(fields['emission_kgPerS'])
+            totalEmission = float(sum(fields['totalEmission_kg']))
+            totalDuration = float(sum(fields['duration_s']))
+            row.update({
+                'eventCount':            emCount,
+                'totalEmission_kg':      totalEmission,
+                'totalEventDuration_s':  totalDuration,
+                'meanEventDuration_s':   float(np.mean(fields['duration_s'])),
+                'simpleMean':            float(np.mean(fields['emission_kgPerS'])),
+                'durationEvents':        fields['duration_s'],
+                'totalEmissionEvents':   fields['totalEmission_kg'],
+                'CICategory':            'eventSummary',
+                'mcRuns':                mcIterations,
+                'emissionRateUnits':     'kg/s',
+                'eventsPerMCRun':        emCount / mcIterations,
+                'meanEmissionRate':      totalEmission / totalDuration,
+            })
+        else:
+            emCount = int(fields['n'])
+            totalEmission = float(fields['sum_emission_kg'])
+            totalDuration = float(fields['sum_duration_s'])
+            row.update({
+                'eventCount':            emCount,
+                'totalEmission_kg':      totalEmission,
+                'totalEventDuration_s':  totalDuration,
+                'meanEventDuration_s':   totalDuration / emCount if emCount else 0.0,
+                'simpleMean':            float(fields['sum_emission_kgPerS']) / emCount if emCount else 0.0,
+                'CICategory':            'eventSummary',
+                'mcRuns':                mcIterations,
+                'emissionRateUnits':     'kg/s',
+                'eventsPerMCRun':        emCount / mcIterations,
+                'meanEmissionRate':      totalEmission / totalDuration if totalDuration else 0.0,
+            })
         rows.append(row)
     kgPerS = pd.DataFrame(rows)
     kgPerH = kgPerS.assign(
@@ -455,14 +496,15 @@ def _buildEventSummaryLevel(acc: dict, groupCols: list, mcIterations: int) -> pd
     return ret
 
 
-def _finalizeEventSummary(emitterAcc: dict, siteAcc: dict, mcIterations: int) -> pd.DataFrame:
-    """Produce the same DataFrame as calculateEventSummary from accumulated per-group lists.
+def _finalizeEventSummary(emitterAcc: dict, siteAcc: dict, mcIterations: int, storeArrays: bool = True) -> pd.DataFrame:
+    """Produce the same DataFrame as calculateEventSummary from accumulated per-group data.
 
     Combines emitter-level (EVENT_EMITTER_GROUP_COLS) and site-level (SUMMARY_KEY_COLS)
     rows in both kg/s and kg/h variants, matching the output of calculateEventSummary.
+    When storeArrays is False, durationEvents and totalEmissionEvents columns are omitted.
     """
-    emitterDF = _buildEventSummaryLevel(emitterAcc, EVENT_EMITTER_GROUP_COLS, mcIterations)
-    siteDF = _buildEventSummaryLevel(siteAcc, SUMMARY_KEY_COLS, mcIterations)
+    emitterDF = _buildEventSummaryLevel(emitterAcc, EVENT_EMITTER_GROUP_COLS, mcIterations, storeArrays=storeArrays)
+    siteDF = _buildEventSummaryLevel(siteAcc, SUMMARY_KEY_COLS, mcIterations, storeArrays=storeArrays)
     ret = pd.concat([emitterDF, siteDF], ignore_index=True)
     return ret
 
@@ -993,6 +1035,15 @@ def _newEventAccDict():
     return {'duration_s': [], 'totalEmission_kg': [], 'emission_kgPerS': []}
 
 
+def _newSlimEventAccDict():
+    """Running-sum accumulator used when storeEventArrays is False.
+
+    Tracks only the statistics needed to compute scalar summary fields without
+    materialising the full per-event lists in memory.
+    """
+    return {'n': 0, 'sum_duration_s': 0.0, 'sum_emission_kg': 0.0, 'sum_emission_kgPerS': 0.0}
+
+
 def computePartialAccumulator(config, mergedEmissionDF):
     """Compute a per-mc-run partial accumulator from an in-memory merged emission event DF.
 
@@ -1012,17 +1063,20 @@ def computePartialAccumulator(config, mergedEmissionDF):
     nonZeroDF = _removeZeroEmissionEvents(instEmissionDF)
     noFugitiveDF = nonZeroDF[nonZeroDF['modelEmissionCategory'] != 'FUGITIVE']
 
+    storeArrays = not bool(config.get('noEventArrays', False))
+    eventFactory = _newEventAccDict if storeArrays else _newSlimEventAccDict
+
     emissionAccAll        = defaultdict(list)
     emissionAccNoFugitive = defaultdict(list)
-    eventEmitterAccAll        = defaultdict(_newEventAccDict)
-    eventEmitterAccNoFugitive = defaultdict(_newEventAccDict)
-    eventSiteAccAll           = defaultdict(_newEventAccDict)
-    eventSiteAccNoFugitive    = defaultdict(_newEventAccDict)
+    eventEmitterAccAll        = defaultdict(eventFactory)
+    eventEmitterAccNoFugitive = defaultdict(eventFactory)
+    eventSiteAccAll           = defaultdict(eventFactory)
+    eventSiteAccNoFugitive    = defaultdict(eventFactory)
 
     _accumulateEmissionData(nonZeroDF,    emissionAccAll)
     _accumulateEmissionData(noFugitiveDF, emissionAccNoFugitive)
-    _accumulateEventData(nonZeroDF,    eventEmitterAccAll,        eventSiteAccAll)
-    _accumulateEventData(noFugitiveDF, eventEmitterAccNoFugitive, eventSiteAccNoFugitive)
+    _accumulateEventData(nonZeroDF,    eventEmitterAccAll,        eventSiteAccAll,        storeArrays=storeArrays)
+    _accumulateEventData(noFugitiveDF, eventEmitterAccNoFugitive, eventSiteAccNoFugitive, storeArrays=storeArrays)
 
     # Free the large source DataFrames before returning. CPython's arena allocator never
     # returns freed pages to the OS, so RSS grows monotonically within a process. In the
@@ -1061,12 +1115,15 @@ def finalizeAccumulators(config, partials):
         ignore_index=True,
     )
 
+    storeArrays = not bool(config.get('noEventArrays', False))
+    eventFactory = _newEventAccDict if storeArrays else _newSlimEventAccDict
+
     emissionAccAll        = defaultdict(list)
     emissionAccNoFugitive = defaultdict(list)
-    eventEmitterAccAll        = defaultdict(_newEventAccDict)
-    eventEmitterAccNoFugitive = defaultdict(_newEventAccDict)
-    eventSiteAccAll           = defaultdict(_newEventAccDict)
-    eventSiteAccNoFugitive    = defaultdict(_newEventAccDict)
+    eventEmitterAccAll        = defaultdict(eventFactory)
+    eventEmitterAccNoFugitive = defaultdict(eventFactory)
+    eventSiteAccAll           = defaultdict(eventFactory)
+    eventSiteAccNoFugitive    = defaultdict(eventFactory)
 
     for p in nonNullPartials:
         for key, vals in p['emissionAccAll'].items():
@@ -1081,9 +1138,15 @@ def finalizeAccumulators(config, partials):
         ]:
             for key, fields in partial.items():
                 entry = merged[key]
-                entry['duration_s'].extend(fields['duration_s'])
-                entry['totalEmission_kg'].extend(fields['totalEmission_kg'])
-                entry['emission_kgPerS'].extend(fields['emission_kgPerS'])
+                if storeArrays:
+                    entry['duration_s'].extend(fields['duration_s'])
+                    entry['totalEmission_kg'].extend(fields['totalEmission_kg'])
+                    entry['emission_kgPerS'].extend(fields['emission_kgPerS'])
+                else:
+                    entry['n'] += fields['n']
+                    entry['sum_duration_s'] += fields['sum_duration_s']
+                    entry['sum_emission_kg'] += fields['sum_emission_kg']
+                    entry['sum_emission_kgPerS'] += fields['sum_emission_kgPerS']
 
     _convertEmissionAccToNumpy(emissionAccAll)
     _convertEmissionAccToNumpy(emissionAccNoFugitive)
@@ -1094,8 +1157,8 @@ def finalizeAccumulators(config, partials):
 
     emissionSummaryAll        = _finalizeEmissionSummary(emissionAccAll,        numMCRuns)
     emissionSummaryNoFugitive = _finalizeEmissionSummary(emissionAccNoFugitive, numMCRuns)
-    eventSummaryAll        = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns)
-    eventSummaryNoFugitive = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns)
+    eventSummaryAll        = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns, storeArrays=storeArrays)
+    eventSummaryNoFugitive = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns, storeArrays=storeArrays)
 
     summarizeSingleSite(
         config,
@@ -1125,16 +1188,21 @@ def _emissionAccToDF(acc: defaultdict, groupCols: list) -> pd.DataFrame:
 
 
 def _eventAccToDF(acc: defaultdict, groupCols: list) -> pd.DataFrame:
-    """Flatten a defaultdict(_newEventAccDict) event accumulator to a tidy DataFrame.
+    """Flatten a defaultdict event accumulator to a tidy DataFrame for parquet storage.
 
-    Each key-value pair expands to rows with groupCols columns and duration_s,
-    totalEmission_kg, emission_kgPerS columns. Returns an empty DataFrame with the
-    correct schema when acc is empty.
+    Fat accumulators (_newEventAccDict) expand to one row per event with duration_s,
+    totalEmission_kg, emission_kgPerS columns. Slim accumulators (_newSlimEventAccDict)
+    produce one summary row per group with n, sum_duration_s, sum_emission_kg,
+    sum_emission_kgPerS columns. Detected automatically from the first entry's keys.
+    Returns an empty DataFrame with fat schema when acc is empty.
     """
     parts = []
     for key, fields in acc.items():
         keyDict = dict(zip(groupCols, key))
-        parts.append(pd.DataFrame(fields).assign(**keyDict))
+        if 'n' in fields:
+            parts.append(pd.DataFrame([{**keyDict, **fields}]))
+        else:
+            parts.append(pd.DataFrame(fields).assign(**keyDict))
     if not parts:
         ret = pd.DataFrame(columns=groupCols + ['duration_s', 'totalEmission_kg', 'emission_kgPerS'])
         return ret
@@ -1156,10 +1224,23 @@ def _dfToEmissionAcc(df: pd.DataFrame, groupCols: list) -> defaultdict:
 
 
 def _dfToEventAcc(df: pd.DataFrame, groupCols: list) -> defaultdict:
-    """Reconstruct a defaultdict(_newEventAccDict) event accumulator from a tidy DataFrame.
+    """Reconstruct an event accumulator defaultdict from a tidy DataFrame.
 
-    Inverse of _eventAccToDF.
+    Inverse of _eventAccToDF. Slim vs fat format is detected from the DataFrame columns:
+    if 'n' is present the parquet was written in slim mode and a slim defaultdict is returned;
+    otherwise a fat defaultdict is returned with per-event lists.
     """
+    if 'n' in df.columns:
+        acc = defaultdict(_newSlimEventAccDict)
+        if df.empty:
+            return acc
+        for key, grp in df.groupby(groupCols):
+            entry = acc[key]
+            entry['n'] += int(grp['n'].sum())
+            entry['sum_duration_s'] += float(grp['sum_duration_s'].sum())
+            entry['sum_emission_kg'] += float(grp['sum_emission_kg'].sum())
+            entry['sum_emission_kgPerS'] += float(grp['sum_emission_kgPerS'].sum())
+        return acc
     acc = defaultdict(_newEventAccDict)
     if df.empty:
         return acc
@@ -1231,13 +1312,15 @@ def finalizeAccumulatorsFromPaths(config: dict, partialPaths: list) -> None:
         return
 
     numMCRuns                 = int(config['monteCarloIterations'])
+    storeArrays               = not bool(config.get('noEventArrays', False))
+    eventFactory              = _newEventAccDict if storeArrays else _newSlimEventAccDict
     emitterTotalsList         = []
     emissionAccAll            = defaultdict(list)
     emissionAccNoFugitive     = defaultdict(list)
-    eventEmitterAccAll        = defaultdict(_newEventAccDict)
-    eventEmitterAccNoFugitive = defaultdict(_newEventAccDict)
-    eventSiteAccAll           = defaultdict(_newEventAccDict)
-    eventSiteAccNoFugitive    = defaultdict(_newEventAccDict)
+    eventEmitterAccAll        = defaultdict(eventFactory)
+    eventEmitterAccNoFugitive = defaultdict(eventFactory)
+    eventSiteAccAll           = defaultdict(eventFactory)
+    eventSiteAccNoFugitive    = defaultdict(eventFactory)
 
     for pathStr in partialPaths:
         partial = _loadPartialAccumulator(Path(pathStr))
@@ -1254,9 +1337,15 @@ def finalizeAccumulatorsFromPaths(config: dict, partialPaths: list) -> None:
         ]:
             for key, fields in src.items():
                 entry = merged[key]
-                entry['duration_s'].extend(fields['duration_s'])
-                entry['totalEmission_kg'].extend(fields['totalEmission_kg'])
-                entry['emission_kgPerS'].extend(fields['emission_kgPerS'])
+                if storeArrays:
+                    entry['duration_s'].extend(fields['duration_s'])
+                    entry['totalEmission_kg'].extend(fields['totalEmission_kg'])
+                    entry['emission_kgPerS'].extend(fields['emission_kgPerS'])
+                else:
+                    entry['n'] += fields['n']
+                    entry['sum_duration_s'] += fields['sum_duration_s']
+                    entry['sum_emission_kg'] += fields['sum_emission_kg']
+                    entry['sum_emission_kgPerS'] += fields['sum_emission_kgPerS']
         del partial
 
     allEmitterTotals = pd.concat(emitterTotalsList, ignore_index=True)
@@ -1270,8 +1359,8 @@ def finalizeAccumulatorsFromPaths(config: dict, partialPaths: list) -> None:
 
     emissionSummaryAll        = _finalizeEmissionSummary(emissionAccAll,        numMCRuns)
     emissionSummaryNoFugitive = _finalizeEmissionSummary(emissionAccNoFugitive, numMCRuns)
-    eventSummaryAll           = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns)
-    eventSummaryNoFugitive    = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns)
+    eventSummaryAll           = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns, storeArrays=storeArrays)
+    eventSummaryNoFugitive    = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns, storeArrays=storeArrays)
 
     summarizeSingleSite(
         config,
@@ -1300,13 +1389,16 @@ def summarize(config):
     simDurationDays = config['simDurationDays']
     site = config['siteName']
 
+    storeArrays = not bool(config.get('noEventArrays', False))
+    eventFactory = _newEventAccDict if storeArrays else _newSlimEventAccDict
+
     perRunEmitterRows = []
     emissionAccAll        = defaultdict(list)
     emissionAccNoFugitive = defaultdict(list)
-    eventEmitterAccAll        = defaultdict(lambda: {'duration_s': [], 'totalEmission_kg': [], 'emission_kgPerS': []})
-    eventEmitterAccNoFugitive = defaultdict(lambda: {'duration_s': [], 'totalEmission_kg': [], 'emission_kgPerS': []})
-    eventSiteAccAll        = defaultdict(lambda: {'duration_s': [], 'totalEmission_kg': [], 'emission_kgPerS': []})
-    eventSiteAccNoFugitive = defaultdict(lambda: {'duration_s': [], 'totalEmission_kg': [], 'emission_kgPerS': []})
+    eventEmitterAccAll        = defaultdict(eventFactory)
+    eventEmitterAccNoFugitive = defaultdict(eventFactory)
+    eventSiteAccAll           = defaultdict(eventFactory)
+    eventSiteAccNoFugitive    = defaultdict(eventFactory)
 
     for mcRun in range(numMCRuns):
         logger.info(f"Read Parquet Files: mcRun {mcRun + 1}/{numMCRuns}")
@@ -1329,8 +1421,8 @@ def summarize(config):
 
         _accumulateEmissionData(nonZeroDF,    emissionAccAll)
         _accumulateEmissionData(noFugitiveDF, emissionAccNoFugitive)
-        _accumulateEventData(nonZeroDF,    eventEmitterAccAll,        eventSiteAccAll)
-        _accumulateEventData(noFugitiveDF, eventEmitterAccNoFugitive, eventSiteAccNoFugitive)
+        _accumulateEventData(nonZeroDF,    eventEmitterAccAll,        eventSiteAccAll,        storeArrays=storeArrays)
+        _accumulateEventData(noFugitiveDF, eventEmitterAccNoFugitive, eventSiteAccNoFugitive, storeArrays=storeArrays)
 
     if not perRunEmitterRows:
         return
@@ -1346,8 +1438,8 @@ def summarize(config):
 
     emissionSummaryAll        = _finalizeEmissionSummary(emissionAccAll,        numMCRuns)
     emissionSummaryNoFugitive = _finalizeEmissionSummary(emissionAccNoFugitive, numMCRuns)
-    eventSummaryAll        = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns)
-    eventSummaryNoFugitive = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns)
+    eventSummaryAll        = _finalizeEventSummary(eventEmitterAccAll,        eventSiteAccAll,        numMCRuns, storeArrays=storeArrays)
+    eventSummaryNoFugitive = _finalizeEventSummary(eventEmitterAccNoFugitive, eventSiteAccNoFugitive, numMCRuns, storeArrays=storeArrays)
 
     summarizeSingleSite(
         config,
