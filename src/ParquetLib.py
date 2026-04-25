@@ -39,7 +39,7 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun'], baseName
     if baseName is not None:
         toParquetkwArgs = {**toParquetkwArgs, 'basename_template': f"{baseName}-{{i}}.parquet"}
 
-    df.to_parquet(pqBase, existing_data_behavior='delete_matching', **toParquetkwArgs)
+    df.to_parquet(pqBase, existing_data_behavior='overwrite_or_ignore', **toParquetkwArgs)
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None):
     # ── Skip any empty write ──────────────────────
@@ -62,11 +62,13 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
                   basename_template=basename_template,
-                  # delete_matching clears all existing files in matching partitions before writing,
-                  # ensuring repeated calls overwrite rather than accumulate files.
-                  # overwrite_or_ignore only overwrites on filename collision; since pyarrow generates
-                  # unique filenames per call, it effectively appends and would cause duplicate rows.
-                  existing_data_behavior='delete_matching',
+                  # overwrite_or_ignore avoids the directory-level scan+lock that delete_matching
+                  # performs, which deadlocks when multiple Pool workers hit the parquet phase
+                  # concurrently. Each worker writes a distinct (site, mcRun) partition so there
+                  # are no real collisions. Callers must clean the output directory before re-running
+                  # a study — if stale files exist, overwrite_or_ignore will not remove them and
+                  # readers will see duplicate rows.
+                  existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
                   index=False
                   )
