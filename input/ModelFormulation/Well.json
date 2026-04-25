@@ -54,9 +54,9 @@
 	{"Model Parameter": "Approx Delay After Flow Back", "Python Parameter": "delayAfterFlowbackApprox",    "Parameter Type": "Sheet",   "Optional":"True"},
 	{"Model Parameter": "Simulation Start Stage", 		"Python Parameter": "start",                       "Parameter Type": "Sheet",   "Optional":"True"},
 	{"Model Parameter": "Flow Tag", 				    "Python Parameter": "flowTag",                     "Parameter Type": "Sheet"},
-	{"Model Parameter": "Flow Gas Composition",		    "Python Parameter": "flowGasComposition",          "Parameter Type": "Sheet"}
+	{"Model Parameter": "Flow Gas Composition",		    "Python Parameter": "flowGasComposition",          "Parameter Type": "Sheet", "File Reference": true}
 	  ],
-  
+
   "Emitters": [
     {"Python Category": "Emitter", "Python Class": "StateBasedEmitterProduction", "Readable Name": "Completion", "Category": "COMPLETION", "Emission Category": "VENTED",
 	  "Model Parameters": [

@@ -40,7 +40,7 @@
     {"Model Parameter": "Blowdown Event Duration",         "Python Parameter": "blowdownVentDurationSecs", "Parameter Type": "Sheet"},
     {"Model Parameter": "Operating Fraction",              "Python Parameter": "operatingFraction",        "Parameter Type": "Sheet"},
     {"Model Parameter": "NOP Fraction of NOP/NOD",         "Python Parameter": "nopFraction",              "Parameter Type": "Sheet"},
-	{"Model Parameter": "Load Condition File",             "Python Parameter": "loadCondition",         "Parameter Type": "Sheet",        "Optional":"True"},
+	{"Model Parameter": "Load Condition File",             "Python Parameter": "loadCondition",         "Parameter Type": "Sheet",        "Optional":"True", "File Reference": true},
 	{"Model Parameter": "Compressor Efficiency",           "Python Parameter": "compressorEfficiency",              "Parameter Type": "Sheet"},
 	{"Model Parameter": "Total Duration Lower Limit",      "Python Parameter": "lowerLimit",               "Parameter Type": "Sheet"},
 	{"Model Parameter": "Total Duration Upper Limit",      "Python Parameter": "upperLimit",               "Parameter Type": "Sheet"}

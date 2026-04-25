@@ -61,7 +61,8 @@ def getParser(defaultConfig):
     parser.add_argument('-gr', '--disableGraph', help="Disable graph creation in MEETMain", action='store_true', default=False)
     parser.add_argument('-su', '--disableSummary', help="Disable summary generation in MEETMain", action='store_true', default=False)
 
-    parser.add_argument("-dr", "--directory", help="Study definition folder. Will run every study sheet in directory"),
+    parser.add_argument("-dr", "--directory", nargs='?', const='', default=None,
+                        help="Study definition folder. Omit the name to run every study in Studies/ root."),
 
     parser.add_argument("-sn", "--studyName", help="Name of study")
 

@@ -1,6 +1,8 @@
 import AppUtils as au
 import ModelFormulation as mf
 import logging
+import json
+import sys
 from DESMain2 import main as DESMain
 import SimDataManager as sdm
 from Timer import Timer
@@ -159,16 +161,18 @@ def generateSingleWorkitem(cm, workType):
 
 def getFileList(cm):
     dir = cm.getConfigVar("directory")
-    if dir is not None: # todo: fix this in argument parsing code
-        directoryRoot = cm.expandDynamicTemplate('directoryRootTemplate')
+    if dir is not None:
+        # dir='' means run everything in Studies/ root; non-empty means a subdirectory of Studies/
+        inputRoot = cm.getConfigVar('inputRoot')
+        dirPath = Path(inputRoot) / 'Studies' / dir
+        directoryRoot = str(dirPath)
         cm.expandPhase('start', directoryRoot=directoryRoot, scenarioTimestamp=cm.getConfigVar("scenarioTimestamp"))
-        dirPath = Path(directoryRoot)
-        for singleFile in dirPath.iterdir():
+        for singleFile in sorted(dirPath.iterdir()):
             if not singleFile.is_file():
                 continue
-            gennedStudyDefinitionFile = cm.expandDynamicTemplate('relativeStudyFileTemplate', studyFilename=singleFile.name)
-
-            yield (str(singleFile), gennedStudyDefinitionFile, singleFile.stem)
+            # studyDef is relative to Studies/; omit the directory prefix when dir is empty
+            studyDef = f"{dir}/{singleFile.name}" if dir else singleFile.name
+            yield (str(singleFile), studyDef, singleFile.stem)
     else:
         yield (cm.getConfigVar("studyFilename"), cm.getConfigVar("studyDefinitionFile"), cm.getConfigVar('studyName'))
 
@@ -334,9 +338,82 @@ def main(cm, workitemQueues=None):
 
 # set this up as preMain so config does not get instantiated as a global variable
 
+_BUNDLE_CREATE_SKIP_ARGS = {'bundle', 'createBundle', 'anonymize', 'configFile'}
+
+
 def preMain():
-    cm, args = au.getConfig()
-    main(cm)
+    parser = au.getParser(au.DEFAULT_CONFIG)
+    parser.add_argument(
+        '--bundle', '-bun',
+        metavar='ZIP_PATH',
+        default=None,
+        help="Run a simulation from a bundle zip (created with --createBundle or BundleCreatorMain)"
+    )
+    parser.add_argument(
+        '--createBundle', '-cb',
+        metavar='ZIP_PATH',
+        default=None,
+        help="Create a simulation bundle zip and exit instead of running the simulation"
+    )
+    parser.add_argument(
+        '--anonymize',
+        action='store_true',
+        default=False,
+        help="Anonymize the bundle after creation (with --createBundle); writes a key file alongside the zip"
+    )
+    args = parser.parse_args()
+
+    if args.bundle:
+        import BundleRunner
+
+        logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
+        explicit_s  = any(a in sys.argv for a in ['-s', '--studyDefinitionFile'])
+        explicit_dr = args.directory is not None
+        if not explicit_s and not explicit_dr:
+            parser.error("--bundle requires either -s STUDY.xlsx or -dr [DIRECTORY] to select studies")
+
+        BundleRunner.runBundle(Path(args.bundle), args)
+
+    elif args.createBundle:
+        import BundleCreator
+        import ConfigManager as cm_mod
+
+        logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
+        with open(args.configFile, 'r') as cf:
+            config = json.load(cf)
+
+        cm_mod.ConfigManager._initializeSingleton(config)
+        cMgr = cm_mod.ConfigManager
+        cMgr.expandPhase('defaultValues')
+
+        filteredArgs = {k: v for k, v in vars(args).items() if v and k not in _BUNDLE_CREATE_SKIP_ARGS}
+        cMgr.expandPhase('arguments', **filteredArgs)
+
+        studyFilename = cMgr.getConfigVar('studyFilename')
+        studyVars = au.readVarsFromStudy(studyFilename, config['intakeSpreadsheetConfigParams'])
+        filteredStudyVars = {k: v for k, v in studyVars.items() if v and k not in filteredArgs}
+        cMgr.expandPhase('siteDefinitionParams', **filteredStudyVars)
+
+        studyName = cMgr.getConfigVar('studyName')
+        if studyName is None:
+            studyName = Path(studyFilename).stem
+            cMgr.expandPhase('arguments', studyName=studyName)
+
+        cMgr.expandPhase('start')
+        cMgr.expandPhase('simulation')
+
+        outputPath = Path(args.createBundle)
+        BundleCreator.createBundle(cMgr, outputPath)
+
+        if getattr(args, 'anonymize', False):
+            import Anonymizer
+            keyPath = outputPath.with_suffix(outputPath.suffix + '.key.json')
+            Anonymizer.anonymizeBundle(outputPath, keyPath)
+
+    else:
+        cMgr, _ = au.getConfig()
+        main(cMgr)
+
 
 if __name__ == "__main__":
     preMain()

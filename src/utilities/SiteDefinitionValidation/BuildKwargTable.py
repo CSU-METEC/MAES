@@ -142,6 +142,7 @@ def extractParamRows(
         paramType = param.get('Parameter Type', '')
         modelParam = param.get('Model Parameter', '')
         optional = param.get('Optional', 'False') == 'True'
+        isFileRef = param.get('File Reference', False) is True
         inKwargTable = (pythonClass, pythonParam) in kwargTableSet
         rows.append({
             'jsonFile': jsonFile,
@@ -151,6 +152,7 @@ def extractParamRows(
             'pythonParameter': pythonParam,
             'parameterType': paramType,
             'optional': optional,
+            'isFileRef': isFileRef,
             'inKwargTable': inKwargTable
         })
     ret = rows

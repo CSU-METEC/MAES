@@ -35,7 +35,7 @@
 	{"Model Parameter": "Stuck Dump Valve pLeak",                     "Python Parameter": "stuckDumpValvepLeak",                      "Parameter Type": "Sheet"},
 	{"Model Parameter": "Stuck Dump Valve Failure Duration Min",      "Python Parameter": "stuckDumpValveDurMinDays",                 "Parameter Type": "Sheet"},
 	{"Model Parameter": "Stuck Dump Valve Failure Duration Max",      "Python Parameter": "stuckDumpValveDurMaxDays",                 "Parameter Type": "Sheet"},
-	{"Model Parameter": "Fraction of Flash Released",                 "Python Parameter": "gasFractionDistFileName",                  "Parameter Type": "Sheet"},
+	{"Model Parameter": "Fraction of Flash Released",                 "Python Parameter": "gasFractionDistFileName",                  "Parameter Type": "Sheet", "File Reference": true},
 	{"Model Parameter": "Leak GC Name",                               "Python Parameter": "productionGC",                             "Parameter Type": "Sheet"}
 	],
   "Emitters": [

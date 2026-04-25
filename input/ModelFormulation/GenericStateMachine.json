@@ -10,7 +10,7 @@
 	{"Model Parameter": "Unit ID",              	    "Python Parameter": "unitID",           "Parameter Type": "Sheet"},
 	{"Model Parameter": "Latitude",              	    "Python Parameter": "latitude",         "Parameter Type": "Sheet"},
 	{"Model Parameter": "Longitude",              	    "Python Parameter": "longitude",        "Parameter Type": "Sheet"},
-	{"Model Parameter": "State Machine File",       	"Python Parameter": "stateMachineFile", "Parameter Type": "Sheet"},
+	{"Model Parameter": "State Machine File",       	"Python Parameter": "stateMachineFile", "Parameter Type": "Sheet", "File Reference": true},
 	{"Model Parameter": "Factor Tag",                   "Python Parameter": "factorTag",        "Parameter Type": "Sheet",    "Optional":"True"}
 	  ],
   

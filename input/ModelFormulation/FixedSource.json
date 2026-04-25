@@ -14,9 +14,9 @@
 	{"Model Parameter": "Gas Production",       	    "Python Parameter": "QiGasMcfPerDay",              "Parameter Type": "Sheet"},
 	{"Model Parameter": "Water Production",     	    "Python Parameter": "QiWaterBblPerDay",            "Parameter Type": "Sheet"},
 	{"Model Parameter": "Flow Tag", 				    "Python Parameter": "flowTag",                     "Parameter Type": "Sheet"},
-	{"Model Parameter": "Flow Gas Composition",		    "Python Parameter": "flowGasComposition",          "Parameter Type": "Sheet"}
+	{"Model Parameter": "Flow Gas Composition",		    "Python Parameter": "flowGasComposition",          "Parameter Type": "Sheet", "File Reference": true}
 	  ],
-  
+
   "Emitters": [
 	]
 }
