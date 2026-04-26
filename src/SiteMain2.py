@@ -454,7 +454,14 @@ def preMain():
         filteredArgs = {k: v for k, v in vars(args).items() if v and k not in _BUNDLE_CREATE_SKIP_ARGS}
         cMgr.expandPhase('arguments', **filteredArgs)
 
-        studyFilename = cMgr.getConfigVar('studyFilename')
+        if getattr(args, 'directory', None):
+            inputRoot = cMgr.getConfigVar('inputRoot') or 'input'
+            dirPath = Path(inputRoot) / 'Studies' / args.directory
+            candidates = sorted(dirPath.glob('*.xlsx'))
+            studyFilename = str(candidates[0]) if candidates else cMgr.getConfigVar('studyFilename')
+        else:
+            studyFilename = cMgr.getConfigVar('studyFilename')
+
         studyVars = au.readVarsFromStudy(studyFilename, config['intakeSpreadsheetConfigParams'])
         filteredStudyVars = {k: v for k, v in studyVars.items() if v and k not in filteredArgs}
         cMgr.expandPhase('siteDefinitionParams', **filteredStudyVars)

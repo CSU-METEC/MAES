@@ -52,7 +52,14 @@ def preMain():
     filteredArgs = {k: v for k, v in vars(args).items() if v and k not in skipArgs}
     cm.expandPhase('arguments', **filteredArgs)
 
-    studyFilename = cm.getConfigVar('studyFilename')
+    if getattr(args, 'directory', None):
+        inputRoot = cm.getConfigVar('inputRoot') or 'input'
+        dirPath = Path(inputRoot) / 'Studies' / args.directory
+        candidates = sorted(dirPath.glob('*.xlsx'))
+        studyFilename = str(candidates[0]) if candidates else cm.getConfigVar('studyFilename')
+    else:
+        studyFilename = cm.getConfigVar('studyFilename')
+
     studyVars = au.readVarsFromStudy(studyFilename, config['intakeSpreadsheetConfigParams'])
     filteredStudyVars = {k: v for k, v in studyVars.items() if v and k not in filteredArgs}
     cm.expandPhase('siteDefinitionParams', **filteredStudyVars)
