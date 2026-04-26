@@ -2,6 +2,8 @@ name: Validate Model Definitions
 
 on:
   push:
+    paths:
+      - 'input/ModelFormulation/*.json'
   pull_request:
 
 jobs:
