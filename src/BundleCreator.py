@@ -240,15 +240,15 @@ def createBundle(cm, outputZipPath: Path) -> Path:
         for fullFilename, _, studyName in getFileList(cm)
     ]
 
-    passFFindings = runPassF(factorsCsv, emitterProfileDir)
+    allValid, usedFactorTags = _validateStudies(studyFiles, modelDefDf, buildMeta)
+    if not allValid:
+        raise ValueError("Bundle creation aborted: validation errors in one or more study files")
+
+    passFFindings = runPassF(factorsCsv, emitterProfileDir, usedTags=usedFactorTags)
     for f in passFFindings:
         logger.error(f"[Pass F] {f['message']}")
     if passFFindings:
         raise ValueError("Bundle creation aborted: factor data file validation failed (Pass F)")
-
-    allValid, usedFactorTags = _validateStudies(studyFiles, modelDefDf, buildMeta)
-    if not allValid:
-        raise ValueError("Bundle creation aborted: validation errors in one or more study files")
 
     factorsDf = pd.read_csv(factorsCsv).dropna(how='all')
     if 'factorTag' in factorsDf.columns:

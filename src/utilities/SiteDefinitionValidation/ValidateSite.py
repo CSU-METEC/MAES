@@ -261,7 +261,7 @@ def runPassC(siteData: dict, modelDefDf: pd.DataFrame) -> list[dict]:
     return ret
 
 
-def runPassF(factorsCsv: Path, emitterProfileDir: Path) -> list[dict]:
+def runPassF(factorsCsv: Path, emitterProfileDir: Path, usedTags: set[str] | None = None) -> list[dict]:
     """Pass F: validate factor data file references in Factors.csv.
 
     For each value in activityDistribution and emissionDriver columns:
@@ -270,11 +270,15 @@ def runPassF(factorsCsv: Path, emitterProfileDir: Path) -> list[dict]:
 
     Both checks are deduplicated: one error per unique raw value (backslash)
     and one error per unique resolved path (missing file).
+
+    When usedTags is provided, only rows whose factorTag is in usedTags are checked.
     """
     if not factorsCsv.exists():
         return [{'pass': 'F', 'message': f"Factors.csv not found: {factorsCsv}"}]
 
     df = pd.read_csv(factorsCsv).dropna(how='all')
+    if usedTags is not None and 'factorTag' in df.columns:
+        df = df[df['factorTag'].isin(usedTags)]
     errors: list[dict] = []
     seenBackslashVals: set[str] = set()
     seenPaths: set[Path] = set()
