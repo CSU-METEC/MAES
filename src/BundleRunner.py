@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -11,8 +10,14 @@ import BundleFormat as bf
 
 logger = logging.getLogger(__name__)
 
-# Args that must not be forwarded to ConfigManager when running a bundle
-_BUNDLE_SKIP_ARGS = {'bundle', 'configFile', 'createBundle'}
+# Args that must not be forwarded to ConfigManager when running a bundle —
+# either handled specially here or meaningless in bundle mode.
+_BUNDLE_SKIP_ARGS = {
+    'bundle', 'configFile', 'createBundle',
+    'study',                  # handled below
+    'directory',              # we control study iteration ourselves
+    'studyDefinitionFile',    # derived from --study or directory scan
+}
 
 
 def _extractBundle(zf: zipfile.ZipFile, tempDir: Path) -> tuple[dict, dict]:
@@ -31,11 +36,11 @@ def _extractBundle(zf: zipfile.ZipFile, tempDir: Path) -> tuple[dict, dict]:
     metadata  = json.loads(zf.read(bf.METADATA_FILE))
     simConfig = json.loads(zf.read(bf.SIM_CONFIG_FILE))
 
-    studiesPrefix      = bf.STUDIES_DIR      + '/'
-    factorsCsvName     = bf.FACTORS_CSV_FILE           # 'factors/Factors.csv'
-    factorsPrefix      = bf.FACTORS_DIR      + '/'
-    modelDefsPrefix    = bf.MODEL_DEFS_DIR   + '/'
-    gcFilesPrefix      = bf.GC_FILES_DIR     + '/'
+    studiesPrefix       = bf.STUDIES_DIR      + '/'
+    factorsCsvName      = bf.FACTORS_CSV_FILE           # 'factors/Factors.csv'
+    factorsPrefix       = bf.FACTORS_DIR      + '/'
+    modelDefsPrefix     = bf.MODEL_DEFS_DIR   + '/'
+    gcFilesPrefix       = bf.GC_FILES_DIR     + '/'
     stateMachinesPrefix = bf.STATE_MACHINES_DIR + '/'
 
     for info in zf.infolist():
@@ -71,9 +76,10 @@ def _extractBundle(zf: zipfile.ZipFile, tempDir: Path) -> tuple[dict, dict]:
 def runBundle(zipPath: Path, args) -> None:
     """Extract a MAES bundle zip and run the simulation from it.
 
-    Caller is responsible for ensuring either -s or -dr is set.
-    Study iteration is handled by the existing getFileList() / generateWorkitems() machinery.
-    Output is written relative to the original working directory.
+    By default runs all studies in the bundle's Studies/ directory.
+    Pass --study <name> to run a single study by filename stem.
+    Global simulation parameters (monteCarloIterations, etc.) are read from
+    sim_config.json in the bundle; CLI flags override them where applicable.
     """
     import ConfigManager as cm_mod
     import SiteMain2
@@ -110,22 +116,42 @@ def runBundle(zipPath: Path, args) -> None:
         filteredArgs = {k: v for k, v in vars(args).items() if v and k not in _BUNDLE_SKIP_ARGS}
         filteredArgs['inputRoot']  = str(tempDir)
         filteredArgs['outputRoot'] = outputRoot
+
+        studyName = getattr(args, 'study', None)
+        studiesDir = tempDir / 'Studies'
+
+        if studyName is not None:
+            # Single-study mode: resolve to the named xlsx
+            stem = Path(studyName).stem  # strip .xlsx if the user included it
+            xlsxPath = studiesDir / f'{stem}.xlsx'
+            if not xlsxPath.exists():
+                raise ValueError(f"Study not found in bundle: {xlsxPath.name}")
+            filteredArgs['studyDefinitionFile'] = xlsxPath.name
+            xlsxForVars = xlsxPath
+        else:
+            # Multi-study mode: scan Studies/ root
+            filteredArgs['directory'] = ''
+            allXlsx = sorted(studiesDir.glob('*.xlsx'))
+            xlsxForVars = allXlsx[0] if allXlsx else None
+            if xlsxForVars:
+                # satisfies the studyFilename template expansion; overridden per-study in generateWorkitems
+                filteredArgs['studyDefinitionFile'] = xlsxForVars.name
+
         cMgr.expandPhase('arguments', **filteredArgs)
 
-        # Apply bundle MC count unless CLI overrides with -mc
+        # Apply bundle global params unless the CLI overrides them
         bundleMCIter = simConfig.get('monteCarloIterations')
         if bundleMCIter is not None and not getattr(args, 'monteCarloIterations', None):
             cMgr.expandPhase('arguments', monteCarloIterations=bundleMCIter)
 
-        # Read siteDefinitionParams from a study file in the bundle
-        studyFileForVars = _resolveStudyFileForVars(args, tempDir, cMgr)
-        if studyFileForVars:
-            studyVars = au.readVarsFromStudy(studyFileForVars, config['intakeSpreadsheetConfigParams'])
+        # siteDefinitionParams from a representative study file
+        if xlsxForVars:
+            studyVars = au.readVarsFromStudy(str(xlsxForVars), config['intakeSpreadsheetConfigParams'])
             filteredStudyVars = {k: v for k, v in studyVars.items() if v and k not in filteredArgs}
             cMgr.expandPhase('siteDefinitionParams', **filteredStudyVars)
 
-        if cMgr.getConfigVar('studyName') is None and studyFileForVars:
-            cMgr.expandPhase('arguments', studyName=Path(studyFileForVars).stem)
+        if cMgr.getConfigVar('studyName') is None and studyName is not None:
+            cMgr.expandPhase('arguments', studyName=Path(studyName).stem)
 
         cMgr.expandPhase('start')
         cMgr.expandPhase('simulation')
@@ -137,17 +163,3 @@ def runBundle(zipPath: Path, args) -> None:
             SiteMain2.main(cMgr)
         finally:
             os.chdir(originalCwd)
-
-
-def _resolveStudyFileForVars(args, tempDir: Path, cMgr) -> str | None:
-    """Return a study file path to use for siteDefinitionParams.
-
-    In -s mode: use the config-expanded studyFilename (points into tempDir/Studies/).
-    In -dr mode: use the first xlsx found in the target Studies/ subdirectory.
-    """
-    dir = getattr(args, 'directory', None)
-    if dir is not None:
-        studiesPath = tempDir / 'Studies' / dir
-        first = next(iter(sorted(studiesPath.glob('*.xlsx'))), None)
-        return str(first) if first else None
-    return cMgr.getConfigVar('studyFilename')

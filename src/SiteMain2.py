@@ -338,7 +338,7 @@ def main(cm, workitemQueues=None):
 
 # set this up as preMain so config does not get instantiated as a global variable
 
-_BUNDLE_CREATE_SKIP_ARGS = {'bundle', 'createBundle', 'anonymize', 'configFile'}
+_BUNDLE_CREATE_SKIP_ARGS = {'bundle', 'createBundle', 'anonymize', 'configFile', 'study'}
 
 
 def preMain():
@@ -361,17 +361,18 @@ def preMain():
         default=False,
         help="Anonymize the bundle after creation (with --createBundle); writes a key file alongside the zip"
     )
+    parser.add_argument(
+        '--study',
+        metavar='STUDY_NAME',
+        default=None,
+        help="Run a single study from the bundle by name (stem or filename); default runs all studies"
+    )
     args = parser.parse_args()
 
     if args.bundle:
         import BundleRunner
 
         logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
-        explicit_s  = any(a in sys.argv for a in ['-s', '--studyDefinitionFile'])
-        explicit_dr = args.directory is not None
-        if not explicit_s and not explicit_dr:
-            parser.error("--bundle requires either -s STUDY.xlsx or -dr [DIRECTORY] to select studies")
-
         BundleRunner.runBundle(Path(args.bundle), args)
 
     elif args.createBundle:

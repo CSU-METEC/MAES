@@ -139,16 +139,19 @@ def _collectFactorDataFiles(factorsCsv: Path, emitterProfileDir: Path) -> dict[s
     """Return {zip_dest_path: source_Path} for data files referenced in Factors.csv."""
     df = pd.read_csv(factorsCsv).dropna(how='all')
     refs: dict[str, Path] = {}
+    warnedMissing: set[Path] = set()
     for col in _FACTORS_DATA_COLS:
         if col not in df.columns:
             continue
         for val in df[col].dropna():
-            val = str(val).strip()
+            val = str(val).strip().replace('\\', '/')
             if not val or _isNumeric(val):
                 continue
             srcPath = (emitterProfileDir / val).resolve()
             if not srcPath.exists():
-                logger.warning(f"Factor data file not found: {srcPath}")
+                if srcPath not in warnedMissing:
+                    logger.warning(f"Factor data file not found: {srcPath}")
+                    warnedMissing.add(srcPath)
                 continue
             refs[f"{bf.FACTORS_DIR}/{_toPosix(val)}"] = srcPath
     return refs
