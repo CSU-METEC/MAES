@@ -977,7 +977,7 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
             curDataPath = Path(simdm.config['emitterProfileDir']) / 'Common' / 'EnginesfuelConsumpEq'
             for i in curDataPath.iterdir():
                 for j in i.iterdir():
-                    powerFromCD = int(str(j).split('_')[1].replace('HP', ''))
+                    powerFromCD = int(j.name.split('_')[1].replace('HP', ''))
                     subt = abs(ratedPowerInHP - powerFromCD)
                     listOfPowers.append([j, subt, j.parent.name])
             dfPowers = pd.DataFrame(listOfPowers)

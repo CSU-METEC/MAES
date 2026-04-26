@@ -135,8 +135,41 @@ def _collectXlsxFileRefs(
                     logger.warning(f"File reference not found: {srcPath} (tab '{tabName}', column '{colName}')")
                     continue
 
-                refs[destPath] = srcPath
+                if srcPath.is_dir():
+                    for child in sorted(srcPath.rglob('*')):
+                        if child.is_file():
+                            childRel = child.relative_to(srcPath)
+                            refs[f"{destPath}/{_toPosix(str(childRel))}"] = child
+                else:
+                    refs[destPath] = srcPath
 
+    return refs
+
+
+# Directories that model classes reference via hard-coded fallback paths
+# (not declared in model definition JSONs, so not picked up by _collectXlsxFileRefs)
+_IMPLICIT_EMITTER_DIRS = {
+    'Common/EnginesfuelConsumpEq',              # MEETCompressor.getLoadConditions default
+    'Common/CompressorDestructionEfficiencies',  # GasComposition3.DestructionGC.getDestEfficiencies
+}
+
+
+def _collectImplicitRefs(emitterProfileDir: Path) -> dict[str, Path]:
+    """Return {zip_dest_path: source_Path} for hard-coded emitter profile directories.
+
+    These are directories that model classes access by fixed path when no explicit
+    Sheet parameter is provided. They must be bundled unconditionally.
+    """
+    refs: dict[str, Path] = {}
+    for relPath in _IMPLICIT_EMITTER_DIRS:
+        srcDir = (emitterProfileDir / relPath).resolve()
+        if not srcDir.exists():
+            logger.warning(f"Implicit emitter dir not found: {srcDir}")
+            continue
+        for child in sorted(srcDir.rglob('*')):
+            if child.is_file():
+                childRel = child.relative_to(emitterProfileDir)
+                refs[f"{bf.FACTORS_DIR}/{_toPosix(str(childRel))}"] = child
     return refs
 
 
@@ -270,6 +303,7 @@ def createBundle(cm, outputZipPath: Path) -> Path:
         allXlsxRefs.update(refs)
 
     factorDataRefs = _collectFactorDataFiles(factorsCsv, emitterProfileDir, usedFactorTags)
+    implicitRefs = _collectImplicitRefs(emitterProfileDir)
 
     metadata = {
         'bundleFormatVersion': bf.BUNDLE_FORMAT_VERSION,
@@ -297,6 +331,9 @@ def createBundle(cm, outputZipPath: Path) -> Path:
             zf.write(srcPath, destPath)
 
         for destPath, srcPath in factorDataRefs.items():
+            zf.write(srcPath, destPath)
+
+        for destPath, srcPath in implicitRefs.items():
             zf.write(srcPath, destPath)
 
         if modelFormulationDir.exists():
