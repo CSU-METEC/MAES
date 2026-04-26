@@ -165,8 +165,9 @@ def getFileList(cm):
         # dir='' means run everything in Studies/ root; non-empty means a subdirectory of Studies/
         inputRoot = cm.getConfigVar('inputRoot')
         dirPath = Path(inputRoot) / 'Studies' / dir
-        directoryRoot = str(dirPath)
-        cm.expandPhase('start', directoryRoot=directoryRoot, scenarioTimestamp=cm.getConfigVar("scenarioTimestamp"))
+        scenarioTimestampFormat = cm.getConfigVar('scenarioTimestampFormat') or ''
+        sharedTimestamp = dt.datetime.now().strftime(scenarioTimestampFormat)
+        cm.expandPhase('arguments', scenarioTimestamp=sharedTimestamp)
         for singleFile in sorted(dirPath.iterdir()):
             if not singleFile.is_file():
                 continue
@@ -186,7 +187,7 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
 
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
-        cm.expandPhase("arguments", studyDefinitionFile=studyFilename)
+        cm.expandPhase("arguments", studyDefinitionFile=studyFilename, studyName=studyName)
         # cm.expandPhase("siteDefinitionParams")
         cm.expandPhase("start", site=studyName, scenarioTimestamp=cm.getConfigVar("scenarioTimestamp"))
         cm.expandPhase("simulation")
@@ -294,7 +295,7 @@ def runMultiprocessing(workQueue, workers):
 def defineConvenienceConfigVars(cMgr):
     simDurationDays = cMgr.getConfigVar("simDurationDays")
     simDurationSeconds = u.daysToSecs(simDurationDays)
-    cMgr.expandPhase("start", simDurationSeconds=simDurationSeconds)
+    cMgr.expandPhase("arguments", simDurationSeconds=simDurationSeconds)
     pass
 
 def main(cm, workitemQueues=None):

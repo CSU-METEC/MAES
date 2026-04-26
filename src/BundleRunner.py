@@ -153,9 +153,6 @@ def runBundle(zipPath: Path, args) -> None:
         if cMgr.getConfigVar('studyName') is None and studyName is not None:
             cMgr.expandPhase('arguments', studyName=Path(studyName).stem)
 
-        cMgr.expandPhase('start')
-        cMgr.expandPhase('simulation')
-
         # chdir to tempDir so CWD-relative file paths in xlsx (e.g. flowGasComposition)
         # resolve against the extracted bundle content
         os.chdir(tempDir)
