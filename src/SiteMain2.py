@@ -110,6 +110,11 @@ def summarize(config, simdm):
         sum.summarize(config)
     return t0.deltat.total_seconds()
 
+def finalizeSite(config, simdm):
+    with Timer("Summarize") as t0:
+        sum.finalizeAccumulatorsFromPaths(config, config.get('partialPaths', []))
+    return t0.deltat.total_seconds()
+
 def summarizeSimulation(config, simdm):
     with Timer("Summarize") as t0:
         sum.summarizeSimulation(config)
@@ -139,7 +144,10 @@ def runWorkitem(workitem):
         elif worktype == 'parquet':
             runtime, partialAcc = toParquet(workitem, simdm)
         elif worktype == 'summarize':
-            runtime = summarize(workitem, simdm)
+            if workitem.get('partialPaths'):
+                runtime = finalizeSite(workitem, simdm)
+            else:
+                runtime = summarize(workitem, simdm)
         elif worktype == 'createPDFCache':
             runtime, statsDF = createPDFCache(workitem, simdm)
         elif worktype == 'simSummary':
@@ -323,12 +331,8 @@ def defineConvenienceConfigVars(cMgr):
     cMgr.expandPhase("arguments", simDurationSeconds=simDurationSeconds)
     pass
 
-def main(cm, workitemQueues=None, parquetWorkers=None):
-    """Run the full MAES simulation pipeline.
-
-    parquetWorkers overrides the worker count for the parquet phase only; useful when
-    parquet is I/O-bound and benefits from fewer concurrent writers than simulation.
-    """
+def main(cm, workitemQueues=None):
+    """Run the full MAES simulation pipeline."""
     logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
     defineConvenienceConfigVars(cm)
     if workitemQueues is None:
@@ -345,31 +349,11 @@ def main(cm, workitemQueues=None, parquetWorkers=None):
     with Timer("Run simulations") as t0:
         for singleWorkitemQueue in listOfWorkitemQueues:
             workType = singleWorkitemQueue[0]['workType'] if singleWorkitemQueue else None
-            effectiveWorkers = parquetWorkers if (workType == 'parquet' and parquetWorkers is not None) else workers
+            effectiveWorkers = workers
 
             if workType == 'summarize' and pendingSitePartials:
-                # Use in-memory accumulators built during the parquet phase instead of re-reading parquet.
                 for wi in singleWorkitemQueue:
-                    site = wi['siteName']
-                    partials = pendingSitePartials.pop(site, [])
-                    if partials:
-                        with Timer("Summarize") as tSummarize:
-                            sum.finalizeAccumulatorsFromPaths(wi, list(map(lambda p: p['path'], partials)))
-                        resList.append({
-                            'worktype': 'summarize',
-                            'studyShortname': wi['studyName'],
-                            'studyFilename': wi['studyFilename'],
-                            'MCScenario': wi['MCScenario'],
-                            'runtime': tSummarize.deltat.total_seconds(),
-                            'statsDF': pd.DataFrame(),
-                            'partialAcc': None,
-                            'wallClockTime': tSummarize.deltat.total_seconds(),
-                            'pid': os.getpid(),
-                        })
-                    else:
-                        queueResults = runLocal([wi])
-                        resList.extend(queueResults)
-                continue
+                    wi['partialPaths'] = [p['path'] for p in pendingSitePartials.pop(wi['siteName'], [])]
 
             if effectiveWorkers and effectiveWorkers > 1 and len(singleWorkitemQueue) > 1:
                 # queueResults = runDask(singleWorkitemQueue, db)
