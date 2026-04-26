@@ -329,13 +329,13 @@ def main(cm, workitemQueues=None):
     logger.info(f"Total runtime: {totalRuntime} seconds, clock time: {clocktime}, MC Iterations: {totalMCIterations}, items: {len(resList)}")
     resultsDir = cm.getConfigVar('resultsDir')  # set by BundleRunner in bundle mode; None otherwise
 
-    for worktype, prefix in [('createPDFCache', 'PDFCache')]:
-        statsDFs = [r['statsDF'] for r in resList if r['worktype'] == worktype and not r['statsDF'].empty]
-        if statsDFs:
-            statsFilename = f"{prefix}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            statsPath = Path(resultsDir) / statsFilename if resultsDir else Path(statsFilename)
-            pd.concat(statsDFs, ignore_index=True).to_csv(statsPath, index=False)
-            logger.info(f"Wrote {statsPath}")
+    if not resultsDir:
+        for worktype, prefix in [('createPDFCache', 'PDFCache')]:
+            statsDFs = [r['statsDF'] for r in resList if r['worktype'] == worktype and not r['statsDF'].empty]
+            if statsDFs:
+                statsFilename = f"{prefix}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
+                logger.info(f"Wrote {statsFilename}")
 
     resDF = pd.DataFrame(resList).drop(columns=['statsDF'])
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"

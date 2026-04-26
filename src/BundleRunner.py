@@ -112,10 +112,6 @@ def runBundle(zipPath: Path, args) -> None:
     bundleRoot    = outputRoot / bundleName
     bundleRoot.mkdir(parents=True, exist_ok=True)
 
-    zipDest = bundleRoot / zipPath.name
-    shutil.copy2(zipPath, zipDest)
-    logger.info(f"Bundle zip copied to {zipDest}")
-
     with open(args.configFile, 'r') as cf:
         config = json.load(cf)
 
@@ -125,10 +121,16 @@ def runBundle(zipPath: Path, args) -> None:
               .get('scenarioTimestampFormat', '%Y%m%d_%H%M%S')
     )
     scenarioTimestamp = dt.datetime.now().strftime(tsFmt)
-    bundleParquetDir  = str(bundleRoot / f'MC_{scenarioTimestamp}' / 'parquet')
+    mcRoot           = bundleRoot / f'MC_{scenarioTimestamp}'
+    mcRoot.mkdir(parents=True, exist_ok=True)
+    bundleParquetDir = str(mcRoot / 'parquet')
+
+    zipDest = mcRoot / zipPath.name
+    shutil.copy2(zipPath, zipDest)
+    logger.info(f"Bundle zip copied to {zipDest}")
 
     simStartTime = dt.datetime.now()
-    simInfoPath  = bundleRoot / 'SimulationInfo.json'
+    simInfoPath  = mcRoot / 'SimulationInfo.json'
     simInfo = {
         'bundleName':   bundleName,
         'bundleZip':    zipPath.name,
@@ -160,7 +162,7 @@ def runBundle(zipPath: Path, args) -> None:
         filteredArgs['outputRoot']        = str(tempDir / 'raw')
         filteredArgs['scenarioTimestamp'] = scenarioTimestamp
         filteredArgs['bundleParquetDir']  = bundleParquetDir
-        filteredArgs['resultsDir']        = str(bundleRoot)
+        filteredArgs['resultsDir']        = str(mcRoot)
 
         studyName  = getattr(args, 'study', None)
         studiesDir = tempDir / 'Studies'
@@ -200,7 +202,7 @@ def runBundle(zipPath: Path, args) -> None:
             os.chdir(originalCwd)
             if keepRaw:
                 rawSrc  = tempDir / 'raw'
-                rawDest = bundleRoot / f'MC_{scenarioTimestamp}' / 'raw'
+                rawDest = mcRoot / 'raw'
                 if rawSrc.exists():
                     shutil.copytree(rawSrc, rawDest, dirs_exist_ok=True)
                     logger.info(f"keepRaw: raw sim output saved to {rawDest}")
