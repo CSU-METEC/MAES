@@ -121,7 +121,7 @@ def runPassM(globalSimParams: dict, buildMeta: dict) -> list[dict]:
     if siteVersion is None and siteDescribe is None:
         warnings.append({
             'pass': 'M',
-            'message': "Global Simulation Parameters has no MAES version tag (maesVersion / gitDescribe)"
+            'message': "Missing version tag — add 'maesVersion' or 'gitDescribe' to Global Simulation Parameters"
         })
         ret = warnings
         return ret
