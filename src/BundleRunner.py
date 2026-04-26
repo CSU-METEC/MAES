@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import tempfile
 import zipfile
 from pathlib import Path
@@ -160,3 +161,6 @@ def runBundle(zipPath: Path, args) -> None:
             SiteMain2.main(cMgr)
         finally:
             os.chdir(originalCwd)
+
+        for csvFile in tempDir.glob("results_*.csv"):
+            shutil.move(str(csvFile), originalCwd / csvFile.name)
