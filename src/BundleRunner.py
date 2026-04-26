@@ -1,8 +1,10 @@
 import json
 import logging
 import os
+import shutil
 import tempfile
 import zipfile
+import datetime as dt
 from pathlib import Path
 
 import AppUtils as au
@@ -17,6 +19,8 @@ _BUNDLE_SKIP_ARGS = {
     'study',                  # handled below
     'directory',              # we control study iteration ourselves
     'studyDefinitionFile',    # derived from --study or directory scan
+    'outputRoot',             # handled specially — redirected to tempDir/raw
+    'keepRaw',                # handled specially — controls raw output retention
 }
 
 
@@ -36,11 +40,11 @@ def _extractBundle(zf: zipfile.ZipFile, tempDir: Path) -> tuple[dict, dict]:
     metadata  = json.loads(zf.read(bf.METADATA_FILE))
     simConfig = json.loads(zf.read(bf.SIM_CONFIG_FILE))
 
-    studiesPrefix       = bf.STUDIES_DIR      + '/'
-    factorsCsvName      = bf.FACTORS_CSV_FILE           # 'factors/Factors.csv'
-    factorsPrefix       = bf.FACTORS_DIR      + '/'
-    modelDefsPrefix     = bf.MODEL_DEFS_DIR   + '/'
-    gcFilesPrefix       = bf.GC_FILES_DIR     + '/'
+    studiesPrefix       = bf.STUDIES_DIR        + '/'
+    factorsCsvName      = bf.FACTORS_CSV_FILE
+    factorsPrefix       = bf.FACTORS_DIR        + '/'
+    modelDefsPrefix     = bf.MODEL_DEFS_DIR     + '/'
+    gcFilesPrefix       = bf.GC_FILES_DIR       + '/'
     stateMachinesPrefix = bf.STATE_MACHINES_DIR + '/'
 
     for info in zf.infolist():
@@ -80,6 +84,17 @@ def runBundle(zipPath: Path, args) -> None:
     Pass --study <name> to run a single study by filename stem.
     Global simulation parameters (monteCarloIterations, etc.) are read from
     sim_config.json in the bundle; CLI flags override them where applicable.
+
+    Output layout::
+
+        {outputRoot}/{bundleName}/
+            {bundleName}.zip             <- copy of input bundle
+            SimulationInfo.json          <- timing manifest (start written before run; end/elapsed after)
+            results_{ts}.csv             <- per-workitem runtime log from SiteMain2
+            MC_{ts}/
+                parquet/                 <- consolidated parquet tree (all sites)
+        [--keepRaw only]
+            MC_{ts}/raw/                 <- per-site raw CSV output preserved before temp cleanup
     """
     import ConfigManager as cm_mod
     import SiteMain2
@@ -90,11 +105,38 @@ def runBundle(zipPath: Path, args) -> None:
         if bf.METADATA_FILE not in zf.namelist():
             raise ValueError(f"Not a valid MAES bundle: missing {bf.METADATA_FILE}")
 
-    originalCwd = Path.cwd().resolve()
-    outputRoot  = getattr(args, 'outputRoot', None) or str(originalCwd / 'output')
+    originalCwd   = Path.cwd().resolve()
+    userOutputRoot = getattr(args, 'outputRoot', None)
+    outputRoot    = Path(userOutputRoot) if userOutputRoot else originalCwd / 'output'
+    bundleName    = zipPath.stem
+    bundleRoot    = outputRoot / bundleName
+    bundleRoot.mkdir(parents=True, exist_ok=True)
+
+    zipDest = bundleRoot / zipPath.name
+    shutil.copy2(zipPath, zipDest)
+    logger.info(f"Bundle zip copied to {zipDest}")
 
     with open(args.configFile, 'r') as cf:
         config = json.load(cf)
+
+    tsFmt = (
+        config.get('phaseValues', {})
+              .get('defaultValues', {})
+              .get('scenarioTimestampFormat', '%Y%m%d_%H%M%S')
+    )
+    scenarioTimestamp = dt.datetime.now().strftime(tsFmt)
+    bundleParquetDir  = str(bundleRoot / f'MC_{scenarioTimestamp}' / 'parquet')
+
+    simStartTime = dt.datetime.now()
+    simInfoPath  = bundleRoot / 'SimulationInfo.json'
+    simInfo = {
+        'bundleName':   bundleName,
+        'bundleZip':    zipPath.name,
+        'simStartTime': simStartTime.isoformat(),
+    }
+    simInfoPath.write_text(json.dumps(simInfo, indent=2))
+
+    keepRaw = getattr(args, 'keepRaw', False)
 
     with tempfile.TemporaryDirectory(prefix='maes_bundle_') as tmpStr:
         tempDir = Path(tmpStr)
@@ -114,37 +156,35 @@ def runBundle(zipPath: Path, args) -> None:
         cMgr.expandPhase('defaultValues')
 
         filteredArgs = {k: v for k, v in vars(args).items() if v and k not in _BUNDLE_SKIP_ARGS}
-        filteredArgs['inputRoot']  = str(tempDir)
-        filteredArgs['outputRoot'] = outputRoot
+        filteredArgs['inputRoot']         = str(tempDir)
+        filteredArgs['outputRoot']        = str(tempDir / 'raw')
+        filteredArgs['scenarioTimestamp'] = scenarioTimestamp
+        filteredArgs['bundleParquetDir']  = bundleParquetDir
+        filteredArgs['resultsDir']        = str(bundleRoot)
 
-        studyName = getattr(args, 'study', None)
+        studyName  = getattr(args, 'study', None)
         studiesDir = tempDir / 'Studies'
 
         if studyName is not None:
-            # Single-study mode: resolve to the named xlsx
-            stem = Path(studyName).stem  # strip .xlsx if the user included it
+            stem     = Path(studyName).stem
             xlsxPath = studiesDir / f'{stem}.xlsx'
             if not xlsxPath.exists():
                 raise ValueError(f"Study not found in bundle: {xlsxPath.name}")
             filteredArgs['studyDefinitionFile'] = xlsxPath.name
             xlsxForVars = xlsxPath
         else:
-            # Multi-study mode: scan Studies/ root
             filteredArgs['directory'] = ''
-            allXlsx = sorted(studiesDir.glob('*.xlsx'))
+            allXlsx     = sorted(studiesDir.glob('*.xlsx'))
             xlsxForVars = allXlsx[0] if allXlsx else None
             if xlsxForVars:
-                # satisfies the studyFilename template expansion; overridden per-study in generateWorkitems
                 filteredArgs['studyDefinitionFile'] = xlsxForVars.name
 
         cMgr.expandPhase('arguments', **filteredArgs)
 
-        # Apply bundle global params unless the CLI overrides them
         bundleMCIter = simConfig.get('monteCarloIterations')
         if bundleMCIter is not None and not getattr(args, 'monteCarloIterations', None):
             cMgr.expandPhase('arguments', monteCarloIterations=bundleMCIter)
 
-        # siteDefinitionParams from a representative study file
         if xlsxForVars:
             studyVars = au.readVarsFromStudy(str(xlsxForVars), config['intakeSpreadsheetConfigParams'])
             filteredStudyVars = {k: v for k, v in studyVars.items() if v and k not in filteredArgs}
@@ -153,10 +193,21 @@ def runBundle(zipPath: Path, args) -> None:
         if cMgr.getConfigVar('studyName') is None and studyName is not None:
             cMgr.expandPhase('arguments', studyName=Path(studyName).stem)
 
-        # chdir to tempDir so CWD-relative file paths in xlsx (e.g. flowGasComposition)
-        # resolve against the extracted bundle content
         os.chdir(tempDir)
         try:
             SiteMain2.main(cMgr)
         finally:
             os.chdir(originalCwd)
+            if keepRaw:
+                rawSrc  = tempDir / 'raw'
+                rawDest = bundleRoot / f'MC_{scenarioTimestamp}' / 'raw'
+                if rawSrc.exists():
+                    shutil.copytree(rawSrc, rawDest, dirs_exist_ok=True)
+                    logger.info(f"keepRaw: raw sim output saved to {rawDest}")
+
+    simEndTime = dt.datetime.now()
+    elapsed = (simEndTime - simStartTime).total_seconds()
+    simInfo['simEndTime']     = simEndTime.isoformat()
+    simInfo['elapsedSeconds'] = round(elapsed, 1)
+    simInfoPath.write_text(json.dumps(simInfo, indent=2))
+    logger.info(f"SimulationInfo written to {simInfoPath}")
