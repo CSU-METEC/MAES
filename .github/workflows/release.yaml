@@ -8,41 +8,37 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write # Needed for creating releases
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for changelog generation
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11.3"
 
       - name: Install dependencies
-        run: python -m pip install --upgrade pip poetry && poetry install
+        run: pip install build poetry-core
 
       - name: Build package
-        run: poetry build
+        run: python -m build
 
       - name: Get the latest tag
-        id: get_tag
-        run: echo ::set-output name=Tag::$(git describe --tags --abbrev=0)
+        run: echo "TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
 
-      #  Create a zip file of the input directory
       - name: Zip Input Study Sheets
-        run: |
-          zip -r "input-${TAG}.zip" input
+        run: zip -r "input-${TAG}.zip" input
 
       - name: Upload Input Study Sheets
         uses: actions/upload-artifact@v4
         with:
-          name: "input-${TAG}.zip"
-          path: "input-${TAG}.zip"
-          retentaion-days: 400
+          name: input-${{ env.TAG }}.zip
+          path: input-${{ env.TAG }}.zip
+          retention-days: 400
 
-      # Store build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -57,6 +53,6 @@ jobs:
           files: |
             dist/*.whl
             dist/*.tar.gz
-            "input-${TAG}.zip"
+            input-${{ env.TAG }}.zip
           draft: false
           generate_release_notes: true
