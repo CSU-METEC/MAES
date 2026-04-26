@@ -28,7 +28,7 @@ _FACTORS_DATA_COLS = ('activityDistribution', 'emissionDriver')
 _CWD_RELATIVE_PARAMS = {'productionGCFilename', 'flowGasComposition'}
 
 # File-reference parameters resolved relative to emitterProfileDir
-_EMITTER_PROFILE_RELATIVE_PARAMS = {'loadCondition', 'gasFractionDistFileName'}
+_EMITTER_PROFILE_RELATIVE_PARAMS = {'loadCondition', 'gasFractionDistFileName', 'crankcaseDistrib'}
 
 # Parameters whose xlsx value is a file path only when the value is a non-numeric string
 _CONDITIONAL_FILE_PARAMS = {'gasFractionDistFileName'}
@@ -81,6 +81,7 @@ def _collectXlsxFileRefs(
     (runtime heuristic to catch missing File Reference tags).
     """
     refs: dict[str, Path] = {}
+    warnedUntagged: set[tuple[str, str, str]] = set()
 
     for tabRow in siteData['masterEquipment']:
         tabName = tabRow['Tab']
@@ -103,11 +104,14 @@ def _collectXlsxFileRefs(
                 if not isTagged:
                     p = Path(val)
                     if p.suffix in _PATH_EXTENSIONS and ('/' in val or '\\' in val):
-                        logger.warning(
-                            f"Possible untagged file reference in tab '{tabName}', "
-                            f"column '{colName}', value '{val}' — check model definition "
-                            f"for missing \"File Reference\": true"
-                        )
+                        key = (tabName, colName, val)
+                        if key not in warnedUntagged:
+                            logger.warning(
+                                f"Possible untagged file reference in tab '{tabName}', "
+                                f"column '{colName}', value '{val}' — check model definition "
+                                f"for missing \"File Reference\": true"
+                            )
+                            warnedUntagged.add(key)
                     continue
 
                 if pythonParam in _CONDITIONAL_FILE_PARAMS and _isNumeric(val):
