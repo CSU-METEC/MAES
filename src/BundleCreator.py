@@ -261,8 +261,7 @@ def createBundle(cm, outputZipPath: Path) -> Path:
     cwd = Path.cwd()
     emitterProfileDir = Path(config['emitterProfileDir']).resolve()
     factorsCsv = Path(au.expandFilename(config['factorName'], config, readonly=True)).resolve()
-    inputRoot = Path(config['inputRoot']).resolve()
-    modelFormulationDir = inputRoot / 'ModelFormulation'
+    modelFormulationDir = Path(__file__).parent.parent / 'input' / 'ModelFormulation'
 
     validationDir = Path(__file__).parent / 'utilities' / 'SiteDefinitionValidation'
     modelDefDf = loadStaticTables(validationDir)
