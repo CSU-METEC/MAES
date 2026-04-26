@@ -66,7 +66,7 @@ Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,modelSubcat
 Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Driver Type,instantiationVal,Sheet,False,False,True
 Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,valsForInstantiation,Constant,False,False,True
 Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Crankcase Emissions Flag,cceeFlag,Sheet,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,CCEE Ratio Distribution,crankcaseDistrib,Sheet,True,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,CCEE Ratio Distribution,crankcaseDistrib,Sheet,False,True,True
 Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,emissionDriverUnits,Constant,False,False,True
 Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
 Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,statesActive,Constant,False,False,True

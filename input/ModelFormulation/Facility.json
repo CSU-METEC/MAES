@@ -9,8 +9,8 @@
 	{"Model Parameter": "Longitude",             "Python Parameter": "longitude",           "Parameter Type": "Sheet"},
 	
 	{"Model Parameter": "Leak Gas Composition", "Python Parameter": "productionGCFilename", "Parameter Type": "Sheet", "File Reference": true},
-	{"Model Parameter": "Operator", "Python Parameter": "operator", "Parameter Type": "Sheet"},
-	{"Model Parameter": "Prototypical Site Number", "Python Parameter": "psno", "Parameter Type": "Sheet"}
+	{"Model Parameter": "Operator", "Python Parameter": "operator", "Parameter Type": "Sheet", "Optional": "True"},
+	{"Model Parameter": "Prototypical Site Number", "Python Parameter": "psno", "Parameter Type": "Sheet", "Optional": "True"}
 	
 	
 	
