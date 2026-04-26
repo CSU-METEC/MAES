@@ -1,0 +1,38 @@
+name: Validate Model Definitions
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate-model-defs:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Regenerate model definition tables
+        run: python src/utilities/SiteDefinitionValidation/BuildKwargTable.py
+
+      - name: Check for stale ModelDefinitionMap.csv
+        run: |
+          if git diff --quiet src/utilities/SiteDefinitionValidation/ModelDefinitionMap.csv; then
+            echo "ModelDefinitionMap.csv is up to date."
+          else
+            echo "ERROR: ModelDefinitionMap.csv is stale."
+            echo ""
+            echo "Regenerate it locally and commit the result:"
+            echo "  conda run -n MAES python src/utilities/SiteDefinitionValidation/BuildKwargTable.py"
+            echo ""
+            git diff --stat src/utilities/SiteDefinitionValidation/ModelDefinitionMap.csv
+            exit 1
+          fi
