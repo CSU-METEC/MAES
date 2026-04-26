@@ -177,13 +177,13 @@ def getFileList(cm):
         # dir='' means run everything in Studies/ root; non-empty means a subdirectory of Studies/
         inputRoot = cm.getConfigVar('inputRoot')
         dirPath = Path(inputRoot) / 'Studies' / dir
-        scenarioTimestampFormat = cm.getConfigVar('scenarioTimestampFormat') or ''
-        sharedTimestamp = dt.datetime.now().strftime(scenarioTimestampFormat)
-        cm.expandPhase('arguments', scenarioTimestamp=sharedTimestamp)
+        if not cm.getConfigVar('scenarioTimestamp'):
+            scenarioTimestampFormat = cm.getConfigVar('scenarioTimestampFormat') or ''
+            sharedTimestamp = dt.datetime.now().strftime(scenarioTimestampFormat)
+            cm.expandPhase('arguments', scenarioTimestamp=sharedTimestamp)
         for singleFile in sorted(dirPath.iterdir()):
             if not singleFile.is_file():
                 continue
-            # studyDef is relative to Studies/; omit the directory prefix when dir is empty
             studyDef = f"{dir}/{singleFile.name}" if dir else singleFile.name
             yield (str(singleFile), studyDef, singleFile.stem)
     else:
@@ -203,7 +203,11 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         cm.expandPhase("arguments", studyDefinitionFile=studyFilename, studyName=studyName)
         # cm.expandPhase("siteDefinitionParams")
         cm.expandPhase("start", site=studyName, scenarioTimestamp=cm.getConfigVar("scenarioTimestamp"))
-        cm.expandPhase("simulation")
+        bundleParquetDir = cm.getConfigVar('bundleParquetDir')
+        if bundleParquetDir:
+            cm.expandPhase("simulation", parquetDir=bundleParquetDir)
+        else:
+            cm.expandPhase("simulation")
         cm.expandPhase("MCIteration", MCIteration=-1)
         initWorkitems.append(generateSingleWorkitem(cm, 'initialization'))
         # simulation & parquet workitems work on individual site & MC iterations
@@ -386,19 +390,23 @@ def main(cm, workitemQueues=None, parquetWorkers=None):
     clocktime = t0.deltat.total_seconds()
     totalMCIterations = cm.getConfigVar('monteCarloIterations')
     logger.info(f"Total runtime: {totalRuntime} seconds, clock time: {clocktime}, MC Iterations: {totalMCIterations}, items: {len(resList)}")
-    for worktype, prefix in [('createPDFCache', 'PDFCache')]:
-        statsDFs = [r['statsDF'] for r in resList if r['worktype'] == worktype and not r['statsDF'].empty]
-        if statsDFs:
-            statsFilename = f"{prefix}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
-            logger.info(f"Wrote {statsFilename}")
+    resultsDir = cm.getConfigVar('resultsDir')  # set by BundleRunner in bundle mode; None otherwise
+
+    if not resultsDir:
+        for worktype, prefix in [('createPDFCache', 'PDFCache')]:
+            statsDFs = [r['statsDF'] for r in resList if r['worktype'] == worktype and not r['statsDF'].empty]
+            if statsDFs:
+                statsFilename = f"{prefix}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
+                logger.info(f"Wrote {statsFilename}")
 
     resDF = pd.DataFrame(resList).drop(columns=['statsDF', 'partialAcc'])
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
     resFilename = dt.datetime.now().strftime(resFileFormat)
     resDF = resDF.assign(scenarioTimestamp=cm.getConfigVar('scenarioTimestamp'))
-    resDF.to_csv(resFilename, index=False)
-    logger.info(f"Wrote {resFilename}")
+    resPath = Path(resultsDir) / resFilename if resultsDir else Path(resFilename)
+    resDF.to_csv(resPath, index=False)
+    logger.info(f"Wrote {resPath}")
 
 # set this up as preMain so config does not get instantiated as a global variable
 
@@ -430,6 +438,12 @@ def preMain():
         metavar='STUDY_NAME',
         default=None,
         help="Run a single study from the bundle by name (stem or filename); default runs all studies"
+    )
+    parser.add_argument(
+        '--keepRaw',
+        action='store_true',
+        default=False,
+        help="Preserve per-site raw CSV output in the bundle output tree (default: discarded after parquet conversion)"
     )
     args = parser.parse_args()
 
