@@ -18,6 +18,7 @@ from utilities.SiteDefinitionValidation.ValidateSite import (
     runPassB,
     runPassC,
     runPassM,
+    runPassF,
 )
 
 logger = logging.getLogger(__name__)
@@ -238,6 +239,12 @@ def createBundle(cm, outputZipPath: Path) -> Path:
         (Path(fullFilename).resolve(), studyName)
         for fullFilename, _, studyName in getFileList(cm)
     ]
+
+    passFFindings = runPassF(factorsCsv, emitterProfileDir)
+    for f in passFFindings:
+        logger.error(f"[Pass F] {f['message']}")
+    if passFFindings:
+        raise ValueError("Bundle creation aborted: factor data file validation failed (Pass F)")
 
     allValid, usedFactorTags = _validateStudies(studyFiles, modelDefDf, buildMeta)
     if not allValid:

@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'input/ModelFormulation/*.json'
+      - 'input/CuratedData/**'
   pull_request:
 
 jobs:

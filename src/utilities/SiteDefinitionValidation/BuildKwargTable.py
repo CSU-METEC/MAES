@@ -19,6 +19,12 @@ MAES_SRC = MAES_ROOT / "src"
 MODEL_FORMULATION_DIR = MAES_ROOT / "input" / "ModelFormulation"
 
 sys.path.insert(0, str(MAES_SRC))
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from ValidateSite import runPassF
+
+DEFAULT_FACTORS_CSV = MAES_ROOT / "input" / "CuratedData" / "FactorsFileReference" / "Factors.csv"
+DEFAULT_EMITTER_PROFILE_DIR = MAES_ROOT / "input" / "CuratedData"
 
 import GitVersion as gv
 import EquipmentTable as et
@@ -271,6 +277,14 @@ def main() -> int:
         "--table-dir", type=Path, default=SCRIPT_DIR,
         help="Directory for CSV output files (default: script directory)"
     )
+    parser.add_argument(
+        "--factors-csv", type=Path, default=DEFAULT_FACTORS_CSV,
+        help="Path to Factors.csv for Pass F validation (default: in-repo Factors.csv)"
+    )
+    parser.add_argument(
+        "--emitter-profile-dir", type=Path, default=DEFAULT_EMITTER_PROFILE_DIR,
+        help="Emitter profile root directory for Pass F file resolution (default: input/CuratedData)"
+    )
     args = parser.parse_args()
 
     tableDir = args.table_dir
@@ -289,6 +303,16 @@ def main() -> int:
     buildBuildMetadata(buildMetadataPath)
 
     hasErrors = runPassA(modelDefDf, unmappedDf)
+
+    logging.info("Running Pass F (factor data file validation)...")
+    passFFindings = runPassF(args.factors_csv, args.emitter_profile_dir)
+    for f in passFFindings:
+        if f.get('severity') == 'error':
+            logging.error(f"[F] {f['message']}")
+            hasErrors = True
+        else:
+            logging.warning(f"[F] {f['message']}")
+
     logging.info("Done.")
 
     if hasErrors:

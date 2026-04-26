@@ -261,6 +261,62 @@ def runPassC(siteData: dict, modelDefDf: pd.DataFrame) -> list[dict]:
     return ret
 
 
+def runPassF(factorsCsv: Path, emitterProfileDir: Path) -> list[dict]:
+    """Pass F: validate factor data file references in Factors.csv.
+
+    For each value in activityDistribution and emissionDriver columns:
+    1. Backslash path separators → error (must use forward slashes)
+    2. Referenced file does not exist on disk → error
+
+    Both checks are deduplicated: one error per unique raw value (backslash)
+    and one error per unique resolved path (missing file).
+    """
+    if not factorsCsv.exists():
+        return [{'pass': 'F', 'message': f"Factors.csv not found: {factorsCsv}"}]
+
+    df = pd.read_csv(factorsCsv).dropna(how='all')
+    errors: list[dict] = []
+    seenBackslashVals: set[str] = set()
+    seenPaths: set[Path] = set()
+
+    for col in ('activityDistribution', 'emissionDriver'):
+        if col not in df.columns:
+            continue
+        for val in df[col].dropna():
+            val = str(val).strip()
+            if not val:
+                continue
+            try:
+                float(val)
+                continue
+            except ValueError:
+                pass
+
+            if '\\' in val and val not in seenBackslashVals:
+                errors.append({
+                    'pass': 'F',
+                    'severity': 'error',
+                    'message': f"Backslash path separator in {col}: '{val}' — use forward slashes"
+                })
+                seenBackslashVals.add(val)
+
+            normalizedVal = val.replace('\\', '/')
+            srcPath = (emitterProfileDir / normalizedVal).resolve()
+
+            if srcPath in seenPaths:
+                continue
+            seenPaths.add(srcPath)
+
+            if not srcPath.exists():
+                errors.append({
+                    'pass': 'F',
+                    'severity': 'warning',
+                    'message': f"Factor data file not found: {srcPath}"
+                })
+
+    return errors
+
+
 def printReport(
     passMWarnings: list[dict],
     passBErrors: list[dict],
