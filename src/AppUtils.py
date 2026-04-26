@@ -56,6 +56,8 @@ def getParser(defaultConfig):
     parser.add_argument("-ts", "--scenarioTimestamp", help="simulation / serialization identifier (timestamp)")
 
     parser.add_argument('-w',  '--workers', type=int, help="Number of parallel python images (experimental)")
+    parser.add_argument('-pw', '--parquetWorkers', type=int, default=None, help="Number of workers for parquet phase (default: same as -w)")
+    parser.add_argument('-nea', '--noEventArrays', action='store_true', default=False, help="Skip storing raw event arrays in EventSummary parquet (reduces per-worker memory)")
 
     parser.add_argument('-si', '--disableSimulation', help="Disable simulation in MEETMain", action='store_true', default=False)
     parser.add_argument('-gr', '--disableGraph', help="Disable graph creation in MEETMain", action='store_true', default=False)

@@ -39,7 +39,7 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun'], baseName
     if baseName is not None:
         toParquetkwArgs = {**toParquetkwArgs, 'basename_template': f"{baseName}-{{i}}.parquet"}
 
-    df.to_parquet(pqBase, existing_data_behavior='delete_matching', **toParquetkwArgs)
+    df.to_parquet(pqBase, existing_data_behavior='overwrite_or_ignore', **toParquetkwArgs)
 
 def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None):
     # ── Skip any empty write ──────────────────────
@@ -62,11 +62,13 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
                   basename_template=basename_template,
-                  # delete_matching clears all existing files in matching partitions before writing,
-                  # ensuring repeated calls overwrite rather than accumulate files.
-                  # overwrite_or_ignore only overwrites on filename collision; since pyarrow generates
-                  # unique filenames per call, it effectively appends and would cause duplicate rows.
-                  existing_data_behavior='delete_matching',
+                  # overwrite_or_ignore avoids the directory-level scan+lock that delete_matching
+                  # performs, which deadlocks when multiple Pool workers hit the parquet phase
+                  # concurrently. Each worker writes a distinct (site, mcRun) partition so there
+                  # are no real collisions. Callers must clean the output directory before re-running
+                  # a study — if stale files exist, overwrite_or_ignore will not remove them and
+                  # readers will see duplicate rows.
+                  existing_data_behavior='overwrite_or_ignore',
                   engine='auto',
                   index=False
                   )
@@ -84,6 +86,45 @@ def cleanupEquipmentType(metadata):
 def dumpSummary(df, config, tagName):
     outFile = config[tagName]
     df.to_csv(outFile, index=False)
+
+def buildMergedEmissionDF(coalescedEventDF, tsTable, gcDF, metadata, species=None):
+    """Build merged emission event DF from in-memory tables.
+
+    Equivalent to readParquetEvents(mergeGC=True, additionalEventFilters=[('command','=','EMISSION')])
+    but uses tables already held in memory rather than re-reading from parquet.
+    species filters gcDF to the given list when provided; pass None to include all species.
+    Returns None when gcDF is absent or there are no emission events after merging.
+    """
+    if gcDF is None or gcDF.empty:
+        return None
+    filteredGC = gcDF[gcDF['species'].isin(species)] if species is not None else gcDF
+    if filteredGC.empty:
+        return None
+
+    emissionEventDF = gu.mergeEmissionRecords(coalescedEventDF, tsTable, filteredGC)
+    if emissionEventDF is None or emissionEventDF.empty:
+        return None
+
+    mdDF = metadata.assign(site=metadata['site'].astype('str'))
+    emissionEventDF = emissionEventDF.assign(site=emissionEventDF['site'].astype('str'))
+    emissionEventDF = emissionEventDF.merge(
+        mdDF,
+        how='left',
+        on=['facilityID', 'unitID', 'emitterID', 'mcRun', 'site'],
+    )
+
+    operatorInfo = mdDF[mdDF['equipmentType'] == 'MEETFacility'][
+        ['facilityID', 'operator', 'psno']
+    ].drop_duplicates()
+    psno_map = operatorInfo.set_index('facilityID')['psno']
+    op_map = operatorInfo.set_index('facilityID')['operator']
+    emissionEventDF = emissionEventDF.assign(
+        psno=emissionEventDF['psno'].fillna(emissionEventDF['facilityID'].map(psno_map)),
+        operator=emissionEventDF['operator'].fillna(emissionEventDF['facilityID'].map(op_map)),
+    )
+
+    return emissionEventDF
+
 
 def toParquet(config):
     with Timer("Read event log") as t0:
@@ -105,6 +146,12 @@ def toParquet(config):
         toBaseParquetFullConfig(config, gascomp,          'parquetGasCompositionDS')
         toBaseParquetFullConfig(config, metadata,         'parquetMetadataDS')
         toBaseParquetFullConfig(config, summaryDF,        'parquetSummaryDS')
+
+    emissionOnlyDF = coalescedEventDF[coalescedEventDF['command'] == 'EMISSION'].copy()
+    del coalescedEventDF, eventListDF, summaryDF, eventDF
+    mergedEmissionDF = buildMergedEmissionDF(emissionOnlyDF, tsTable, gascomp, metadata)
+    del emissionOnlyDF
+    return mergedEmissionDF
 
 
 
