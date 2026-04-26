@@ -39,6 +39,8 @@ def readCoreTables(config, studyName, runNum):
 
 def mergeEmissionRecords(eventDF, tsTable, gascomp, debugEventList=False):
     emDF = eventDF[eventDF['command'] == 'EMISSION']
+    if emDF.empty:
+        return pd.DataFrame()
     emTsDF = emDF.merge(tsTable, on=['tsKey', 'mcRun', 'site'], how='left')
     emEmTsDF = emTsDF.merge(gascomp, on=['gcKey', 'mcRun', 'site'], how='left')
     # Convert from categorical to int -- otherwise we get an instance of the pivot_table per category
