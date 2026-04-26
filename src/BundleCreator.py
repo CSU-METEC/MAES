@@ -139,9 +139,16 @@ def _collectXlsxFileRefs(
     return refs
 
 
-def _collectFactorDataFiles(factorsCsv: Path, emitterProfileDir: Path) -> dict[str, Path]:
-    """Return {zip_dest_path: source_Path} for data files referenced in Factors.csv."""
+def _collectFactorDataFiles(
+    factorsCsv: Path, emitterProfileDir: Path, usedTags: set[str]
+) -> dict[str, Path]:
+    """Return {zip_dest_path: source_Path} for factor data files needed by the bundled studies.
+
+    Only rows whose factorTag is in usedTags are considered; all others are silently skipped.
+    """
     df = pd.read_csv(factorsCsv).dropna(how='all')
+    if 'factorTag' in df.columns and usedTags:
+        df = df[df['factorTag'].isin(usedTags)]
     refs: dict[str, Path] = {}
     warnedMissing: set[Path] = set()
     for col in _FACTORS_DATA_COLS:
@@ -165,9 +172,14 @@ def _validateStudies(
     studyFiles: list[tuple[Path, str]],
     modelDefDf: pd.DataFrame,
     buildMeta: dict,
-) -> bool:
-    """Run ValidateSite passes B, C, M on each study. Returns True if all pass without errors."""
+) -> tuple[bool, set[str]]:
+    """Run ValidateSite passes B, C, M on each study.
+
+    Returns (allValid, usedFactorTags) where usedFactorTags is the union of all
+    'Factor Tag' column values seen across every equipment tab in every study.
+    """
     allValid = True
+    usedFactorTags: set[str] = set()
     for xlsxPath, studyName in studyFiles:
         logger.info(f"Validating {xlsxPath.name}...")
         siteData = loadSiteXlsx(xlsxPath)
@@ -191,7 +203,13 @@ def _validateStudies(
         else:
             logger.info(f"Validation passed: {xlsxPath.name}")
 
-    return allValid
+        for tabDf in siteData['tabs'].values():
+            if 'Factor Tag' in tabDf.columns:
+                usedFactorTags.update(
+                    str(v).strip() for v in tabDf['Factor Tag'].dropna() if str(v).strip()
+                )
+
+    return allValid, usedFactorTags
 
 
 def createBundle(cm, outputZipPath: Path) -> Path:
@@ -221,8 +239,20 @@ def createBundle(cm, outputZipPath: Path) -> Path:
         for fullFilename, _, studyName in getFileList(cm)
     ]
 
-    if not _validateStudies(studyFiles, modelDefDf, buildMeta):
+    allValid, usedFactorTags = _validateStudies(studyFiles, modelDefDf, buildMeta)
+    if not allValid:
         raise ValueError("Bundle creation aborted: validation errors in one or more study files")
+
+    factorsDf = pd.read_csv(factorsCsv).dropna(how='all')
+    if 'factorTag' in factorsDf.columns:
+        knownTags = set(factorsDf['factorTag'].dropna().astype(str))
+        for tag in sorted(usedFactorTags - knownTags):
+            logger.warning(f"Factor tag '{tag}' is referenced in studies but not defined in Factors.csv")
+    for col in _FACTORS_DATA_COLS:
+        if col in factorsDf.columns:
+            factorsDf[col] = factorsDf[col].apply(
+                lambda v: str(v).replace('\\', '/') if pd.notna(v) else v
+            )
 
     fileRefIndex = _buildFileRefIndex(modelDefDf)
 
@@ -232,14 +262,7 @@ def createBundle(cm, outputZipPath: Path) -> Path:
         refs = _collectXlsxFileRefs(siteData, fileRefIndex, cwd, emitterProfileDir)
         allXlsxRefs.update(refs)
 
-    factorDataRefs = _collectFactorDataFiles(factorsCsv, emitterProfileDir)
-
-    factorsDf = pd.read_csv(factorsCsv).dropna(how='all')
-    for col in _FACTORS_DATA_COLS:
-        if col in factorsDf.columns:
-            factorsDf[col] = factorsDf[col].apply(
-                lambda v: str(v).replace('\\', '/') if pd.notna(v) else v
-            )
+    factorDataRefs = _collectFactorDataFiles(factorsCsv, emitterProfileDir, usedFactorTags)
 
     metadata = {
         'bundleFormatVersion': bf.BUNDLE_FORMAT_VERSION,
