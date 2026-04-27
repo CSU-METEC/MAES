@@ -63,20 +63,21 @@
       "equipmentFile": "{templateDir}/equipment.json",
       "mdIndexFile": "{templateDir}/mdIndex.csv",
       "parquetDir": "{simulationRoot}/parquet",
+      "summaryParquetDir": "{parquetDir}",
 
       "parquetEventDS":          "{parquetDir}/events",
       "parquetTimeseriesDS":     "{parquetDir}/timeseries",
       "parquetGasCompositionDS": "{parquetDir}/gascomposition",
       "parquetMetadataDS":       "{parquetDir}/metadata",
-      "parquetSummaryDS":        "{parquetDir}/SummaryLegacy",
       "parquetEventListDS":      "{parquetDir}/eventList",
-      "parquetNewSummary":       "{parquetDir}/Summary/SiteSummary",
-      "parquetNewInstEmissions": "{parquetDir}/Summary/InstEmissions",
-      "parquetNewSimSummary":    "{parquetDir}/Summary/SimSummary",
-      "parquetNewEventSummary":  "{parquetDir}/Summary/EventSummary",
-      "parquetNewPDF":      "{parquetDir}/Summary/PDF",
-      "parquetNewPDFCache": "{parquetDir}/Summary/PDFCache",
-      "parquetNewSimPDF":   "{parquetDir}/Summary/SimPDF"
+      "parquetSummaryDS":        "{summaryParquetDir}/SummaryLegacy",
+      "parquetNewSummary":       "{summaryParquetDir}/Summary/SiteSummary",
+      "parquetNewInstEmissions": "{summaryParquetDir}/Summary/InstEmissions",
+      "parquetNewSimSummary":    "{summaryParquetDir}/Summary/SimSummary",
+      "parquetNewEventSummary":  "{summaryParquetDir}/Summary/EventSummary",
+      "parquetNewPDF":      "{summaryParquetDir}/Summary/PDF",
+      "parquetNewPDFCache": "{summaryParquetDir}/Summary/PDFCache",
+      "parquetNewSimPDF":   "{summaryParquetDir}/Summary/SimPDF"
     },
 
     "MCIteration": {

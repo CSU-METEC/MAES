@@ -190,9 +190,9 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         cm.expandPhase("arguments", studyDefinitionFile=studyFilename, studyName=studyName)
         # cm.expandPhase("siteDefinitionParams")
         cm.expandPhase("start", site=studyName, scenarioTimestamp=cm.getConfigVar("scenarioTimestamp"))
-        bundleParquetDir = cm.getConfigVar('bundleParquetDir')
-        if bundleParquetDir:
-            cm.expandPhase("simulation", parquetDir=bundleParquetDir)
+        bundleSummaryParquetDir = cm.getConfigVar('bundleSummaryParquetDir')
+        if bundleSummaryParquetDir:
+            cm.expandPhase("simulation", summaryParquetDir=bundleSummaryParquetDir)
         else:
             cm.expandPhase("simulation")
         cm.expandPhase("MCIteration", MCIteration=-1)
