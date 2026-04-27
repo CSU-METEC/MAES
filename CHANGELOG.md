@@ -1,6 +1,49 @@
 # CHANGELOG
 
 
+## v0.3.0 — Pre Summary Rewrite (2026-04-27)
+
+### Features
+
+- **Post-processing suite** — added `postprocessing/` with emission plot generation
+  at site, METype, unitID, and modelReadableName levels; PDF/CDF plots; abnormal
+  emission threshold calculation; and aggregate summaries by emission category
+  (vented, fugitive, combustion), METype, and modelReadableName
+- **Aggregate summaries** — simulation-level and annual aggregate summaries;
+  added `MCRuns_emission_list` column in AnnualEmissions and
+  AggregatedSimulationEmissions outputs
+- **Pneumatics summary** — dedicated summary output for intermittent pneumatic emissions
+- **State and timeseries plots** — per-MCRun and mean-emission overlays
+- **Runtime statistics** — wall-time stats saved to `.csv` at end of run
+- **Docker support** — added Dockerfile for containerized deployment
+- **Compressor large-emitter model** — overload rerouting via probes; crankcase
+  emissions correctly suppressed for electric drivers
+- **Dehydrator glycol pump** — glycol pump emissions added to MEETDehydrator
+
+### Bug Fixes
+
+- Fixed PDF/CDF generation to correctly include zero-emission runs
+  (CDF estimates now match MAES output)
+- Fixed aggregate simulation-level summary generated more than once per simulation
+- Fixed empty parquet generation
+- Fixed `np.random.random(1)` in MEETComponentLeaks (should be scalar, not array)
+- Fixed pneumatic emissions summary bug; fixed C2/C1 plot bug
+- Fixed `-pt True` not plotting aggregate summaries when annual summary files present
+- Fixed annualEmissions CI summation bug; removed scalar divide warning
+- Fixed intermittent pneumatic `nextState` not reading vapor flows for state duration
+
+### Data
+
+- Added missing `Allen_RM_FLARE_CONT_EF.csv`
+- Added field-measured destruction efficiency files (`VariableDE4SLB.csv`,
+  `VariableDE4SRB.csv`); deleted incorrect `VariableDE.csv`
+- Renamed Rotary Screw Compressor EF files
+
+### License
+
+- Added `LICENSE.pdf`
+
+
 ## v0.2.0 (2025-01-12)
 
 ### Features
