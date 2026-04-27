@@ -92,9 +92,11 @@ def runBundle(zipPath: Path, args) -> None:
             SimulationInfo.json          <- timing manifest (start written before run; end/elapsed after)
             results_{ts}.csv             <- per-workitem runtime log from SiteMain2
             MC_{ts}/
-                parquet/                 <- consolidated parquet tree (all sites)
+                parquet/                 <- Summary + SummaryLegacy only (consolidated across studies)
         [--keepRaw only]
-            MC_{ts}/raw/                 <- per-site raw CSV output preserved before temp cleanup
+            MC_{ts}/raw/                 <- per-site raw CSVs and non-summary parquet (events,
+                                            timeseries, gascomposition, metadata, eventList)
+                                            preserved before temp cleanup
     """
     import ConfigManager as cm_mod
     import SiteMain2
@@ -123,7 +125,7 @@ def runBundle(zipPath: Path, args) -> None:
     scenarioTimestamp = dt.datetime.now().strftime(tsFmt)
     mcRoot           = bundleRoot / f'MC_{scenarioTimestamp}'
     mcRoot.mkdir(parents=True, exist_ok=True)
-    bundleParquetDir = str(mcRoot / 'parquet')
+    bundleSummaryParquetDir = str(mcRoot / 'parquet')
 
     zipDest = mcRoot / zipPath.name
     shutil.copy2(zipPath, zipDest)
@@ -161,7 +163,7 @@ def runBundle(zipPath: Path, args) -> None:
         filteredArgs['inputRoot']         = str(tempDir)
         filteredArgs['outputRoot']        = str(tempDir / 'raw')
         filteredArgs['scenarioTimestamp'] = scenarioTimestamp
-        filteredArgs['bundleParquetDir']  = bundleParquetDir
+        filteredArgs['bundleSummaryParquetDir'] = bundleSummaryParquetDir
         filteredArgs['resultsDir']        = str(mcRoot)
 
         studyName  = getattr(args, 'study', None)

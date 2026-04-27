@@ -599,7 +599,9 @@ def postprocess(config):
             postProcessParquetResults(config, df, site)
 
 
-def getParquetMetadata(parquetDir):
+def getParquetMetadata(parquetDir, summaryParquetDir=None):
+    if summaryParquetDir is None:
+        summaryParquetDir = parquetDir
     PARQUET_RE = re.compile(r'events\/site=(?P<site>.*)\/mcRun=(?P<mcRun>.*)')
 
     fakeConfig = {
@@ -607,12 +609,12 @@ def getParquetMetadata(parquetDir):
         "parquetTimeseriesDS":                  f"{parquetDir}/timeseries",
         "parquetGasCompositionDS":              f"{parquetDir}/gascomposition",
         "parquetMetadataDS":                    f"{parquetDir}/metadata",
-        "parquetSummaryDS":                     f"{parquetDir}/SummaryLegacy",
         "parquetEventListDS":                   f"{parquetDir}/eventList",
-        "parquetFilteredEventSummaryDS":        f"{parquetDir}/filteredEventSummary",
-        "parquetSiteInstantaneousEmissionsDS":  f"{parquetDir}/siteInstantaneousEmissions",
-        "parquetSiteEmissionsByEquipmentDS":    f"{parquetDir}/siteEmissionsByEquipment",
-        "parquetSiteEmissionsByCategoryDS":     f"{parquetDir}/siteEmissionsByCategory",
+        "parquetSummaryDS":                     f"{summaryParquetDir}/SummaryLegacy",
+        "parquetFilteredEventSummaryDS":        f"{summaryParquetDir}/filteredEventSummary",
+        "parquetSiteInstantaneousEmissionsDS":  f"{summaryParquetDir}/siteInstantaneousEmissions",
+        "parquetSiteEmissionsByEquipmentDS":    f"{summaryParquetDir}/siteEmissionsByEquipment",
+        "parquetSiteEmissionsByCategoryDS":     f"{summaryParquetDir}/siteEmissionsByCategory",
 
     }
 
