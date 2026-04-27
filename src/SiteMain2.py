@@ -17,7 +17,7 @@ import pandas as pd
 import datetime as dt
 import Summaries2 as sum
 
-ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'computeSimSummary']
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDFCache', 'computeSimSummary', 'createSimPDF']
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +130,12 @@ def createPDFCache(config, simdm):
         statsDF = sum.createPDFCache(config)
     return t0.deltat.total_seconds(), statsDF
 
+def createSimPDF(config: dict, simdm: 'sdm.SimDataManager') -> float:
+    """Run cross-simulation PDF/CDF generation; writes Summary/SimPDF parquet."""
+    with Timer("Create Sim PDF") as t0:
+        sum.createSimPDF(config)
+    return t0.deltat.total_seconds()
+
 def runWorkitem(workitem):
     with sdm.SimDataManager(workitem) as simdm:
         worktype = workitem['workType']
@@ -154,6 +160,8 @@ def runWorkitem(workitem):
             runtime = summarizeSimulation(workitem, simdm)
         elif worktype == 'computeSimSummary':
             runtime = computeSimSummary(workitem, simdm)
+        elif worktype == 'createSimPDF':
+            runtime = createSimPDF(workitem, simdm)
         else:
             logger.error(f"Unknown worktype: {worktype}")
 
@@ -205,6 +213,7 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     createPDFCacheWorkitems = []
     simSummaryWorkitems = []
     computeSimSummaryWorkitems = []
+    createSimPDFWorkitems = []
 
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
@@ -231,6 +240,7 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     # simulation-level summaries happen once per simulation
     simSummaryWorkitems.append(generateSingleWorkitem(cm, 'simSummary'))
     computeSimSummaryWorkitems.append(generateSingleWorkitem(cm, 'computeSimSummary'))
+    createSimPDFWorkitems.append(generateSingleWorkitem(cm, 'createSimPDF'))
 
     retWorkitems = []
     if 'initialization' in phasesToInclude:
@@ -247,6 +257,8 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         retWorkitems.append(simSummaryWorkitems)
     if 'computeSimSummary' in phasesToInclude:
         retWorkitems.append(computeSimSummaryWorkitems)
+    if 'createSimPDF' in phasesToInclude:
+        retWorkitems.append(createSimPDFWorkitems)
 
     return retWorkitems
 
