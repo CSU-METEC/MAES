@@ -205,7 +205,15 @@ def getFileList(cm):
     else:
         yield (cm.getConfigVar("studyFilename"), cm.getConfigVar("studyDefinitionFile"), cm.getConfigVar('studyName'))
 
-def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
+PDF_PHASES = {'createPDFCache', 'createSimPDF'}
+
+
+def generateWorkitems(cm, phasesToInclude=None):
+    if phasesToInclude is None:
+        if cm.getConfigVar('noPDF'):
+            phasesToInclude = list(filter(lambda p: p not in PDF_PHASES, ALL_PHASES))
+        else:
+            phasesToInclude = list(ALL_PHASES)
     initWorkitems = []
     simWorkitems = []
     parquetWorkitems = []

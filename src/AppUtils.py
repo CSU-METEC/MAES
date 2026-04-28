@@ -57,6 +57,7 @@ def getParser(defaultConfig):
 
     parser.add_argument('-w',  '--workers', type=int, help="Number of parallel python images (experimental)")
     parser.add_argument('-nea', '--noEventArrays', action='store_true', default=False, help="Skip storing raw event arrays in EventSummary parquet (reduces per-worker memory)")
+    parser.add_argument('-npdf', '--noPDF', action='store_true', default=False, help="Skip PDF/CDF generation phases (createPDFCache, createSimPDF) — saves substantial time and memory")
 
     parser.add_argument('-si', '--disableSimulation', help="Disable simulation in MEETMain", action='store_true', default=False)
     parser.add_argument('-gr', '--disableGraph', help="Disable graph creation in MEETMain", action='store_true', default=False)
