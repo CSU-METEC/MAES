@@ -502,7 +502,7 @@ def preMain():
 
     else:
         cMgr, args = au.getConfig()
-        main(cMgr, parquetWorkers=args.parquetWorkers)
+        main(cMgr)
 
 
 if __name__ == "__main__":
