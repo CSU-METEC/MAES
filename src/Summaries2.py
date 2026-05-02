@@ -1,4 +1,5 @@
 import datetime
+import time
 import pandas as pd
 import AppUtils as au
 import os
@@ -812,18 +813,26 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, binSize=1e-6):
     noFugMCRunTSList = []
     # Tier 1c: check once whether this group has any FUGITIVE intervals
     hasFugitive = 'FUGITIVE' in groupDF['modelEmissionCategory'].values
+    t_sum_s = 0.0
     with Timer("build MC run timeseries from coarse cache", loglevel=logging.DEBUG) as t:
         for _, mcRunDF in groupDF.groupby('mcRun'):
             catTSDict = {}
             for emCat, catDF in mcRunDF.groupby('modelEmissionCategory'):
                 if 'facilityID' in catDF.columns and catDF['facilityID'].notna().any():
                     facilityRLEs = [_cacheGroupToTimeseriesRLE(fdf) for _, fdf in catDF.groupby('facilityID')]
+                    _t0 = time.perf_counter()
                     catTSDict[emCat] = ts.TimeseriesSet(facilityRLEs).sum()
+                    t_sum_s += time.perf_counter() - _t0
                 else:
                     catTSDict[emCat] = _cacheGroupToTimeseriesRLE(catDF)
             # Tier 1a: skip TimeseriesSet.sum() when only one emission category
             _catVals = list(catTSDict.values())
-            fullTS = _catVals[0] if len(_catVals) == 1 else ts.TimeseriesSet(_catVals).sum()
+            if len(_catVals) == 1:
+                fullTS = _catVals[0]
+            else:
+                _t0 = time.perf_counter()
+                fullTS = ts.TimeseriesSet(_catVals).sum()
+                t_sum_s += time.perf_counter() - _t0
             if not fullTS.isempty():
                 fullTS.df = fullTS.df.assign(**{fullTS.valueColName: _roundForPDF(fullTS.df[fullTS.valueColName].values, binSize)})
                 fullMCRunTSList.append(fullTS)
@@ -833,18 +842,29 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, binSize=1e-6):
                     noFugMCRunTSList.append(fullTS)
             else:
                 noFugVals = [v for k, v in catTSDict.items() if k != 'FUGITIVE']
-                noFugTS = noFugVals[0] if len(noFugVals) == 1 else ts.TimeseriesSet(noFugVals).sum()
+                if len(noFugVals) == 1:
+                    noFugTS = noFugVals[0]
+                else:
+                    _t0 = time.perf_counter()
+                    noFugTS = ts.TimeseriesSet(noFugVals).sum()
+                    t_sum_s += time.perf_counter() - _t0
                 if not noFugTS.isempty():
                     noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values, binSize)})
                     noFugMCRunTSList.append(noFugTS)
         t.setCount(len(fullMCRunTSList))
+    _t0 = time.perf_counter()
+    fullPDFRows   = _makePDFRows(fullMCRunTSList,   identityCols, CICategory)
+    noFugPDFRows  = _makePDFRows(noFugMCRunTSList,  identityCols, CICategory)
+    t_toPDF_s = time.perf_counter() - _t0
     stats = {
         'CICategory': CICategory,
         **identityCols,
         'mcRunCount': len(fullMCRunTSList),
         'buildSeconds': t.deltat.total_seconds(),
+        't_sum_s': t_sum_s,
+        't_toPDF_s': t_toPDF_s,
     }
-    return _makePDFRows(fullMCRunTSList, identityCols, CICategory), _makePDFRows(noFugMCRunTSList, identityCols, CICategory), stats
+    return fullPDFRows, noFugPDFRows, stats
 
 def calculatePDFSummaryFromCache(cacheDF, binSize=1e-6, groupings=None):
     if groupings is None:
@@ -865,6 +885,18 @@ def calculatePDFSummaryFromCache(cacheDF, binSize=1e-6, groupings=None):
     fullPDFDF = pd.concat(fullResultDFList) if fullResultDFList else pd.DataFrame()
     noFugPDFDF = pd.concat(noFugResultDFList) if noFugResultDFList else pd.DataFrame()
     statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
+    if not statsDF.empty:
+        total_s    = statsDF['buildSeconds'].sum()
+        t_sum_s    = statsDF['t_sum_s'].sum()
+        t_toPDF_s  = statsDF['t_toPDF_s'].sum()
+        t_other_s  = total_s - t_sum_s - t_toPDF_s
+        logger.info(
+            f"calculatePDFSummaryFromCache timing: "
+            f"total={total_s:.2f}s  "
+            f"sum={t_sum_s:.2f}s ({100*t_sum_s/total_s:.0f}%)  "
+            f"toPDF={t_toPDF_s:.2f}s ({100*t_toPDF_s/total_s:.0f}%)  "
+            f"other={t_other_s:.2f}s ({100*t_other_s/total_s:.0f}%)"
+        )
     return fullPDFDF, noFugPDFDF, statsDF
 
 def validatePDFCache(config):

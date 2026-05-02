@@ -33,6 +33,7 @@ log output. --no-capture-output prevents conda from interposing an internal pipe
 """
 
 import argparse
+import logging
 import multiprocessing
 import sys
 import time
@@ -43,6 +44,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import Summaries2 as s2
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 BIN_SIZES = [1e-6, 1e-4, 1e-3, 0.01, 0.1, 1.0]
 QUANTILES = [0.10, 0.25, 0.50, 0.75, 0.90, 0.95]
