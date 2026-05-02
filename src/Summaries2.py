@@ -585,8 +585,8 @@ def _cacheGroupToTimeseriesRLE(groupDF):
         valueColName='valueCollection'
     )
 
-def _roundForPDF(values, decimals=6):
-    """Round emission rates to 6 decimal places before PDF/CDF construction.
+def _roundForPDF(values, binSize=1e-6):
+    """Round emission rates to the nearest bin boundary before PDF/CDF construction.
 
     Background
     ----------
@@ -607,13 +607,12 @@ def _roundForPDF(values, decimals=6):
     (6 dp) and new (16 dp) values causes np.interp to linearly interpolate across what
     should be a single step, inflating the KS statistic by up to ~0.47.
 
-    Why 6 decimal places
-    --------------------
-    Six decimal places (resolution 1e-6 kg/h) matches the precision of the legacy CSV
-    output from Summaries.py, which rounded emission rates when writing PDF_for_* files.
-    This ensures old and new CDFs share the same x-axis binning at the comparison
-    resolution.  Differences smaller than 1e-6 kg/h are physically meaningless for
-    emissions reporting purposes.
+    Bin size
+    --------
+    The bin size is expressed as a physical emission rate in kg/h.  The default 1e-6 kg/h
+    reproduces the legacy 6-decimal-place behaviour.  Coarser bin sizes (e.g. 0.1 kg/h)
+    reduce the number of distinct PDF bins and shrink PDFCache, PDF, and SimPDF output,
+    at the cost of CDF accuracy.  See Issue #70 for the investigation of this tradeoff.
 
     Rounding must be applied AFTER TimeseriesSet.sum() and before storing values to the
     cache DataFrames.  It cannot be applied only at input because sum() may reintroduce
@@ -623,18 +622,18 @@ def _roundForPDF(values, decimals=6):
     ----------
     values : array-like
         Emission rate values in kg/h (numpy array or pandas Series).
-    decimals : int
-        Number of decimal places to round to.  Default 6.
+    binSize : float
+        Physical bin width in kg/h.  Default 1e-6.
 
     Returns
     -------
     numpy ndarray
-        Values rounded to the specified number of decimal places.
+        Values rounded to the nearest multiple of binSize.
     """
-    return np.round(values, decimals)
+    return np.round(np.asarray(values) / binSize) * binSize
 
 
-def _buildCoarseCacheLevel(fineDF, groupCols, levelName):
+def _buildCoarseCacheLevel(fineDF, groupCols, levelName, binSize=1e-6):
     aggGroupCols = [*groupCols, 'modelEmissionCategory', 'mcRun']
     rowsList = []
     for groupKey, groupDF in fineDF.groupby(aggGroupCols):
@@ -650,7 +649,7 @@ def _buildCoarseCacheLevel(fineDF, groupCols, levelName):
             **{col: [val] * n for col, val in identityDict.items()},
             'startTime_s': summedTS.df[summedTS.startTimeColName].values,
             'endTime_s': summedTS.df[summedTS.endTimeColName].values,
-            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
+            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values, binSize),
             'cacheLevel': [levelName] * n,
         }))
     return pd.concat(rowsList, ignore_index=True) if rowsList else pd.DataFrame()
@@ -665,6 +664,7 @@ def createPDFCache(config):
         t0.setCount(len(instEmissionDF))
 
     instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    binSize = config.get('pdfBinSize', 1e-6)
     groupCols = ['facilityID', *CACHE_IDENTITY_COLS, 'mcRun']
     cacheRowsList = []
     with Timer("Build PDF cache") as t1:
@@ -678,7 +678,7 @@ def createPDFCache(config):
                 **{col: [val] * n for col, val in identityDict.items()},
                 'startTime_s': summedTS.df[summedTS.startTimeColName].values,
                 'endTime_s': summedTS.df[summedTS.endTimeColName].values,
-                'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
+                'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values, binSize),
             }))
         t1.setCount(len(cacheRowsList))
 
@@ -694,7 +694,7 @@ def createPDFCache(config):
 
     for levelName, levelGroupCols in PDF_GROUPINGS[:-1]:
         with Timer(f"Build coarse cache {levelName}", loglevel=logging.DEBUG) as t2:
-            coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName)
+            coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName, binSize)
             t2.setCount(len(coarseDF))
         if not coarseDF.empty:
             for col in [*CACHE_IDENTITY_COLS, 'mcRun']:
@@ -710,7 +710,7 @@ def createPDFCache(config):
     logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
 
     with Timer("Build PDFs") as tPDF:
-        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF)
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, binSize=binSize)
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -807,9 +807,11 @@ def _makePDFRows(mcRunTSList, identityCols, CICategory):
         'cumulativeProbability': cdf.data['cumulative_probability'].values,
     })
 
-def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory):
+def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, binSize=1e-6):
     fullMCRunTSList = []
     noFugMCRunTSList = []
+    # Tier 1c: check once whether this group has any FUGITIVE intervals
+    hasFugitive = 'FUGITIVE' in groupDF['modelEmissionCategory'].values
     with Timer("build MC run timeseries from coarse cache", loglevel=logging.DEBUG) as t:
         for _, mcRunDF in groupDF.groupby('mcRun'):
             catTSDict = {}
@@ -819,15 +821,22 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory):
                     catTSDict[emCat] = ts.TimeseriesSet(facilityRLEs).sum()
                 else:
                     catTSDict[emCat] = _cacheGroupToTimeseriesRLE(catDF)
-            fullTS = ts.TimeseriesSet(list(catTSDict.values())).sum()
-            noFugItems = filter(lambda kv: kv[0] != 'FUGITIVE', catTSDict.items())
-            noFugTS = ts.TimeseriesSet(list(map(lambda kv: kv[1], noFugItems))).sum()
+            # Tier 1a: skip TimeseriesSet.sum() when only one emission category
+            _catVals = list(catTSDict.values())
+            fullTS = _catVals[0] if len(_catVals) == 1 else ts.TimeseriesSet(_catVals).sum()
             if not fullTS.isempty():
-                fullTS.df = fullTS.df.assign(**{fullTS.valueColName: _roundForPDF(fullTS.df[fullTS.valueColName].values)})
+                fullTS.df = fullTS.df.assign(**{fullTS.valueColName: _roundForPDF(fullTS.df[fullTS.valueColName].values, binSize)})
                 fullMCRunTSList.append(fullTS)
-            if not noFugTS.isempty():
-                noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values)})
-                noFugMCRunTSList.append(noFugTS)
+            # Tier 1b: skip noFug sum when no FUGITIVE in this group — noFug == full
+            if not hasFugitive:
+                if not fullTS.isempty():
+                    noFugMCRunTSList.append(fullTS)
+            else:
+                noFugVals = [v for k, v in catTSDict.items() if k != 'FUGITIVE']
+                noFugTS = noFugVals[0] if len(noFugVals) == 1 else ts.TimeseriesSet(noFugVals).sum()
+                if not noFugTS.isempty():
+                    noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values, binSize)})
+                    noFugMCRunTSList.append(noFugTS)
         t.setCount(len(fullMCRunTSList))
     stats = {
         'CICategory': CICategory,
@@ -837,7 +846,7 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory):
     }
     return _makePDFRows(fullMCRunTSList, identityCols, CICategory), _makePDFRows(noFugMCRunTSList, identityCols, CICategory), stats
 
-def calculatePDFSummaryFromCache(cacheDF, groupings=None):
+def calculatePDFSummaryFromCache(cacheDF, binSize=1e-6, groupings=None):
     if groupings is None:
         groupings = PDF_GROUPINGS
     fullResultDFList = []
@@ -847,7 +856,7 @@ def calculatePDFSummaryFromCache(cacheDF, groupings=None):
         levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
         for _, groupDF in levelDF.groupby(groupCols):
             identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
-            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory)
+            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, binSize)
             statsList.append(stats)
             if fullPDFRows is not None:
                 fullResultDFList.append(fullPDFRows)

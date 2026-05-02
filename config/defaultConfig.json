@@ -37,7 +37,8 @@
       "plot":false,
       
       "simDurationDays": 30,
-      "monteCarloIterations": 10
+      "monteCarloIterations": 10,
+      "pdfBinSize": 0.000001
 
     },
 
