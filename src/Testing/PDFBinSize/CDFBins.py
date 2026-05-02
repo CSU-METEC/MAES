@@ -194,6 +194,11 @@ def _accuracy_rows(computedDF: pd.DataFrame, baselineLookup: dict,
     return rows
 
 
+def _cache_row_count(args: tuple) -> int:
+    """Return PDFCache row count for a site args-tuple; used as sort key for dispatch-order comparison."""
+    return len(args[1])
+
+
 def run_sweep(summaryDir: Path, outputDir: Path,
               workerCounts: list[int], binSizes: list[float],
               siteFilter: list[str] | None = None):
@@ -280,10 +285,34 @@ def run_sweep(summaryDir: Path, outputDir: Path,
                 'maxWorkerRSS_kb': max_worker_rss,
             })
 
+    # Dispatch-order comparison: alphabetical vs heaviest-first at the first bin size only.
+    # Measures the load-imbalance effect of the sort fix in SiteMain2.runMultiprocessing.
+    defaultBinSize = binSizes[0]
+    print(f"\n--- dispatch order comparison (binSize={defaultBinSize:.0e} kg/h) ---")
+    sortCompRows: list[dict] = []
+    defaultArgs = [(site, cacheDFs[site], defaultBinSize) for site in sites]
+    sortedArgs  = sorted(defaultArgs, key=_cache_row_count, reverse=True)
+    for workers in workerCounts:
+        for label, queue in [('alphabetical', defaultArgs), ('heaviest_first', sortedArgs)]:
+            print(f"  workers={workers} order={label}...", end=' ', flush=True)
+            t_start = time.perf_counter()
+            if workers == 1:
+                _ = [_compute_site_pdf(a) for a in queue]
+            else:
+                with multiprocessing.Pool(workers) as pool:
+                    _ = list(pool.map(_compute_site_pdf, queue))
+            elapsed = time.perf_counter() - t_start
+            print(f"{elapsed:.2f}s")
+            sortCompRows.append({
+                'binSize': defaultBinSize, 'workers': workers, 'dispatchOrder': label,
+                'sitesCount': len(sites), 'wallTimeSecs': elapsed,
+            })
+
     outputDir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(accuracyRows).to_csv(outputDir / 'results_accuracy.csv', index=False)
     pd.DataFrame(perfRows).to_csv(outputDir / 'results_perf.csv', index=False)
     pd.DataFrame(simPDFRows).to_csv(outputDir / 'results_simpdf.csv', index=False)
+    pd.DataFrame(sortCompRows).to_csv(outputDir / 'results_sort_comparison.csv', index=False)
     print(f"\nResults written to {outputDir}/")
 
 
@@ -295,7 +324,7 @@ def main():
     parser.add_argument('--outputDir',
                         default=str(Path(__file__).parent / 'results'),
                         help='Where to write results CSVs')
-    parser.add_argument('--workers', nargs='+', type=int, default=[1, 2, 4],
+    parser.add_argument('--workers', nargs='+', type=int, default=[1, 2, 4, 6, 8],
                         help='Worker counts for parallelisation sweep')
     parser.add_argument('--binSizes', nargs='+', type=float, default=BIN_SIZES,
                         help='Bin sizes in kg/h')
