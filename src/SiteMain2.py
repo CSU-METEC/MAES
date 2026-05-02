@@ -16,6 +16,7 @@ import os
 import pandas as pd
 import datetime as dt
 import Summaries2 as sum
+import pyarrow.parquet as pq
 
 ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDFCache', 'computeSimSummary', 'createSimPDF']
 
@@ -325,10 +326,34 @@ def runLocal(workQueue):
         r['wallClockTime'] = wallClock
     return retList
 
+def instEmissionsRowCount(wi: dict) -> int:
+    """Return the InstEmissions row count for a createPDFCache workitem.
+
+    InstEmissions is a Hive-partitioned dataset, so row count is summed across
+    individual .parquet file footers within the site partition. No data is loaded.
+    Returns 0 on any error so sorting degrades gracefully to original order.
+    """
+    try:
+        base = Path(wi['parquetNewInstEmissions'])
+        site = base / f"site={wi['siteName']}"
+        root = site if site.exists() else base
+        total = 0
+        for pf in root.rglob('*.parquet'):
+            total += pq.read_metadata(pf).num_rows
+        return total
+    except Exception:
+        return 0
+
+
 def runMultiprocessing(workQueue, workers):
     import multiprocessing as mp
     workType = workQueue[0].get('workType', 'UNKNOWN') if workQueue else 'UNKNOWN'
     logger.info(f"multiprocessing w/ work type: {workType}, workers: {workers}")
+    if workType == 'createPDFCache':
+        # createPDFCache runs after the parquet phase, which writes InstEmissions parquet
+        # files to parquetNewInstEmissions. Those files already exist on disk here, so
+        # instEmissionsRowCount can safely read their footers to sort heaviest sites first.
+        workQueue = sorted(workQueue, key=instEmissionsRowCount, reverse=True)
     base = workQueue[0]
     slimQueue = list(map(lambda wi: makeSlimWorkitem(base, wi), workQueue))
     with Timer(f"{workType}") as t0:
