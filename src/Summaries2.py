@@ -25,10 +25,17 @@ logger = logging.getLogger(__name__)
 def _read_parquet_site(path, site_name):
     """Read all rows for a given site from a hive-partitioned parquet dataset.
 
-    Uses auto-detected hive partitioning so the reader handles any partition depth
-    (e.g. site=X/ or site=X/mcRun=Y/) without a hardcoded schema.
+    Probes the dataset to discover partition column names, then re-opens with an
+    explicit HivePartitioning schema that pins every partition column to string.
+    This avoids pyarrow's default type inference promoting purely-numeric folder
+    values (e.g. site=52843) to int32, which would crash `field('site') == str(...)`
+    with an ArrowNotImplementedError kernel mismatch (issue #80).
     """
-    dataset = _ds.dataset(str(path), format='parquet', partitioning='hive')
+    probe = _ds.dataset(str(path), format='parquet', partitioning='hive')
+    typed_partitioning = _ds.HivePartitioning(
+        _pa.schema([_pa.field(n, _pa.string()) for n in probe.partitioning.schema.names])
+    )
+    dataset = _ds.dataset(str(path), format='parquet', partitioning=typed_partitioning)
     table = dataset.to_table(filter=_ds.field('site') == str(site_name))
     return table.to_pandas()
 
