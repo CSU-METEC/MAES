@@ -467,7 +467,7 @@ def _buildEventSummaryLevel(acc: dict, groupCols: list, mcIterations: int, store
                 'mcRuns':                mcIterations,
                 'emissionRateUnits':     'kg/s',
                 'eventsPerMCRun':        emCount / mcIterations,
-                'meanEmissionRate':      totalEmission / totalDuration,
+                'meanEmissionRate':      totalEmission / totalDuration if totalDuration else 0.0,
             })
         else:
             emCount = int(fields['n'])
