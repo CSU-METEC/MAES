@@ -149,6 +149,7 @@ def extractParamRows(
         modelParam = param.get('Model Parameter', '')
         optional = param.get('Optional', 'False') == 'True'
         isFileRef = param.get('File Reference', False) is True
+        isConditionalFile = param.get('Conditional File', False) is True
         inKwargTable = (pythonClass, pythonParam) in kwargTableSet
         rows.append({
             'jsonFile': jsonFile,
@@ -159,6 +160,7 @@ def extractParamRows(
             'parameterType': paramType,
             'optional': optional,
             'isFileRef': isFileRef,
+            'isConditionalFile': isConditionalFile,
             'inKwargTable': inKwargTable
         })
     ret = rows

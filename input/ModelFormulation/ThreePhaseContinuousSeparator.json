@@ -38,7 +38,7 @@
 	{"Model Parameter": "Water Stuck Dump Valve Failure Duration Max",           "Python Parameter": "waterStuckDumpValveDurMaxDays",                 "Parameter Type": "Sheet"},
 	{"Model Parameter": "Condensate Stuck Dump Valve Failure Duration Min",      "Python Parameter": "oilStuckDumpValveDurMinDays",                 "Parameter Type": "Sheet"},
 	{"Model Parameter": "Condensate Stuck Dump Valve Failure Duration Max",      "Python Parameter": "oilStuckDumpValveDurMaxDays",                 "Parameter Type": "Sheet"},
-	{"Model Parameter": "Fraction of Flash Released",                 "Python Parameter": "gasFractionDistFileName",                  "Parameter Type": "Sheet", "File Reference": true},
+	{"Model Parameter": "Fraction of Flash Released",                 "Python Parameter": "gasFractionDistFileName",                  "Parameter Type": "Sheet", "File Reference": true, "Conditional File": true},
 	{"Model Parameter": "Leak GC Name",                               "Python Parameter": "productionGC",                             "Parameter Type": "Sheet"}
 	],
   "Emitters": [

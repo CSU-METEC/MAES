@@ -31,9 +31,6 @@ _CWD_RELATIVE_PARAMS = {'productionGCFilename', 'flowGasComposition'}
 # File-reference parameters resolved relative to emitterProfileDir
 _EMITTER_PROFILE_RELATIVE_PARAMS = {'loadCondition', 'gasFractionDistFileName', 'crankcaseDistrib'}
 
-# Parameters whose xlsx value is a file path only when the value is a non-numeric string
-_CONDITIONAL_FILE_PARAMS = {'gasFractionDistFileName'}
-
 # File extensions that suggest a value is a path (used by the runtime heuristic)
 _PATH_EXTENSIONS = {'.csv', '.json', '.xlsx', '.txt'}
 
@@ -69,9 +66,21 @@ def _buildFileRefIndex(modelDefDf: pd.DataFrame) -> dict[str, str]:
     return index
 
 
+def _buildConditionalFileIndex(modelDefDf: pd.DataFrame) -> set[str]:
+    """Return the set of pythonParameters flagged isConditionalFile in the model
+    definition map. A conditional-file parameter is a file reference whose xlsx
+    value may also be a literal numeric constant (in which case it is not a path
+    and should not be resolved as one)."""
+    return set(
+        modelDefDf.loc[modelDefDf['isConditionalFile'] == True, 'pythonParameter']
+        .dropna().astype(str)
+    )
+
+
 def _collectXlsxFileRefs(
     siteData: dict,
     fileRefIndex: dict[str, str],
+    conditionalFileParams: set[str],
     cwd: Path,
     emitterProfileDir: Path,
 ) -> dict[str, Path]:
@@ -115,7 +124,7 @@ def _collectXlsxFileRefs(
                             warnedUntagged.add(key)
                     continue
 
-                if pythonParam in _CONDITIONAL_FILE_PARAMS and _isNumeric(val):
+                if pythonParam in conditionalFileParams and _isNumeric(val):
                     continue
 
                 if pythonParam in _CWD_RELATIVE_PARAMS:
@@ -294,11 +303,14 @@ def createBundle(cm, outputZipPath: Path) -> Path:
             )
 
     fileRefIndex = _buildFileRefIndex(modelDefDf)
+    conditionalFileParams = _buildConditionalFileIndex(modelDefDf)
 
     allXlsxRefs: dict[str, Path] = {}
     for xlsxPath, _ in studyFiles:
         siteData = loadSiteXlsx(xlsxPath)
-        refs = _collectXlsxFileRefs(siteData, fileRefIndex, cwd, emitterProfileDir)
+        refs = _collectXlsxFileRefs(
+            siteData, fileRefIndex, conditionalFileParams, cwd, emitterProfileDir
+        )
         allXlsxRefs.update(refs)
 
     factorDataRefs = _collectFactorDataFiles(factorsCsv, emitterProfileDir, usedFactorTags)

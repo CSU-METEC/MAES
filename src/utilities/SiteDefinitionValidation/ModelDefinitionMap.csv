@@ -1,792 +1,792 @@
-jsonFile,pythonClass,context,modelParameter,pythonParameter,parameterType,optional,isFileRef,inKwargTable
-Compressor.json,MEETCompressor,Compressor,,modelCategory,Constant,False,False,True
-Compressor.json,MEETCompressor,Compressor,,modelSubcategory,Constant,False,False,True
-Compressor.json,MEETCompressor,Compressor,Facility ID,facilityID,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Unit ID,unitID,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Compressor Type,compressorType,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Compressor Power,compressorkW,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Average Loading,averageLoading,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Std Loading,stdLoading,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Driver Type,driverType,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Starter Event Emission Duration,startVentDurationSecs,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Blowdown Event Duration,blowdownVentDurationSecs,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Operating Fraction,operatingFraction,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,NOP Fraction of NOP/NOD,nopFraction,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Load Condition File,loadCondition,Sheet,True,True,True
-Compressor.json,MEETCompressor,Compressor,Compressor Efficiency,compressorEfficiency,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Total Duration Lower Limit,lowerLimit,Sheet,False,False,True
-Compressor.json,MEETCompressor,Compressor,Total Duration Upper Limit,upperLimit,Sheet,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,modelSubcategory,Constant,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,Blowdown Event Emission Volume,emissionVolume,Sheet,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,Blowdown Event Duration,emissionDuration,Sheet,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,emissionDriverUnits,Constant,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,statesActive,Constant,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,emitterID,Constant,False,False,True
-Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,secondaryID,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent MTTRMin,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent MTTRMax,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,,statesActive,Constant,False,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,,modelSubcategory,Constant,False,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,LeakProduction,Compressor Component Leak,,statesActive,Constant,False,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,instanceFormat,Constant,False,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,statesActive,Constant,False,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,True
-Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,valsForInstantiation,Constant,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Driver Type,modelSubcategory,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Compressor Power,driverSizekW,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Driver Type,driverType,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Average Loading,averageLoading,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Std Loading,stdLoading,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Combustion GC Name,combustionGCName,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Compressor Efficiency,compressorEfficiency,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Driver Type,instantiationVal,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,,valsForInstantiation,Constant,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,,statesActive,Constant,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Engine Efficiency,engineEfficiency,Sheet,False,False,True
-Compressor.json,MEETCombustionEmitter,Driver Exhaust,Exhaust Factors,exhaustFactors,Sheet,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,modelSubcategory,Constant,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Driver Type,instantiationVal,Sheet,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,valsForInstantiation,Constant,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Crankcase Emissions Flag,cceeFlag,Sheet,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,CCEE Ratio Distribution,crankcaseDistrib,Sheet,False,True,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,emissionDriverUnits,Constant,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,statesActive,Constant,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,instanceFormat,Constant,False,False,True
-Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,secondaryID,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,valsForInstantiation,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,modelSubcategory,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,emitterID,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,statesActive,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,valsForInstantiation,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,secondaryID,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,emissionDriverUnits,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,valsForInstantiation,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,valsForInstantiation,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,overriddenBy,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,valsForInstantiation,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,overriddenBy,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,valsForInstantiation,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,overriddenBy,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,valsForInstantiation,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,modelSubcategory,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,emitterID,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,statesActive,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),Seal Type,instantiationVal,Sheet,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,valsForInstantiation,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,secondaryID,Constant,False,False,True
-Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,emissionDriverUnits,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Single Unit Vents,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,valsForInstantiation,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-unit Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Single Unit Vents,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,valsForInstantiation,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,modelSubcategory,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent Component Count,activityDistribution,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent pLeak,pLeak,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent MTTR Min,MTTRMinDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent MTTR Max,MTTRMaxDays,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Factor Tag,factorTag,Sheet,True,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,emitterModelFactorTag,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,statesActive,Constant,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Starter Type,instantiationVal,Sheet,False,False,True
-Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,valsForInstantiation,Constant,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,modelSubcategory,Constant,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Starter Event Emission Volume,emissionVolume,Sheet,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Starter Event Emission Duration,emissionDuration,Sheet,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Leak GC Name,gasComposition,Sheet,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,statesActive,Constant,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,emissionDriverUnits,Constant,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Starter Type,instantiationVal,Sheet,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,valsForInstantiation,Constant,False,False,True
-Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,instanceFormat,Constant,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,modelCategory,Constant,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,modelSubcategory,Constant,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,multipleInstances,Constant,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,instanceFormat,Constant,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Facility ID,facilityID,Sheet,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Unit ID,unitID,Sheet,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Number of Pneumatics,eqComponentCount,Sheet,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Abnormal Emissions pLeak,pLeakAbnormal,Sheet,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Min,abnormalMTTRMindays,Sheet,False,False,True
-ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Max,abnormalMTTRMaxdays,Sheet,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,emitterID,Constant,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,statesActive,Constant,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,emitterID,Constant,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,statesActive,Constant,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,,modelCategory,Constant,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,,modelSubcategory,Constant,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Facility ID,facilityID,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Unit ID,unitID,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Component Count,activityDistribution,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Primary Water Takeoff Ratio,primaryWaterRatio,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Flow GC Tag,flowGCTag,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve Component Count,stuckDumpValveCC,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve pLeak,stuckDumpValvepLeak,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve Failure Duration Min,stuckDumpValveDurMinDays,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve Failure Duration Max,stuckDumpValveDurMaxDays,Sheet,False,False,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Fraction of Flash Released,gasFractionDistFileName,Sheet,False,True,True
-ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Leak GC Name,productionGC,Sheet,False,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,,modelSubcategory,Constant,False,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,,emitterModelFactorTag,Constant,False,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-ContinuousSeparator.json,LeakProduction,Separator Component Leak,,statesActive,Constant,False,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,instanceFormat,Constant,False,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,statesActive,Constant,False,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,True
-ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,valsForInstantiation,Constant,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,,modelCategory,Constant,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,,modelSubcategory,Constant,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Facility ID,facilityID,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unit ID,unitID,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Latitude,latitude,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Longitude,longitude,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Oil Production,QiOilBblPerDay,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Water Production,QiWaterBblPerDay,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Total Liquids Produced,totalLiquidsBblPerDump,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Mean Production Time,meanProductionTimeSeconds,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Production Time Variation,deltaProductionTimeSeconds,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Optional Unloading,optionalUnloading,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Min Time Between Unloadings,minTimeBetUnloading,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Max Time Between Unloadings,maxTimeBetUnloading,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Completion Durations Name,completionDurationsName,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Completion,delayAfterCompletionApprox,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unloading Type,unloadingType,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Weekdays Only,weekdaysOnly,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,LU Shut-In Duration Min,luShutInDurationMin,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,LU Shut-In Duration Max,luShutInDurationMax,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unloading Duration Min,unloadingDurationMin,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unloading Duration Max,unloadingDurationMax,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Shut In Time Variation,variationShutInTime,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Destination of Unloading Gas,unloadingGasDestination,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Planning Time,planningDurationApprox,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Planning,delayAfterPlanningApprox,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Drilling Time,drillDurationApprox,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Drilling,delayAfterDrillingApprox,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Flow Back Time,flowbackTimeApprox,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Flow Back,delayAfterFlowbackApprox,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Simulation Start Stage,start,Sheet,True,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Flow Tag,flowTag,Sheet,False,False,True
-CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Flow Gas Composition,flowGasComposition,Sheet,False,True,True
-CycledWell.json,StateBasedEmitterProduction,Completion,,modelSubcategory,Constant,False,False,True
-CycledWell.json,StateBasedEmitterProduction,Completion,,emitterID,Constant,False,False,True
-CycledWell.json,StateBasedEmitterProduction,Completion,Factor Tag,factorTag,Sheet,True,False,True
-CycledWell.json,StateBasedEmitterProduction,Completion,,emitterModelFactorTag,Constant,False,False,True
-CycledWell.json,StateBasedEmitterProduction,Completion,Leak GC Name,gasComposition,Sheet,False,False,True
-CycledWell.json,StateBasedEmitterProduction,Completion,,statesActive,Constant,False,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,,modelSubcategory,Constant,False,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,,emitterModelFactorTag,Constant,False,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-CycledWell.json,LeakProduction,Wellhead Component Leak,,statesActive,Constant,False,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,instanceFormat,Constant,False,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,statesActive,Constant,False,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,True
-CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,valsForInstantiation,Constant,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,,modelCategory,Constant,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,,modelSubcategory,Constant,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Facility ID,facilityID,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Unit ID,unitID,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Glycol Type,glycolType,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Glycol Pump,glycolPump,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Flash Tank,flashTank,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Operating Hours,operatingHours,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Lean Glycol Circulation Ratio,leanGlycolCirculationRatio,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Wet Gas Flow Rate,wetGasFlowRate,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Wet Gas Temperature,wetGasTemperature,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Wet Gas Pressure,wetGasPressure,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Lean Glycol Circulation Rate,leanGlycolCirculationRate,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Stripping Gas Flow Rate,strippingGasFlowRate,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Tank Flash Controlled Flag,tankFlashControlledFlag,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Still Vent Controlled Flag,stillVentControlledFlag,Sheet,False,False,True
-Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Glycol Pump Injection Ratio,glycolPumpInjectionRatio,Sheet,False,False,True
-Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,statesActive,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,instanceFormat,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,secondaryID,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,Tank Flash Controlled Flag,instantiationVal,Sheet,False,False,True
-Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,valsForInstantiation,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,statesActive,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,instanceFormat,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,secondaryID,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,Tank Flash Controlled Flag,instantiationVal,Sheet,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,valsForInstantiation,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,statesActive,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,instanceFormat,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,secondaryID,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,Still Vent Controlled Flag,instantiationVal,Sheet,False,False,True
-Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,valsForInstantiation,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,statesActive,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,instanceFormat,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,secondaryID,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,Still Vent Controlled Flag,instantiationVal,Sheet,False,False,True
-Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,valsForInstantiation,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,statesActive,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,instanceFormat,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,secondaryID,Constant,False,False,True
-Dehydrator.json,MEETFFEmitter,Still Vent Emissions,Still Vent Controlled Flag,instantiationVal,Sheet,False,False,True
-Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,valsForInstantiation,Constant,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,,modelCategory,Constant,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,,modelSubcategory,Constant,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Facility ID,facilityID,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Unit ID,unitID,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Component Count,activityDistribution,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Dump Volume,dumpVolume,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Dump Time,dumpTime,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Primary Water Takeoff Ratio,primaryWaterRatio,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Flow GC Tag,flowGCTag,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve Component Count,stuckDumpValveCC,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve pLeak,stuckDumpValvepLeak,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve Failure Duration Min,stuckDumpValveDurMinDays,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve Failure Duration Max,stuckDumpValveDurMaxDays,Sheet,False,False,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Fraction of Flash Released,gasFractionDistFileName,Sheet,False,True,True
-DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Leak GC Name,productionGC,Sheet,False,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,,modelSubcategory,Constant,False,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,,emitterModelFactorTag,Constant,False,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-DumpingSeparator.json,LeakProduction,Separator Component Leak,,statesActive,Constant,False,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,instanceFormat,Constant,False,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,statesActive,Constant,False,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,True
-DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,valsForInstantiation,Constant,False,False,True
-FFDumpService.json,MEETFFDumpService,Fluid Flow Dump,DumpID,facilityID,Sheet,False,False,True
-FFDumpService.json,MEETFFDumpService,Fluid Flow Dump,Dump Time,oneShotStartTime,Sheet,False,False,True
-FFLink.json,MEETFFLink,Fluid Flow links,Outlet FacilityID,outletFacilityID,Sheet,False,False,True
-FFLink.json,MEETFFLink,Fluid Flow links,Outlet UnitID,outletUnitID,Sheet,False,False,True
-FFLink.json,MEETFFLink,Fluid Flow links,Inlet FacilityID,inletFacilityID,Sheet,False,False,True
-FFLink.json,MEETFFLink,Fluid Flow links,Inlet UnitID,inletUnitID,Sheet,False,False,True
-FFLink.json,MEETFFLink,Fluid Flow links,Flow Name,flowName,Sheet,False,False,True
-FFLink.json,MEETFFLink,Fluid Flow links,Flow SecondaryID,flowSecondaryID,Sheet,True,False,True
-Facility.json,MEETFacility,Facility,Facility ID,facilityID,Sheet,False,False,True
-Facility.json,MEETFacility,Facility,Latitude,latitude,Sheet,False,False,True
-Facility.json,MEETFacility,Facility,Longitude,longitude,Sheet,False,False,True
-Facility.json,MEETFacility,Facility,Leak Gas Composition,productionGCFilename,Sheet,False,True,True
-Facility.json,MEETFacility,Facility,Operator,operator,Sheet,True,False,True
-Facility.json,MEETFacility,Facility,Prototypical Site Number,psno,Sheet,True,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,,modelCategory,Constant,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,,modelSubcategory,Constant,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Facility ID,facilityID,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Unit ID,unitID,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Latitude,latitude,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Longitude,longitude,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Oil Production,QiOilBblPerDay,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Gas Production,QiGasMcfPerDay,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Water Production,QiWaterBblPerDay,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Flow Tag,flowTag,Sheet,False,False,True
-FixedSource.json,MEETFixedSource,Fixed Source,Flow Gas Composition,flowGasComposition,Sheet,False,True,True
-Flare.json,MEETFlare,Flare,,modelCategory,Constant,False,False,True
-Flare.json,MEETFlare,Flare,,modelSubcategory,Constant,False,False,True
-Flare.json,MEETFlare,Flare,Facility ID,facilityID,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Unit ID,unitID,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,pMalfunction,pMalfunction,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Malfunction Duration min,malfDurMin,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Malfunction Duration max,malfDurMax,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Malfunction Destruction Efficiency,malfDestEff,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,pUnlit,pUnlit,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Unlit Duration min,unlitDurMin,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Unlit Duration max,unlitDurMax,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Unlit Destruction Efficiency,unlitDestEff,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Operating Duration min,opDurMin,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Operating Duration max,opDurMax,Sheet,False,False,True
-Flare.json,MEETFlare,Flare,Operating Destruction Efficiency,opDestEff,Sheet,False,False,True
-Flare.json,LeakProduction,Flare Component Leak,,modelSubcategory,Constant,False,False,True
-Flare.json,LeakProduction,Flare Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-Flare.json,LeakProduction,Flare Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-Flare.json,LeakProduction,Flare Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-Flare.json,LeakProduction,Flare Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-Flare.json,LeakProduction,Flare Component Leak,,emitterModelFactorTag,Constant,False,False,True
-Flare.json,LeakProduction,Flare Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-Flare.json,LeakProduction,Flare Component Leak,,statesActive,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Operating,,fluid,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Operating,,secondaryID,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Operating,,statesActive,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Operating,,emitterID,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,fluid,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,secondaryID,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,statesActive,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,emitterID,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,fluid,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,secondaryID,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,statesActive,Constant,False,False,True
-Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,emitterID,Constant,False,False,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,,modelCategory,Constant,False,False,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,,modelSubcategory,Constant,False,False,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Facility ID,facilityID,Sheet,False,False,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Unit ID,unitID,Sheet,False,False,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Latitude,latitude,Sheet,False,False,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Longitude,longitude,Sheet,False,False,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,State Machine File,stateMachineFile,Sheet,False,True,True
-GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Factor Tag,factorTag,Sheet,True,False,True
-Heater.json,MEETHeater,Heaters,,modelCategory,Constant,False,False,True
-Heater.json,MEETHeater,Heaters,,modelSubcategory,Constant,False,False,True
-Heater.json,MEETHeater,Heaters,Facility ID,facilityID,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Unit ID,unitID,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Heater Power,heaterPowerKW,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Operating Destruction Efficiency,opDE,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Operating Duration min,opMinDays,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Operating Duration max,opMaxDays,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,pMalfunction,pMalf,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Malfunction Duration min,malfMinDays,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Malfunction Duration max,malfMaxDays,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Malfunction Destruction Efficiency,malfDE,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,pShutIn,pShutIn,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Shut In Duration min,shutInMinDays,Sheet,False,False,True
-Heater.json,MEETHeater,Heaters,Shut In Duration max,shutInMaxDays,Sheet,False,False,True
-Heater.json,CombustedEmitterFF,Heater operating,,fluid,Constant,False,False,True
-Heater.json,CombustedEmitterFF,Heater operating,,secondaryID,Constant,False,False,True
-Heater.json,CombustedEmitterFF,Heater operating,,statesActive,Constant,False,False,True
-Heater.json,CombustedEmitterFF,Heater operating,,emitterID,Constant,False,False,True
-Heater.json,CombustedEmitterFF,Heater malfunctioning,,fluid,Constant,False,False,True
-Heater.json,CombustedEmitterFF,Heater malfunctioning,,secondaryID,Constant,False,False,True
-Heater.json,CombustedEmitterFF,Heater malfunctioning,,statesActive,Constant,False,False,True
-Heater.json,CombustedEmitterFF,Heater malfunctioning,,emitterID,Constant,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,modelCategory,Constant,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,modelSubcategory,Constant,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,multipleInstances,Constant,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,instanceFormat,Constant,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Facility ID,facilityID,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Unit ID,unitID,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Number of Pneumatics,eqComponentCount,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Intermittent Actuation Emission Duration Min,intermittentDurMin,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Intermittent Actuation Emission Duration Max,intermittentDurMax,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Intermittent Wait Duration Min,intermittentWaitDurMin,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Intermittent Wait Duration Max,intermittentWaitDurMax,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Emissions pLeak,pLeakAb,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Min,abDurMinDays,Sheet,False,False,True
-IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Max,abDurMaxDays,Sheet,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,emitterID,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,statesActive,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,emitterID,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,statesActive,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,emitterID,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,statesActive,Constant,False,False,True
-MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,,modelCategory,Constant,False,False,True
-MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,,modelSubcategory,Constant,False,False,True
-MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,Facility ID,facilityID,Sheet,False,False,True
-MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,Unit ID,unitID,Sheet,False,False,True
-MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,Component Count,activityDistribution,Sheet,False,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,,modelSubcategory,Constant,False,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Component Count,activityDistribution,Sheet,False,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Component pLeak,pLeak,Sheet,False,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Factor Tag,factorTag,Sheet,True,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,,emitterModelFactorTag,Constant,False,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,,statesActive,Constant,False,False,True
-MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,modelSubcategory,Constant,False,False,True
-MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,Factor Tag,factorTag,Sheet,True,False,True
-MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,emitterModelFactorTag,Constant,False,False,True
-MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,statesActive,Constant,False,False,True
-MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,Actuator Type,instantiationVal,Sheet,False,False,True
-MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,valsForInstantiation,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,modelSubcategory,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent Component Count,activityDistribution,Sheet,True,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent pLeak,pLeak,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent MTTR Min,MTTRMinDays,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent MTTR Max,MTTRMaxDays,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,statesActive,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Factor Tag,factorTag,Sheet,True,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,emitterModelFactorTag,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Facility Common Vent,instantiationVal,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,valsForInstantiation,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,modelSubcategory,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Vent (Large Emitter) pLeak,pLeak,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,statesActive,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Common Vent,instantiationVal,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,valsForInstantiation,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,modelSubcategory,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components (Large Emitter) pLeak,pLeak,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,statesActive,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components Large Emitter,instantiationVal,Sheet,False,False,True
-MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,valsForInstantiation,Constant,False,False,True
-MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,,modelCategory,Constant,False,False,True
-MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,,modelSubcategory,Constant,False,False,True
-MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,Facility ID,facilityID,Sheet,False,False,True
-MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,Unit ID,unitID,Sheet,False,False,True
-MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,Component Count,activityDistribution,Sheet,False,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,,modelSubcategory,Constant,False,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Component Count,activityDistribution,Sheet,False,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Component pLeak,pLeak,Sheet,False,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Factor Tag,factorTag,Sheet,True,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,,emitterModelFactorTag,Constant,False,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,,statesActive,Constant,False,False,True
-MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,modelSubcategory,Constant,False,False,True
-MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,Factor Tag,factorTag,Sheet,True,False,True
-MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,emitterModelFactorTag,Constant,False,False,True
-MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,statesActive,Constant,False,False,True
-MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,Actuator Type,instantiationVal,Sheet,False,False,True
-MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,valsForInstantiation,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,modelSubcategory,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent Component Count,activityDistribution,Sheet,True,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent pLeak,pLeak,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent MTTR Min,MTTRMinDays,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent MTTR Max,MTTRMaxDays,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,statesActive,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Factor Tag,factorTag,Sheet,True,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,emitterModelFactorTag,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Facility Common Vent,instantiationVal,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,valsForInstantiation,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,modelSubcategory,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Vent (Large Emitter) pLeak,pLeak,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,statesActive,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Common Vent,instantiationVal,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,valsForInstantiation,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,modelSubcategory,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components (Large Emitter) pLeak,pLeak,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,statesActive,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Factor Tag,factorTag,Sheet,True,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,emitterModelFactorTag,Constant,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components Large Emitter,instantiationVal,Sheet,False,False,True
-MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,valsForInstantiation,Constant,False,False,True
-Probe.json,MEETProbe,Fluid Flow probe,,modelCategory,Constant,False,False,True
-Probe.json,MEETProbe,Fluid Flow probe,Facility ID,facilityID,Sheet,False,False,True
-Probe.json,MEETProbe,Fluid Flow probe,Unit ID,unitID,Sheet,False,False,True
-Probe.json,MEETProbe,Fluid Flow probe,Graph Group,mdGroup,Sheet,True,False,True
-Probe.json,MEETFFEmitter,Separator PRV,,statesActive,Constant,False,False,True
-Probe.json,MEETFFEmitter,Separator PRV,,instanceFormat,Constant,False,False,True
-Probe.json,MEETFFEmitter,Separator PRV,,secondaryID,Constant,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,,modelCategory,Constant,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Battery Type,modelSubcategory,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Facility ID,facilityID,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Unit ID,unitID,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Component Count,activityDistribution,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Fluid,fluid,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Mechanistic Thief Hatch pLeak,tankOverpressurePLeak,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Mechanistic Thief Hatch Leak MTTR min,tankOverpressureMTTRMinDays,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Mechanistic Thief Hatch Leak MTTR max,tankOverpressureMTTRMaxDays,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,PRV Threshold,tankOverpressureThresholdScfh,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Tank Inlet Flow at Max Downstream Equipment Capacity,inletFlowAtMaxPrimryFlowScfh,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Max Downstream Equipment Capacity,maxPrimaryOutletFlowScfh,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Mechanistic Emissions Flag,tankMode,Sheet,False,False,True
-TankBattery.json,MEETBattery,Tank Battery,Tank Controlled,tankControlled,Sheet,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents PRV,,statesActive,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents PRV,,instanceFormat,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents PRV,,secondaryID,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,statesActive,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,instanceFormat,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,secondaryID,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,statesActive,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,instanceFormat,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,secondaryID,Constant,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,Tank Controlled,instantiationVal,Sheet,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,valsForInstantiation,Constant,False,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,,modelSubcategory,Constant,False,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,,emitterModelFactorTag,Constant,False,False,True
-TankBattery.json,LeakProduction,Tank Battery Component Leak,,statesActive,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,modelSubcategory,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Number of Thief Hatches,activityDistribution,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Tank Thief Hatch pLeak,pLeak,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Tank Thief Hatch MTTR min,MTTRMinDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Tank Thief Hatch MTTR max,MTTRMaxDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,statesActive,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Factor Tag,factorTag,Sheet,True,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,emitterModelFactorTag,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,valsForInstantiation,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,modelSubcategory,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Number of Vents,activityDistribution,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Tank Battery Vent pLeak,pLeak,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Tank Battery Vent MTTR min,MTTRMinDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Tank Battery Vent MTTR max,MTTRMaxDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,statesActive,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Factor Tag,factorTag,Sheet,True,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,emitterModelFactorTag,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,valsForInstantiation,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,modelSubcategory,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Number of Vents,activityDistribution,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Tank Battery Vent Large Emitter pLeak,pLeak,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Tank Battery Vent Large Emitter MTTR min,MTTRMinDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Tank Battery Vent Large Emitter MTTR max,MTTRMaxDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,statesActive,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,valsForInstantiation,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,modelSubcategory,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Number of Vents,activityDistribution,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Tank Thief Hatch Large Emitter pLeak,pLeak,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Tank Thief Hatch Large Emitter MTTR min,MTTRMinDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Tank Thief Hatch Large Emitter MTTR max,MTTRMaxDays,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,statesActive,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Factor Tag,factorTag,Sheet,True,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,emitterModelFactorTag,Constant,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,True
-TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,valsForInstantiation,Constant,False,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,instanceFormat,Constant,False,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,statesActive,Constant,False,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,True
-TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,valsForInstantiation,Constant,False,False,True
-TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,fluid,Constant,False,False,True
-TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,secondaryID,Constant,False,False,True
-TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,statesActive,Constant,False,False,True
-TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,emitterID,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,,modelCategory,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,,modelSubcategory,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Facility ID,facilityID,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Unit ID,unitID,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Component Count,activityDistribution,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Primary Water Takeoff Ratio,primaryWaterRatio,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Flow GC Tag,flowGCTag,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Stuck Dump Valve Component Count,stuckDumpValveCC,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Water Stuck Dump Valve pLeak,stuckDumpValvepLeakWater,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Condensate Stuck Dump Valve pLeak,stuckDumpValvepLeakOil,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Water Stuck Dump Valve Failure Duration Min,waterStuckDumpValveDurMinDays,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Water Stuck Dump Valve Failure Duration Max,waterStuckDumpValveDurMaxDays,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Condensate Stuck Dump Valve Failure Duration Min,oilStuckDumpValveDurMinDays,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Condensate Stuck Dump Valve Failure Duration Max,oilStuckDumpValveDurMaxDays,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Fraction of Flash Released,gasFractionDistFileName,Sheet,False,True,True
-ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Leak GC Name,productionGC,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,,modelSubcategory,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,,emitterModelFactorTag,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,,statesActive,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,instanceFormat,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,statesActive,Constant,False,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,True
-ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,valsForInstantiation,Constant,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,,modelCategory,Constant,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,,modelSubcategory,Constant,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Facility ID,facilityID,Sheet,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unit ID,unitID,Sheet,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Latitude,latitude,Sheet,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Longitude,longitude,Sheet,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Oil Production,QiOilBblPerDay,Sheet,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Water Production,QiWaterBblPerDay,Sheet,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Di per month,DiPerMonth,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,b Hyperbolic,bHyperbolic,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Age months,wellAgeMonths,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Completion Durations Name,completionDurationsName,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Optional Unloading,optionalUnloading,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Completion,delayAfterCompletionApprox,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Min Time Between Unloadings,minTimeBetUnloading,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Max Time Between Unloadings,maxTimeBetUnloading,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unloading Type,unloadingType,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Weekdays Only,weekdaysOnly,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,LU Shut-In Duration Min,luShutInDurationMin,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,LU Shut-In Duration Max,luShutInDurationMax,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unloading Duration Min,unloadingDurationMin,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unloading Duration Max,unloadingDurationMax,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Destination of Unloading Gas,unloadingGasDestination,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Planning Time,planningDurationApprox,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Planning,delayAfterPlanningApprox,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Drilling Time,drillDurationApprox,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Drilling,delayAfterDrillingApprox,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Flow Back Time,flowbackTimeApprox,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Flow Back,delayAfterFlowbackApprox,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Simulation Start Stage,start,Sheet,True,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Flow Tag,flowTag,Sheet,False,False,True
-Well.json,MEETWellContinuousProduction,Wellhead with constant production,Flow Gas Composition,flowGasComposition,Sheet,False,True,True
-Well.json,StateBasedEmitterProduction,Completion,,modelSubcategory,Constant,False,False,True
-Well.json,StateBasedEmitterProduction,Completion,Factor Tag,factorTag,Sheet,True,False,True
-Well.json,StateBasedEmitterProduction,Completion,,emitterModelFactorTag,Constant,False,False,True
-Well.json,StateBasedEmitterProduction,Completion,,emitterID,Constant,False,False,True
-Well.json,StateBasedEmitterProduction,Completion,Leak GC Name,gasComposition,Sheet,False,False,True
-Well.json,StateBasedEmitterProduction,Completion,,statesActive,Constant,False,False,True
-Well.json,LeakProduction,Wellhead Component Leak,,modelSubcategory,Constant,False,False,True
-Well.json,LeakProduction,Wellhead Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,True
-Well.json,LeakProduction,Wellhead Component Leak,Component Count,activityDistribution,Sheet,False,False,True
-Well.json,LeakProduction,Wellhead Component Leak,Component pLeak,pLeak,Sheet,False,False,True
-Well.json,LeakProduction,Wellhead Component Leak,Factor Tag,factorTag,Sheet,True,False,True
-Well.json,LeakProduction,Wellhead Component Leak,,emitterModelFactorTag,Constant,False,False,True
-Well.json,LeakProduction,Wellhead Component Leak,Leak GC Name,gasComposition,Sheet,False,False,True
-Well.json,LeakProduction,Wellhead Component Leak,,statesActive,Constant,False,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,modelSubcategory,Constant,False,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,instanceFormat,Constant,False,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,statesActive,Constant,False,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,True
-Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,valsForInstantiation,Constant,False,False,True
+jsonFile,pythonClass,context,modelParameter,pythonParameter,parameterType,optional,isFileRef,isConditionalFile,inKwargTable
+Compressor.json,MEETCompressor,Compressor,,modelCategory,Constant,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Facility ID,facilityID,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Unit ID,unitID,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Compressor Type,compressorType,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Compressor Power,compressorkW,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Average Loading,averageLoading,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Std Loading,stdLoading,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Driver Type,driverType,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Starter Event Emission Duration,startVentDurationSecs,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Blowdown Event Duration,blowdownVentDurationSecs,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Operating Fraction,operatingFraction,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,NOP Fraction of NOP/NOD,nopFraction,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Load Condition File,loadCondition,Sheet,True,True,False,True
+Compressor.json,MEETCompressor,Compressor,Compressor Efficiency,compressorEfficiency,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Total Duration Lower Limit,lowerLimit,Sheet,False,False,False,True
+Compressor.json,MEETCompressor,Compressor,Total Duration Upper Limit,upperLimit,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,Blowdown Event Emission Volume,emissionVolume,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,Blowdown Event Duration,emissionDuration,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,emissionDriverUnits,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,statesActive,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,emitterID,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowImmediateProduction,Blowdown Event,,secondaryID,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent MTTRMin,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Blowdown Vent MTTRMax,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Blowdown Vent Leak,,statesActive,Constant,False,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,LeakProduction,Compressor Component Leak,,statesActive,Constant,False,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,instanceFormat,Constant,False,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,PneumaticEmitterProduction,Compressor Pneumatic Emissions,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Driver Type,modelSubcategory,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Compressor Power,driverSizekW,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Driver Type,driverType,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Average Loading,averageLoading,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Std Loading,stdLoading,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Combustion GC Name,combustionGCName,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Compressor Efficiency,compressorEfficiency,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Driver Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,,statesActive,Constant,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Engine Efficiency,engineEfficiency,Sheet,False,False,False,True
+Compressor.json,MEETCombustionEmitter,Driver Exhaust,Exhaust Factors,exhaustFactors,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Driver Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Crankcase Emissions Flag,cceeFlag,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,CCEE Ratio Distribution,crankcaseDistrib,Sheet,False,True,True,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,emissionDriverUnits,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,statesActive,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,instanceFormat,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowFromMajorEquipment,Crankcase Emissions,,secondaryID,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Dry Seal Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,modelSubcategory,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,emitterID,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,statesActive,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,secondaryID,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Dry Seal Vent (OP),,emissionDriverUnits,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOD),,overriddenBy,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (NOP),,overriddenBy,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Rod Packing Vent (OP),,overriddenBy,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Wet Seal Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,modelSubcategory,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,emitterID,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,statesActive,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),Seal Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,secondaryID,Constant,False,False,False,True
+Compressor.json,EmpiricalFlowProduction,Compressor Wet Seal Vent (OP),,emissionDriverUnits,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Common Single-unit Vent(Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,Single Unit Vents,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-unit Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Single Unit Vents,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent Component Count,activityDistribution,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent pLeak,pLeak,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Compressor Starter Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Factor Tag,factorTag,Sheet,True,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,emitterModelFactorTag,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,statesActive,Constant,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,Starter Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,SpecificLeaksProduction,Leak On Compressor Starter Vent,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,modelSubcategory,Constant,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Starter Event Emission Volume,emissionVolume,Sheet,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Starter Event Emission Duration,emissionDuration,Sheet,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,statesActive,Constant,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,emissionDriverUnits,Constant,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,Starter Type,instantiationVal,Sheet,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,valsForInstantiation,Constant,False,False,False,True
+Compressor.json,ImmediateStateBasedEmitterProduction,Start Event,,instanceFormat,Constant,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,modelCategory,Constant,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,modelSubcategory,Constant,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,multipleInstances,Constant,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,,instanceFormat,Constant,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Facility ID,facilityID,Sheet,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Unit ID,unitID,Sheet,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Number of Pneumatics,eqComponentCount,Sheet,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Abnormal Emissions pLeak,pLeakAbnormal,Sheet,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Min,abnormalMTTRMindays,Sheet,False,False,False,True
+ContinuousPneumatics.json,MEETContinuousPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Max,abnormalMTTRMaxdays,Sheet,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,emitterID,Constant,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,emitterID,Constant,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+ContinuousPneumatics.json,StateBasedEmitterProduction,Continuous Abnormal Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,,modelCategory,Constant,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,,modelSubcategory,Constant,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Facility ID,facilityID,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Unit ID,unitID,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Component Count,activityDistribution,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Primary Water Takeoff Ratio,primaryWaterRatio,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Flow GC Tag,flowGCTag,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve Component Count,stuckDumpValveCC,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve pLeak,stuckDumpValvepLeak,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve Failure Duration Min,stuckDumpValveDurMinDays,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Stuck Dump Valve Failure Duration Max,stuckDumpValveDurMaxDays,Sheet,False,False,False,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Fraction of Flash Released,gasFractionDistFileName,Sheet,False,True,True,True
+ContinuousSeparator.json,MEETContinuousSeparator,Continuous Separator,Leak GC Name,productionGC,Sheet,False,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,,modelSubcategory,Constant,False,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+ContinuousSeparator.json,LeakProduction,Separator Component Leak,,statesActive,Constant,False,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,instanceFormat,Constant,False,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,False,True
+ContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,valsForInstantiation,Constant,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,,modelCategory,Constant,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,,modelSubcategory,Constant,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Facility ID,facilityID,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unit ID,unitID,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Latitude,latitude,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Longitude,longitude,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Oil Production,QiOilBblPerDay,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Water Production,QiWaterBblPerDay,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Total Liquids Produced,totalLiquidsBblPerDump,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Mean Production Time,meanProductionTimeSeconds,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Production Time Variation,deltaProductionTimeSeconds,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Optional Unloading,optionalUnloading,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Min Time Between Unloadings,minTimeBetUnloading,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Max Time Between Unloadings,maxTimeBetUnloading,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Completion Durations Name,completionDurationsName,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Completion,delayAfterCompletionApprox,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unloading Type,unloadingType,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Weekdays Only,weekdaysOnly,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,LU Shut-In Duration Min,luShutInDurationMin,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,LU Shut-In Duration Max,luShutInDurationMax,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unloading Duration Min,unloadingDurationMin,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Unloading Duration Max,unloadingDurationMax,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Shut In Time Variation,variationShutInTime,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Destination of Unloading Gas,unloadingGasDestination,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Planning Time,planningDurationApprox,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Planning,delayAfterPlanningApprox,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Drilling Time,drillDurationApprox,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Drilling,delayAfterDrillingApprox,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Flow Back Time,flowbackTimeApprox,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Approx Delay After Flow Back,delayAfterFlowbackApprox,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Simulation Start Stage,start,Sheet,True,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Flow Tag,flowTag,Sheet,False,False,False,True
+CycledWell.json,MEETWellCycledProduction,Wellhead with cycled production,Flow Gas Composition,flowGasComposition,Sheet,False,True,False,True
+CycledWell.json,StateBasedEmitterProduction,Completion,,modelSubcategory,Constant,False,False,False,True
+CycledWell.json,StateBasedEmitterProduction,Completion,,emitterID,Constant,False,False,False,True
+CycledWell.json,StateBasedEmitterProduction,Completion,Factor Tag,factorTag,Sheet,True,False,False,True
+CycledWell.json,StateBasedEmitterProduction,Completion,,emitterModelFactorTag,Constant,False,False,False,True
+CycledWell.json,StateBasedEmitterProduction,Completion,Leak GC Name,gasComposition,Sheet,False,False,False,True
+CycledWell.json,StateBasedEmitterProduction,Completion,,statesActive,Constant,False,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,,modelSubcategory,Constant,False,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+CycledWell.json,LeakProduction,Wellhead Component Leak,,statesActive,Constant,False,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,instanceFormat,Constant,False,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,False,True
+CycledWell.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,valsForInstantiation,Constant,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,,modelCategory,Constant,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,,modelSubcategory,Constant,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Facility ID,facilityID,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Unit ID,unitID,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Glycol Type,glycolType,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Glycol Pump,glycolPump,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Flash Tank,flashTank,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Operating Hours,operatingHours,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Lean Glycol Circulation Ratio,leanGlycolCirculationRatio,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Wet Gas Flow Rate,wetGasFlowRate,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Wet Gas Temperature,wetGasTemperature,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Wet Gas Pressure,wetGasPressure,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Lean Glycol Circulation Rate,leanGlycolCirculationRate,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Stripping Gas Flow Rate,strippingGasFlowRate,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Tank Flash Controlled Flag,tankFlashControlledFlag,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Still Vent Controlled Flag,stillVentControlledFlag,Sheet,False,False,False,True
+Dehydrator.json,MEETDehydrator,Glycol Dehydrator,Glycol Pump Injection Ratio,glycolPumpInjectionRatio,Sheet,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,statesActive,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,instanceFormat,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,secondaryID,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,Tank Flash Controlled Flag,instantiationVal,Sheet,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Flash Tank Emissions,,valsForInstantiation,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,statesActive,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,instanceFormat,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,secondaryID,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,Tank Flash Controlled Flag,instantiationVal,Sheet,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Tank Flash Emissions,,valsForInstantiation,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,statesActive,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,instanceFormat,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,secondaryID,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,Still Vent Controlled Flag,instantiationVal,Sheet,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Glycol Pump Still Vent Emissions,,valsForInstantiation,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,statesActive,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,instanceFormat,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,secondaryID,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,Still Vent Controlled Flag,instantiationVal,Sheet,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Stripping Gas Emissions,,valsForInstantiation,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,statesActive,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,instanceFormat,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,secondaryID,Constant,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Still Vent Emissions,Still Vent Controlled Flag,instantiationVal,Sheet,False,False,False,True
+Dehydrator.json,MEETFFEmitter,Still Vent Emissions,,valsForInstantiation,Constant,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,,modelCategory,Constant,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,,modelSubcategory,Constant,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Facility ID,facilityID,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Unit ID,unitID,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Component Count,activityDistribution,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Dump Volume,dumpVolume,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Dump Time,dumpTime,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Primary Water Takeoff Ratio,primaryWaterRatio,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Flow GC Tag,flowGCTag,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve Component Count,stuckDumpValveCC,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve pLeak,stuckDumpValvepLeak,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve Failure Duration Min,stuckDumpValveDurMinDays,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Stuck Dump Valve Failure Duration Max,stuckDumpValveDurMaxDays,Sheet,False,False,False,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Fraction of Flash Released,gasFractionDistFileName,Sheet,False,True,True,True
+DumpingSeparator.json,MEETDumpingSeparator,Dumping Separator,Leak GC Name,productionGC,Sheet,False,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,,modelSubcategory,Constant,False,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+DumpingSeparator.json,LeakProduction,Separator Component Leak,,statesActive,Constant,False,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,instanceFormat,Constant,False,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,False,True
+DumpingSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,valsForInstantiation,Constant,False,False,False,True
+FFDumpService.json,MEETFFDumpService,Fluid Flow Dump,DumpID,facilityID,Sheet,False,False,False,True
+FFDumpService.json,MEETFFDumpService,Fluid Flow Dump,Dump Time,oneShotStartTime,Sheet,False,False,False,True
+FFLink.json,MEETFFLink,Fluid Flow links,Outlet FacilityID,outletFacilityID,Sheet,False,False,False,True
+FFLink.json,MEETFFLink,Fluid Flow links,Outlet UnitID,outletUnitID,Sheet,False,False,False,True
+FFLink.json,MEETFFLink,Fluid Flow links,Inlet FacilityID,inletFacilityID,Sheet,False,False,False,True
+FFLink.json,MEETFFLink,Fluid Flow links,Inlet UnitID,inletUnitID,Sheet,False,False,False,True
+FFLink.json,MEETFFLink,Fluid Flow links,Flow Name,flowName,Sheet,False,False,False,True
+FFLink.json,MEETFFLink,Fluid Flow links,Flow SecondaryID,flowSecondaryID,Sheet,True,False,False,True
+Facility.json,MEETFacility,Facility,Facility ID,facilityID,Sheet,False,False,False,True
+Facility.json,MEETFacility,Facility,Latitude,latitude,Sheet,False,False,False,True
+Facility.json,MEETFacility,Facility,Longitude,longitude,Sheet,False,False,False,True
+Facility.json,MEETFacility,Facility,Leak Gas Composition,productionGCFilename,Sheet,False,True,False,True
+Facility.json,MEETFacility,Facility,Operator,operator,Sheet,True,False,False,True
+Facility.json,MEETFacility,Facility,Prototypical Site Number,psno,Sheet,True,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,,modelCategory,Constant,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,,modelSubcategory,Constant,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Facility ID,facilityID,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Unit ID,unitID,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Latitude,latitude,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Longitude,longitude,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Oil Production,QiOilBblPerDay,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Gas Production,QiGasMcfPerDay,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Water Production,QiWaterBblPerDay,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Flow Tag,flowTag,Sheet,False,False,False,True
+FixedSource.json,MEETFixedSource,Fixed Source,Flow Gas Composition,flowGasComposition,Sheet,False,True,False,True
+Flare.json,MEETFlare,Flare,,modelCategory,Constant,False,False,False,True
+Flare.json,MEETFlare,Flare,,modelSubcategory,Constant,False,False,False,True
+Flare.json,MEETFlare,Flare,Facility ID,facilityID,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Unit ID,unitID,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,pMalfunction,pMalfunction,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Malfunction Duration min,malfDurMin,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Malfunction Duration max,malfDurMax,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Malfunction Destruction Efficiency,malfDestEff,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,pUnlit,pUnlit,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Unlit Duration min,unlitDurMin,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Unlit Duration max,unlitDurMax,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Unlit Destruction Efficiency,unlitDestEff,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Operating Duration min,opDurMin,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Operating Duration max,opDurMax,Sheet,False,False,False,True
+Flare.json,MEETFlare,Flare,Operating Destruction Efficiency,opDestEff,Sheet,False,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,,modelSubcategory,Constant,False,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Flare.json,LeakProduction,Flare Component Leak,,statesActive,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Operating,,fluid,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Operating,,secondaryID,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Operating,,statesActive,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Operating,,emitterID,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,fluid,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,secondaryID,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,statesActive,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Flared Gas Malfunction,,emitterID,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,fluid,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,secondaryID,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,statesActive,Constant,False,False,False,True
+Flare.json,CombustedEmitterFF,Unflared Gas from Flare,,emitterID,Constant,False,False,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,,modelCategory,Constant,False,False,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,,modelSubcategory,Constant,False,False,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Facility ID,facilityID,Sheet,False,False,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Unit ID,unitID,Sheet,False,False,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Latitude,latitude,Sheet,False,False,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Longitude,longitude,Sheet,False,False,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,State Machine File,stateMachineFile,Sheet,False,True,False,True
+GenericStateMachine.json,MEETGenericStateMachine,Fixed Source,Factor Tag,factorTag,Sheet,True,False,False,True
+Heater.json,MEETHeater,Heaters,,modelCategory,Constant,False,False,False,True
+Heater.json,MEETHeater,Heaters,,modelSubcategory,Constant,False,False,False,True
+Heater.json,MEETHeater,Heaters,Facility ID,facilityID,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Unit ID,unitID,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Heater Power,heaterPowerKW,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Operating Destruction Efficiency,opDE,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Operating Duration min,opMinDays,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Operating Duration max,opMaxDays,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,pMalfunction,pMalf,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Malfunction Duration min,malfMinDays,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Malfunction Duration max,malfMaxDays,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Malfunction Destruction Efficiency,malfDE,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,pShutIn,pShutIn,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Shut In Duration min,shutInMinDays,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Shut In Duration max,shutInMaxDays,Sheet,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater operating,,fluid,Constant,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater operating,,secondaryID,Constant,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater operating,,statesActive,Constant,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater operating,,emitterID,Constant,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater malfunctioning,,fluid,Constant,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater malfunctioning,,secondaryID,Constant,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater malfunctioning,,statesActive,Constant,False,False,False,True
+Heater.json,CombustedEmitterFF,Heater malfunctioning,,emitterID,Constant,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,modelCategory,Constant,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,modelSubcategory,Constant,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,multipleInstances,Constant,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,,instanceFormat,Constant,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Facility ID,facilityID,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Unit ID,unitID,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Number of Pneumatics,eqComponentCount,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Intermittent Actuation Emission Duration Min,intermittentDurMin,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Intermittent Actuation Emission Duration Max,intermittentDurMax,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Intermittent Wait Duration Min,intermittentWaitDurMin,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Intermittent Wait Duration Max,intermittentWaitDurMax,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Emissions pLeak,pLeakAb,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Min,abDurMinDays,Sheet,False,False,False,True
+IntermittentPneumatics.json,MEETIntermittentPneumatics,Pneumatic Controller,Abnormal Emissions MTTR Max,abDurMaxDays,Sheet,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,emitterID,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,emitterID,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Abnormal Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,emitterID,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+IntermittentPneumatics.json,StateBasedEmitterProduction,Wait Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,,modelCategory,Constant,False,False,False,True
+MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,,modelSubcategory,Constant,False,False,False,True
+MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,Facility ID,facilityID,Sheet,False,False,False,True
+MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,Unit ID,unitID,Sheet,False,False,False,True
+MiscCompressorStation.json,MEETLeakContainer,Misc Equipment On Compressor Station,Component Count,activityDistribution,Sheet,False,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,,modelSubcategory,Constant,False,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Component Count,activityDistribution,Sheet,False,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Component pLeak,pLeak,Sheet,False,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,,emitterModelFactorTag,Constant,False,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscCompressorStation.json,LeakProduction,Leaks On Other Equipment On Compressor Station,,statesActive,Constant,False,False,False,True
+MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,modelSubcategory,Constant,False,False,False,True
+MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,emitterModelFactorTag,Constant,False,False,False,True
+MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,statesActive,Constant,False,False,False,True
+MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,Actuator Type,instantiationVal,Sheet,False,False,False,True
+MiscCompressorStation.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Compressor Station,,valsForInstantiation,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,modelSubcategory,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent Component Count,activityDistribution,Sheet,True,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent pLeak,pLeak,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Common Facility Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,statesActive,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,emitterModelFactorTag,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,Facility Common Vent,instantiationVal,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Leak,,valsForInstantiation,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,modelSubcategory,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Vent (Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,statesActive,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,Facility Common Vent,instantiationVal,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Common Vent Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,modelSubcategory,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components (Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,statesActive,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,Facility Components Large Emitter,instantiationVal,Sheet,False,False,False,True
+MiscCompressorStation.json,SpecificLeaksProduction,Compressor Station Components Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,,modelCategory,Constant,False,False,False,True
+MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,,modelSubcategory,Constant,False,False,False,True
+MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,Facility ID,facilityID,Sheet,False,False,False,True
+MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,Unit ID,unitID,Sheet,False,False,False,True
+MiscWellpad.json,MEETLeakContainer,Misc Equipment On Wellpad,Component Count,activityDistribution,Sheet,False,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,,modelSubcategory,Constant,False,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Component Count,activityDistribution,Sheet,False,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Component pLeak,pLeak,Sheet,False,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,,emitterModelFactorTag,Constant,False,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscWellpad.json,LeakProduction,Leaks On Misc Equipment On Wellpad,,statesActive,Constant,False,False,False,True
+MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,modelSubcategory,Constant,False,False,False,True
+MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,emitterModelFactorTag,Constant,False,False,False,True
+MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,statesActive,Constant,False,False,False,True
+MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,Actuator Type,instantiationVal,Sheet,False,False,False,True
+MiscWellpad.json,PneumaticEmitterProduction,Misc Pneumatic Emissions On Wellpad,,valsForInstantiation,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,modelSubcategory,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent Component Count,activityDistribution,Sheet,True,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent pLeak,pLeak,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Common Facility Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,statesActive,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,emitterModelFactorTag,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,Facility Common Vent,instantiationVal,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Leak,,valsForInstantiation,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,modelSubcategory,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Vent (Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Vent (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,statesActive,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,Facility Common Vent,instantiationVal,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad Common Vent Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,modelSubcategory,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components (Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components (Large Emitter) MTTR Min,MTTRMinDays,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components (Large Emitter) MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,statesActive,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,emitterModelFactorTag,Constant,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,Facility Components Large Emitter,instantiationVal,Sheet,False,False,False,True
+MiscWellpad.json,SpecificLeaksProduction,Wellpad components large emitter,,valsForInstantiation,Constant,False,False,False,True
+Probe.json,MEETProbe,Fluid Flow probe,,modelCategory,Constant,False,False,False,True
+Probe.json,MEETProbe,Fluid Flow probe,Facility ID,facilityID,Sheet,False,False,False,True
+Probe.json,MEETProbe,Fluid Flow probe,Unit ID,unitID,Sheet,False,False,False,True
+Probe.json,MEETProbe,Fluid Flow probe,Graph Group,mdGroup,Sheet,True,False,False,True
+Probe.json,MEETFFEmitter,Separator PRV,,statesActive,Constant,False,False,False,True
+Probe.json,MEETFFEmitter,Separator PRV,,instanceFormat,Constant,False,False,False,True
+Probe.json,MEETFFEmitter,Separator PRV,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,,modelCategory,Constant,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Battery Type,modelSubcategory,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Facility ID,facilityID,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Unit ID,unitID,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Component Count,activityDistribution,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Fluid,fluid,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Mechanistic Thief Hatch pLeak,tankOverpressurePLeak,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Mechanistic Thief Hatch Leak MTTR min,tankOverpressureMTTRMinDays,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Mechanistic Thief Hatch Leak MTTR max,tankOverpressureMTTRMaxDays,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,PRV Threshold,tankOverpressureThresholdScfh,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Tank Inlet Flow at Max Downstream Equipment Capacity,inletFlowAtMaxPrimryFlowScfh,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Max Downstream Equipment Capacity,maxPrimaryOutletFlowScfh,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Mechanistic Emissions Flag,tankMode,Sheet,False,False,False,True
+TankBattery.json,MEETBattery,Tank Battery,Tank Controlled,tankControlled,Sheet,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,Tank Controlled,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,,modelSubcategory,Constant,False,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+TankBattery.json,LeakProduction,Tank Battery Component Leak,,statesActive,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,modelSubcategory,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Number of Thief Hatches,activityDistribution,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Tank Thief Hatch pLeak,pLeak,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Tank Thief Hatch MTTR min,MTTRMinDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Tank Thief Hatch MTTR max,MTTRMaxDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,statesActive,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,emitterModelFactorTag,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Leak,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,modelSubcategory,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Number of Vents,activityDistribution,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Tank Battery Vent pLeak,pLeak,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Tank Battery Vent MTTR min,MTTRMinDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Tank Battery Vent MTTR max,MTTRMaxDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,statesActive,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,emitterModelFactorTag,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Leak,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,modelSubcategory,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Number of Vents,activityDistribution,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Tank Battery Vent Large Emitter pLeak,pLeak,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Tank Battery Vent Large Emitter MTTR min,MTTRMinDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Tank Battery Vent Large Emitter MTTR max,MTTRMaxDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,statesActive,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Battery Vent Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,modelSubcategory,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Number of Vents,activityDistribution,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Tank Thief Hatch Large Emitter pLeak,pLeak,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Tank Thief Hatch Large Emitter MTTR min,MTTRMinDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Tank Thief Hatch Large Emitter MTTR max,MTTRMaxDays,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,statesActive,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Factor Tag,factorTag,Sheet,True,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,emitterModelFactorTag,Constant,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Leak GC Name,gasComposition,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,Mechanistic Emissions Flag,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,SpecificLeaksProduction,Tank Thief Hatch Large Emitter,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,PneumaticEmitterProduction,Tank Pneumatic Emissions,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,fluid,Constant,False,False,False,True
+TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,secondaryID,Constant,False,False,False,True
+TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,statesActive,Constant,False,False,False,True
+TankBattery.json,CombustedEmitterFF,Fluid flow based emitter,,emitterID,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,,modelCategory,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,,modelSubcategory,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Facility ID,facilityID,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Unit ID,unitID,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Component Count,activityDistribution,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Primary Water Takeoff Ratio,primaryWaterRatio,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Flow GC Tag,flowGCTag,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Stuck Dump Valve Component Count,stuckDumpValveCC,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Water Stuck Dump Valve pLeak,stuckDumpValvepLeakWater,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Condensate Stuck Dump Valve pLeak,stuckDumpValvepLeakOil,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Water Stuck Dump Valve Failure Duration Min,waterStuckDumpValveDurMinDays,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Water Stuck Dump Valve Failure Duration Max,waterStuckDumpValveDurMaxDays,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Condensate Stuck Dump Valve Failure Duration Min,oilStuckDumpValveDurMinDays,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Condensate Stuck Dump Valve Failure Duration Max,oilStuckDumpValveDurMaxDays,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Fraction of Flash Released,gasFractionDistFileName,Sheet,False,True,True,True
+ThreePhaseContinuousSeparator.json,MEETContinuousSeparator2,Continuous Separator,Leak GC Name,productionGC,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,,modelSubcategory,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,LeakProduction,Separator Component Leak,,statesActive,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,instanceFormat,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,False,True
+ThreePhaseContinuousSeparator.json,PneumaticEmitterProduction,Separator Pneumatic Emissions,,valsForInstantiation,Constant,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,,modelCategory,Constant,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,,modelSubcategory,Constant,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Facility ID,facilityID,Sheet,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unit ID,unitID,Sheet,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Latitude,latitude,Sheet,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Longitude,longitude,Sheet,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Oil Production,QiOilBblPerDay,Sheet,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Water Production,QiWaterBblPerDay,Sheet,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Di per month,DiPerMonth,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,b Hyperbolic,bHyperbolic,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Age months,wellAgeMonths,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Completion Durations Name,completionDurationsName,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Optional Unloading,optionalUnloading,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Completion,delayAfterCompletionApprox,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Min Time Between Unloadings,minTimeBetUnloading,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Max Time Between Unloadings,maxTimeBetUnloading,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unloading Type,unloadingType,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Weekdays Only,weekdaysOnly,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,LU Shut-In Duration Min,luShutInDurationMin,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,LU Shut-In Duration Max,luShutInDurationMax,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unloading Duration Min,unloadingDurationMin,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Unloading Duration Max,unloadingDurationMax,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Destination of Unloading Gas,unloadingGasDestination,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Planning Time,planningDurationApprox,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Planning,delayAfterPlanningApprox,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Drilling Time,drillDurationApprox,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Drilling,delayAfterDrillingApprox,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Flow Back Time,flowbackTimeApprox,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Approx Delay After Flow Back,delayAfterFlowbackApprox,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Simulation Start Stage,start,Sheet,True,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Flow Tag,flowTag,Sheet,False,False,False,True
+Well.json,MEETWellContinuousProduction,Wellhead with constant production,Flow Gas Composition,flowGasComposition,Sheet,False,True,False,True
+Well.json,StateBasedEmitterProduction,Completion,,modelSubcategory,Constant,False,False,False,True
+Well.json,StateBasedEmitterProduction,Completion,Factor Tag,factorTag,Sheet,True,False,False,True
+Well.json,StateBasedEmitterProduction,Completion,,emitterModelFactorTag,Constant,False,False,False,True
+Well.json,StateBasedEmitterProduction,Completion,,emitterID,Constant,False,False,False,True
+Well.json,StateBasedEmitterProduction,Completion,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Well.json,StateBasedEmitterProduction,Completion,,statesActive,Constant,False,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,,modelSubcategory,Constant,False,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,Component pLeak,pLeak,Sheet,False,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,Factor Tag,factorTag,Sheet,True,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,,emitterModelFactorTag,Constant,False,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Well.json,LeakProduction,Wellhead Component Leak,,statesActive,Constant,False,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,modelSubcategory,Constant,False,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Leak GC Name,gasComposition,Sheet,False,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Factor Tag,factorTag,Sheet,True,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,emitterModelFactorTag,Constant,False,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,instanceFormat,Constant,False,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,statesActive,Constant,False,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,Actuator Type,instantiationVal,Sheet,False,False,False,True
+Well.json,PneumaticEmitterProduction,Wellhead Pneumatic Emissions,,valsForInstantiation,Constant,False,False,False,True
