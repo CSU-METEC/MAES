@@ -277,10 +277,20 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
     except FileNotFoundError as e:
         return e
 
-    if sort_by:
-        pqTable = pqTable.sort_by(sort_by)
-
     pqDF = pqTable.to_pandas()
+
+    # Sort in pandas rather than pyarrow: Table.sort_by calls take(), which
+    # concatenates each column's chunks into a single buffer. For regular
+    # Arrow string columns the offset buffer is i32 (~2 GiB cap), so a
+    # cross-MC read of a large site (e.g. ~70 mechanistic pneumatics x
+    # 50+ MCs of EMISSION events) hits ArrowInvalid: offset overflow
+    # while concatenating arrays (issue #92). Pandas object dtype has no
+    # such cap.
+    if sort_by:
+        sort_cols  = [c for c, _ in sort_by]
+        ascendings = [direction == 'ascending' for _, direction in sort_by]
+        pqDF = pqDF.sort_values(sort_cols, ascending=ascendings, kind='stable',
+                                ignore_index=True)
 
     if site is not None:
         pqDF = pqDF.assign(site=site)
