@@ -499,8 +499,9 @@ def createPDFCache(config):
     _saveSummaryDS(config, cacheDF, 'PDFCache')
     logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
 
+    totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:
-        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF)
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -530,7 +531,7 @@ def _buildMCRunTimeseries(mcRunDF):
         t.setCount(len(emitterTSList))
     return result
 
-def _buildPDFForGroup(groupDF, identityCols, CICategory):
+def _buildPDFForGroup(groupDF, identityCols, CICategory, totalSimSecs):
     with Timer("build MC run timeseries") as t:
         mcRunTSList = []
         for _, mcRunDF in groupDF.groupby('mcRun'):
@@ -553,24 +554,23 @@ def _buildPDFForGroup(groupDF, identityCols, CICategory):
     if cdf.isempty():
         return None, stats
     n = len(cdf.data)
-    totalCount = pdf.data['count'].sum()
     pdfRows = pd.DataFrame({
         **{col: [val] * n for col, val in identityCols.items()},
         'CICategory': [CICategory] * n,
         'emissionRate_kgPerH': cdf.data['value'].values,
-        'probability': (pdf.data['count'] / totalCount).values,
+        'probability': (pdf.data['count'] / totalSimSecs).values,
         'cumulativeProbability': cdf.data['cumulative_probability'].values,
     })
     return pdfRows, stats
 
-def calculatePDFSummary(instEmissionDF):
+def calculatePDFSummary(instEmissionDF, totalSimSecs):
     instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
     resultDFList = []
     statsList = []
     for CICategory, groupCols in PDF_GROUPINGS:
         for _, groupDF in instEmissionDF.groupby(groupCols):
             identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
-            pdfRows, stats = _buildPDFForGroup(groupDF, identityCols, CICategory)
+            pdfRows, stats = _buildPDFForGroup(groupDF, identityCols, CICategory, totalSimSecs)
             statsList.append(stats)
             if pdfRows is not None:
                 resultDFList.append(pdfRows)
@@ -580,7 +580,7 @@ def calculatePDFSummary(instEmissionDF):
 
 VALIDATE_QUANTILES = [0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
 
-def _makePDFRows(mcRunTSList, identityCols, CICategory):
+def _makePDFRows(mcRunTSList, identityCols, CICategory, totalSimSecs):
     if not mcRunTSList:
         return None
     pdf = ts.TimeseriesSet(mcRunTSList).toPDF()
@@ -588,16 +588,15 @@ def _makePDFRows(mcRunTSList, identityCols, CICategory):
     if cdf.isempty():
         return None
     n = len(cdf.data)
-    totalCount = pdf.data['count'].sum()
     return pd.DataFrame({
         **{col: [val] * n for col, val in identityCols.items()},
         'CICategory': [CICategory] * n,
         'emissionRate_kgPerH': cdf.data['value'].values,
-        'probability': (pdf.data['count'] / totalCount).values,
+        'probability': (pdf.data['count'] / totalSimSecs).values,
         'cumulativeProbability': cdf.data['cumulative_probability'].values,
     })
 
-def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory):
+def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
     fullMCRunTSList = []
     noFugMCRunTSList = []
     with Timer("build MC run timeseries from coarse cache", loglevel=logging.DEBUG) as t:
@@ -621,9 +620,9 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory):
         'mcRunCount': len(fullMCRunTSList),
         'buildSeconds': t.deltat.total_seconds(),
     }
-    return _makePDFRows(fullMCRunTSList, identityCols, CICategory), _makePDFRows(noFugMCRunTSList, identityCols, CICategory), stats
+    return _makePDFRows(fullMCRunTSList, identityCols, CICategory, totalSimSecs), _makePDFRows(noFugMCRunTSList, identityCols, CICategory, totalSimSecs), stats
 
-def calculatePDFSummaryFromCache(cacheDF, groupings=None):
+def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, groupings=None):
     if groupings is None:
         groupings = PDF_GROUPINGS
     fullResultDFList = []
@@ -633,7 +632,7 @@ def calculatePDFSummaryFromCache(cacheDF, groupings=None):
         levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
         for _, groupDF in levelDF.groupby(groupCols):
             identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
-            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory)
+            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
             statsList.append(stats)
             if fullPDFRows is not None:
                 fullResultDFList.append(fullPDFRows)
@@ -679,8 +678,9 @@ def validatePDFCache(config):
     logger.info(f"Intermediate check: {len(sampleIdx)} groups sampled, {mismatchCount} mismatches")
 
     # End-to-end check: compare CDFs from raw-instEmissions path vs cache path at fixed quantile points
-    pdfFromRaw, _ = calculatePDFSummary(instEmissionDF)
-    pdfFromCache, _, _ = calculatePDFSummaryFromCache(cacheDF)
+    totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
+    pdfFromRaw, _ = calculatePDFSummary(instEmissionDF, totalSimSecs)
+    pdfFromCache, _, _ = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
 
     joinCols = [c for c in pdfFromRaw.columns if c not in ('emissionRate_kgPerH', 'probability', 'cumulativeProbability')]
     rawSampled = _sampleCDFAtQuantiles(pdfFromRaw, joinCols)

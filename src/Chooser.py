@@ -1,5 +1,5 @@
 import itertools
-import random as r
+import SimRNG
 from bisect import bisect_right
 from abc import ABC, abstractmethod
 from math import isclose
@@ -30,7 +30,7 @@ class EmpiricalDistChooser(Chooser):
         self.keys = list(self.dist.keys())
 
     def randomChoice(self, **kwargs):
-        rand = r.random()
+        rand = SimRNG.random()
         i = bisect_right(self.cumulativeDist, rand)
         if i >= len(self.keys):
             return self.keys[0]

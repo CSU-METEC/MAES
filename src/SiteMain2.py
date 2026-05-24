@@ -5,6 +5,7 @@ import json
 import sys
 from DESMain2 import main as DESMain
 import SimDataManager as sdm
+import SimRNG
 from Timer import Timer
 import MEETClasses as mc
 from pathlib import Path
@@ -64,6 +65,7 @@ def initializeSim(config, simdm):
 
 def runSim(config, simdm):
     mcRunNum = config['MCScenario']
+    SimRNG.seed(mcRunNum)
     with Timer(f"Run Simulation MC Iteration {mcRunNum}") as t0:
         with Timer("  Restore templates") as t1:
             simdm.restoreTemplates()
