@@ -172,6 +172,22 @@ def _ks_distance(g_a: pd.DataFrame, g_b: pd.DataFrame) -> float:
     return float(np.abs(ai - bi).max()) if grid.size else 0.0
 
 
+# Sentinel standing in for any missing (NaN/NaT/None) value inside a group key.
+_NA_KEY = object()
+
+
+def _canonical_key(key) -> tuple:
+    """Normalize a groupby key to a hashable tuple where missing values compare equal.
+
+    ``groupby(..., dropna=False)`` emits NaN in group keys; since ``nan != nan`` and each
+    parquet read yields distinct NaN objects, raw keys from two runs never match and every
+    NaN-keyed group is spuriously reported missing in both directions. Mapping missing
+    values to a single sentinel makes identical groups compare equal across runs.
+    """
+    kt = key if isinstance(key, tuple) else (key,)
+    return tuple(_NA_KEY if pd.isna(v) else v for v in kt)
+
+
 def compare_distribution(
     df_a: pd.DataFrame,
     df_b: pd.DataFrame,
@@ -194,12 +210,12 @@ def compare_distribution(
         out.append(Discrepancy(dataset, "schema", {}, "no identity columns found"))
         return out
 
-    groups_a = {k: g for k, g in df_a.groupby(id_cols, dropna=False)}
-    groups_b = {k: g for k, g in df_b.groupby(id_cols, dropna=False)}
+    groups_a = {_canonical_key(k): g for k, g in df_a.groupby(id_cols, dropna=False, observed=False)}
+    groups_b = {_canonical_key(k): g for k, g in df_b.groupby(id_cols, dropna=False, observed=False)}
 
     def _keydict(k) -> dict:
         kt = k if isinstance(k, tuple) else (k,)
-        return dict(zip(id_cols, kt))
+        return dict(zip(id_cols, (None if v is _NA_KEY else v for v in kt)))
 
     for k in groups_a.keys() - groups_b.keys():
         out.append(Discrepancy(dataset, "missing_in_b", _keydict(k), "group present in A only"))
