@@ -47,6 +47,8 @@ def getParser(defaultConfig):
     parser.add_argument("-s",  "--studyDefinitionFile", default="MEET2/ConstantSeparator.xlsx", help="Study definition file")
     parser.add_argument("-c",  "--configFile", default=defaultConfig, help="Set the configuration file")
     parser.add_argument("-i",  "--inputRoot", help="Input directory.  Read from config file by default")
+    parser.add_argument("-cr", "--curatedRoot", help="Curated/reference input root (read-only). Defaults to inputRoot.")
+    parser.add_argument("-sir","--studyInputRoot", help="Per-run study-input overlay root; searched before curatedRoot. Defaults to curatedRoot.")
     parser.add_argument("-o",  "--outputDir", help="Output directory.  Read from config file by default")
     parser.add_argument("-or", "--outputRoot", help="Output root directory, used to set the base of outputDir.  Read from config file by default")
     parser.add_argument("-t",  "--testIntervalDays", help="simulation / serialization duration, days", type=int)
@@ -129,13 +131,16 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     # Process command line arguments first to get the study definition file
 
     filteredCommandLineArgs = dict(filter(lambda x: x[1], args.__dict__.items()))
-    # inputRoot is a back-compat alias (CSU-METEC/MAES #93): it seeds both the curated
-    # reference root and the per-run study-input overlay. Injecting them here (before the
-    # arguments phase expands the {curatedRoot} templates) preserves legacy single-root
-    # behavior — supplying -i/--inputRoot sets both roots to that path.
-    inputRootVal = filteredCommandLineArgs.get("inputRoot") or cm.getConfigVar("inputRoot")
-    filteredCommandLineArgs.setdefault("curatedRoot", inputRootVal)
-    filteredCommandLineArgs.setdefault("studyInputRoot", inputRootVal)
+    # Resolve the input roots (CSU-METEC/MAES #93). Explicit --curatedRoot/--studyInputRoot
+    # win; -i/--inputRoot is a back-compat alias that seeds both; studyInputRoot otherwise
+    # defaults to curatedRoot. Injected before the arguments phase so the {curatedRoot}
+    # templates expand against the chosen root. With studyInputRoot == curatedRoot, resolution
+    # is identical to the legacy single-root engine.
+    inputRootAlias = filteredCommandLineArgs.get("inputRoot")
+    curatedRootVal = filteredCommandLineArgs.get("curatedRoot") or inputRootAlias or cm.getConfigVar("curatedRoot")
+    studyInputRootVal = filteredCommandLineArgs.get("studyInputRoot") or inputRootAlias or curatedRootVal
+    filteredCommandLineArgs["curatedRoot"] = curatedRootVal
+    filteredCommandLineArgs["studyInputRoot"] = studyInputRootVal
     cm.expandPhase("arguments", **filteredCommandLineArgs)
 
     # randomSeed is applied explicitly because the truthy filter above would drop a
@@ -146,7 +151,11 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     # Process arguments out of the study definition file.
     # Exclude any keys already set by CLI args so the study file cannot override them.
 
-    studyFilename = cm.getConfigVar("studyFilename")
+    # Overlay resolution (CSU-METEC/MAES #93): the study-definition file is a per-run input,
+    # so prefer a studyInputRoot copy over the curatedRoot one. Stored back so every consumer
+    # of config['studyFilename'] sees the resolved path.
+    studyFilename = str(resolveInputRef(cm.getConfigVar("studyFilename"), cm))
+    cm.expandPhase("arguments", studyFilename=studyFilename)
     studyVars = readVarsFromStudy(studyFilename, config['intakeSpreadsheetConfigParams'])
     filteredStudyVars = dict(filter(lambda x: x[1] and x[0] not in filteredCommandLineArgs, studyVars.items()))
     cm.expandPhase("siteDefinitionParams", **filteredStudyVars)
@@ -155,12 +164,38 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     if studyName is None:
         studyPath = Path(studyFilename)
         studyName = studyPath.stem
-        cm.expandPhase("arguments", studyName=studyName)
+        # re-pass the resolved studyFilename so this re-expansion doesn't re-template it back
+        # to the curatedRoot path (overlay resolution above would otherwise be lost).
+        cm.expandPhase("arguments", studyName=studyName, studyFilename=studyFilename)
 
     cm.expandPhase("start")
     cm.expandPhase("simulation")
 
     return cm, args
+
+
+def resolveInputRef(curatedPath, cm):
+    """Resolve an input reference with studyInputRoot overlaying curatedRoot (CSU-METEC/MAES #93).
+
+    curatedPath is the reference already templated against curatedRoot. If the same relative
+    path exists under studyInputRoot, that copy wins; otherwise the curatedRoot path is used.
+    Absolute paths, and refs that do not sit under curatedRoot, are returned unchanged (bypass).
+    When studyInputRoot == curatedRoot (the default), this is a no-op.
+    """
+    p = Path(curatedPath)
+    if p.is_absolute():
+        return p
+    curatedRoot = Path(cm.getConfigVar("curatedRoot"))
+    studyInputRoot = Path(cm.getConfigVar("studyInputRoot"))
+    if studyInputRoot == curatedRoot:
+        return p
+    try:
+        rel = p.relative_to(curatedRoot)
+    except ValueError:
+        return p
+    candidate = studyInputRoot / rel
+    ret = candidate if candidate.exists() else p
+    return ret
 
 
 def findMostRecentScenario(cm):
