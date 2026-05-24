@@ -28,6 +28,22 @@ def _stage_study(root: pathlib.Path) -> pathlib.Path:
     return dst
 
 
+def _stage_study_with_factor_override(root: pathlib.Path, factor_ref: str) -> pathlib.Path:
+    """Stage the study in the overlay with 'Activity / Emission Factor Name' set to factor_ref,
+    so getConfig picks up a study-provided factors override (exercises the C1 resolution hook)."""
+    import openpyxl
+    dst = root / "Studies" / STUDY
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    wb = openpyxl.load_workbook(MAES_ROOT / "input" / "Studies" / STUDY)
+    ws = wb["Global Simulation Parameters"]
+    for row in range(1, ws.max_row + 1):
+        if ws.cell(row=row, column=1).value == "Activity / Emission Factor Name":
+            ws.cell(row=row, column=2, value=factor_ref)
+            break
+    wb.save(dst)
+    return dst
+
+
 # --------------------------------------------------------------------------- resolveInputRef unit
 
 def test_resolve_noop_when_roots_equal():
@@ -95,3 +111,23 @@ def test_getconfig_explicit_curated_and_studyinput(at_maes_root, tmp_path):
     cm, _ = au.getConfig(commandArgs=["-s", STUDY, "-cr", "input", "-sir", str(tmp_path)])
     assert cm.getConfigVar("curatedRoot") == "input"
     assert cm.getConfigVar("studyInputRoot") == str(tmp_path)
+
+
+FACTOR_OVERRIDE_REF = "CuratedData/FactorsFileReference/OverrideFactors.csv"
+
+
+def test_getconfig_factor_override_resolves_to_studyinputroot(at_maes_root, tmp_path):
+    """A study-provided factors override is overlay-resolved to studyInputRoot when present (C1)."""
+    _stage_study_with_factor_override(tmp_path, FACTOR_OVERRIDE_REF)
+    target = tmp_path / FACTOR_OVERRIDE_REF
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("MajorEquipment\n")  # existence is enough for path resolution
+    cm, _ = au.getConfig(commandArgs=["-s", STUDY, "-sir", str(tmp_path)])
+    assert cm.getConfigVar("factorName") == str(target)
+
+
+def test_getconfig_factor_override_absent_keeps_ref(at_maes_root, tmp_path):
+    """When the overlay lacks the override file, factorName is left unchanged (falls through)."""
+    _stage_study_with_factor_override(tmp_path, FACTOR_OVERRIDE_REF)
+    cm, _ = au.getConfig(commandArgs=["-s", STUDY, "-sir", str(tmp_path)])
+    assert cm.getConfigVar("factorName") == FACTOR_OVERRIDE_REF
