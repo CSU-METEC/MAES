@@ -162,7 +162,7 @@ class StartupTests(unittest.TestCase):
         studyName = cm.getConfigVar("studyName")
         self.assertEqual(studyName, "testSite")  # derived from studyFilename
 
-        stRoot = cm.getConfigVar("studyRoot")
+        stRoot = cm.getConfigVar("studyOutputRoot")
         self.assertEqual(stRoot, "output/testSite")
 
         sr = cm.getConfigVar("simulationRoot")

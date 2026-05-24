@@ -13,6 +13,8 @@
 
     "defaultValues": {
       "inputRoot": "input",
+      "curatedRoot": "{inputRoot}",
+      "studyInputRoot": "{curatedRoot}",
       "outputRoot": "output",
       "scenarioTimestampFormat": "%Y%m%d_%H%M%S",
       "scenarioTimestampFormat": "20230101_000000",
@@ -23,16 +25,16 @@
     },
 
     "arguments": {
-      "studyFilename": "{inputRoot}/Studies/{studyDefinitionFile}"
+      "studyFilename": "{curatedRoot}/Studies/{studyDefinitionFile}"
     },
 
     "siteDefinitionParams": {
-      "factorName": "{inputRoot}/CuratedData/FactorsFileReference/Factors.csv"
+      "factorName": "{curatedRoot}/CuratedData/FactorsFileReference/Factors.csv"
     },
 
     "start": {
-      "emitterProfileDir": "{inputRoot}/CuratedData",
-      "studyRoot": "{outputRoot}/{studyName}",
+      "emitterProfileDir": "{curatedRoot}/CuratedData",
+      "studyOutputRoot": "{outputRoot}/{studyName}",
       "site": ""
     },
 
@@ -64,7 +66,7 @@
     }
   },
   "dynamicTemplates": {
-    "modelFilename": "{inputRoot}/ModelFormulation/{modelID}",
+    "modelFilename": "{curatedRoot}/ModelFormulation/{modelID}",
     "graphFilename": "{resultsRoot}/graphs/{graphName}.html"
   }
 }

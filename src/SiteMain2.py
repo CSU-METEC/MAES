@@ -198,8 +198,8 @@ def getFileList(cm):
     dir = cm.getConfigVar("directory")
     if dir is not None:
         # dir='' means run everything in Studies/ root; non-empty means a subdirectory of Studies/
-        inputRoot = cm.getConfigVar('inputRoot')
-        dirPath = Path(inputRoot) / 'Studies' / dir
+        curatedRoot = cm.getConfigVar('curatedRoot')
+        dirPath = Path(curatedRoot) / 'Studies' / dir
         if not cm.getConfigVar('scenarioTimestamp'):
             scenarioTimestampFormat = cm.getConfigVar('scenarioTimestampFormat') or ''
             sharedTimestamp = dt.datetime.now().strftime(scenarioTimestampFormat)
@@ -504,8 +504,8 @@ def preMain():
         cMgr.expandPhase('arguments', **filteredArgs)
 
         if getattr(args, 'directory', None):
-            inputRoot = cMgr.getConfigVar('inputRoot') or 'input'
-            dirPath = Path(inputRoot) / 'Studies' / args.directory
+            curatedRoot = cMgr.getConfigVar('curatedRoot') or 'input'
+            dirPath = Path(curatedRoot) / 'Studies' / args.directory
             candidates = sorted(dirPath.glob('*.xlsx'))
             studyFilename = str(candidates[0]) if candidates else cMgr.getConfigVar('studyFilename')
         else:

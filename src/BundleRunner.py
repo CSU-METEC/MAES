@@ -161,6 +161,8 @@ def runBundle(zipPath: Path, args) -> None:
 
         filteredArgs = {k: v for k, v in vars(args).items() if v and k not in _BUNDLE_SKIP_ARGS}
         filteredArgs['inputRoot']         = str(tempDir)
+        filteredArgs['curatedRoot']       = str(tempDir)
+        filteredArgs['studyInputRoot']    = str(tempDir)
         filteredArgs['outputRoot']        = str(tempDir / 'raw')
         filteredArgs['scenarioTimestamp'] = scenarioTimestamp
         filteredArgs['bundleSummaryParquetDir'] = bundleSummaryParquetDir

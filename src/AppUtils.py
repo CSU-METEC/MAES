@@ -129,6 +129,13 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     # Process command line arguments first to get the study definition file
 
     filteredCommandLineArgs = dict(filter(lambda x: x[1], args.__dict__.items()))
+    # inputRoot is a back-compat alias (CSU-METEC/MAES #93): it seeds both the curated
+    # reference root and the per-run study-input overlay. Injecting them here (before the
+    # arguments phase expands the {curatedRoot} templates) preserves legacy single-root
+    # behavior — supplying -i/--inputRoot sets both roots to that path.
+    inputRootVal = filteredCommandLineArgs.get("inputRoot") or cm.getConfigVar("inputRoot")
+    filteredCommandLineArgs.setdefault("curatedRoot", inputRootVal)
+    filteredCommandLineArgs.setdefault("studyInputRoot", inputRootVal)
     cm.expandPhase("arguments", **filteredCommandLineArgs)
 
     # randomSeed is applied explicitly because the truthy filter above would drop a
@@ -157,7 +164,7 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
 
 
 def findMostRecentScenario(cm):
-    outDir = cm.getConfigVar("studyRoot")
+    outDir = cm.getConfigVar("studyOutputRoot")
     outPath = Path(outDir)
     # path doesn't exist, check that the parent directory exists
     if not outPath.exists():
@@ -173,7 +180,7 @@ def findMostRecentScenario(cm):
     # parse out config file params from subdir name using simulationRootRE
     m = re.match(cm.getConfigVar("simulationRootRE"), str(maxSubdirNameOnly))
     if m:
-        cm.expandPhase("start", studyRoot=str(outPath), scenarioTimestamp=m['scenarioTimestamp'])
+        cm.expandPhase("start", studyOutputRoot=str(outPath), scenarioTimestamp=m['scenarioTimestamp'])
     cm.expandPhase("simulation", simulationRoot=maxSubdirStr)
     cm.expandPhase("MCIteration", MCIteration="")
 

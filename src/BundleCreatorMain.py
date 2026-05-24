@@ -53,8 +53,8 @@ def preMain():
     cm.expandPhase('arguments', **filteredArgs)
 
     if getattr(args, 'directory', None):
-        inputRoot = cm.getConfigVar('inputRoot') or 'input'
-        dirPath = Path(inputRoot) / 'Studies' / args.directory
+        curatedRoot = cm.getConfigVar('curatedRoot') or 'input'
+        dirPath = Path(curatedRoot) / 'Studies' / args.directory
         candidates = sorted(dirPath.glob('*.xlsx'))
         studyFilename = str(candidates[0]) if candidates else cm.getConfigVar('studyFilename')
     else:

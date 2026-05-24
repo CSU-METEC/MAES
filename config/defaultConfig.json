@@ -15,6 +15,8 @@
 
     "defaultValues": {
       "inputRoot": "input",
+      "curatedRoot": "{inputRoot}",
+      "studyInputRoot": "{curatedRoot}",
       "outputRoot": "output",
       "randomSeed": null,
       "scenarioTimestampFormat": "%Y%m%d_%H%M%S",
@@ -44,21 +46,21 @@
     },
 
     "arguments": {
-      "studyFilename": "{inputRoot}/Studies/{studyDefinitionFile}"
+      "studyFilename": "{curatedRoot}/Studies/{studyDefinitionFile}"
     },
 
     "siteDefinitionParams": {
-      "factorName": "{inputRoot}/CuratedData/FactorsFileReference/Factors.csv"
+      "factorName": "{curatedRoot}/CuratedData/FactorsFileReference/Factors.csv"
     },
 
     "start": {
-      "emitterProfileDir": "{inputRoot}/CuratedData",
-      "studyRoot": "{outputRoot}/{studyName}",
+      "emitterProfileDir": "{curatedRoot}/CuratedData",
+      "studyOutputRoot": "{outputRoot}/{studyName}",
       "site": ""
     },
 
     "simulation": {
-      "simulationRoot": "{studyRoot}/MC_{scenarioTimestamp}",
+      "simulationRoot": "{studyOutputRoot}/MC_{scenarioTimestamp}",
       "simulationRootRE": "MC_(?P<scenarioTimestamp>[0-9_]*)",
       "templateDir": "{simulationRoot}/{site}/template",
       "metadataFile": "{templateDir}/metadata.csv",
@@ -103,8 +105,8 @@
   },
 
   "dynamicTemplates": {
-    "modelTemplate": "{inputRoot}/ModelFormulation/{modelID}",
-    "directoryRootTemplate": "{inputRoot}/Studies/{directory}",
+    "modelTemplate": "{curatedRoot}/ModelFormulation/{modelID}",
+    "directoryRootTemplate": "{curatedRoot}/Studies/{directory}",
     "relativeStudyFileTemplate": "{directory}/{studyFilename}",
     "graphTemplate": "{resultsRoot}/graphs/{graphName}.html",
 
