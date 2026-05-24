@@ -297,7 +297,7 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
         # if stage == 'Well':
         #     deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage 1 Pressure to Pipeline Pressure (kJ/scf)'])
         # else:
-        deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage {currentStage[-1]} Pressure to Pipeline Pressure (kJ/scf)'])
+        deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage {currentStage[-1]} Pressure to Pipeline Pressure (kJ/scf)'].iloc[0])
         # deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage 1 Pressure to Pipeline Pressure (kJ/scf)'])
         i = 10
         return deltaH
@@ -326,7 +326,7 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
         fCompDF = fCompDF[(fCompDF['GCUnits'] == 'kg/scf')]
         sumDensity = float(fCompDF[['CARBON_DIOXIDE', 'NITROGEN', 'HYDROGEN_SULFIDE', 'METHANE', 'ETHANE',
                                     'PROPANE', 'ISOBUTANE', 'BUTANE', 'ISOPENTANE', 'PENTANE', 'HEXANE',
-                                    'Pseudocomponent 1', 'Pseudocomponent 2']].sum(axis=1))
+                                    'Pseudocomponent 1', 'Pseudocomponent 2']].sum(axis=1).iloc[0])
         newDR = driverRate / sumDensity
         return newDR
 
