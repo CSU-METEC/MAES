@@ -154,11 +154,21 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     # Overlay resolution (CSU-METEC/MAES #93): the study-definition file is a per-run input,
     # so prefer a studyInputRoot copy over the curatedRoot one. Stored back so every consumer
     # of config['studyFilename'] sees the resolved path.
-    studyFilename = str(resolveInputRef(cm.getConfigVar("studyFilename"), cm))
+    studyFilename = str(resolveInputRef(cm.getConfigVar("studyFilename"),
+                                        cm.getConfigVar("curatedRoot"),
+                                        cm.getConfigVar("studyInputRoot")))
     cm.expandPhase("arguments", studyFilename=studyFilename)
     studyVars = readVarsFromStudy(studyFilename, config['intakeSpreadsheetConfigParams'])
     filteredStudyVars = dict(filter(lambda x: x[1] and x[0] not in filteredCommandLineArgs, studyVars.items()))
     cm.expandPhase("siteDefinitionParams", **filteredStudyVars)
+
+    # A study-provided factors override is a per-run input, so overlay it against studyInputRoot
+    # (the curated default stays curatedRoot-direct). CSU-METEC/MAES #93.
+    if 'factorName' in filteredStudyVars:
+        resolvedFactor = str(resolveInputRef(cm.getConfigVar("factorName"),
+                                             cm.getConfigVar("curatedRoot"),
+                                             cm.getConfigVar("studyInputRoot")))
+        cm.expandPhase("siteDefinitionParams", factorName=resolvedFactor)
 
     studyName = cm.getConfigVar('studyName')  # could be set with -sn / studyName argument
     if studyName is None:
@@ -174,26 +184,25 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
     return cm, args
 
 
-def resolveInputRef(curatedPath, cm):
-    """Resolve an input reference with studyInputRoot overlaying curatedRoot (CSU-METEC/MAES #93).
+CWD_RELATIVE_INPUT_PARAMS = {'productionGCFilename', 'flowGasComposition'}
 
-    curatedPath is the reference already templated against curatedRoot. If the same relative
-    path exists under studyInputRoot, that copy wins; otherwise the curatedRoot path is used.
-    Absolute paths, and refs that do not sit under curatedRoot, are returned unchanged (bypass).
-    When studyInputRoot == curatedRoot (the default), this is a no-op.
+
+def resolveInputRef(ref, curatedRoot, studyInputRoot):
+    """Resolve a relative input reference with studyInputRoot overlaying curatedRoot (CSU-METEC/MAES #93).
+
+    ref may be a curatedRoot-templated path (e.g. the study-definition file) or a bare
+    study-relative path (factors override, GC files). If the same path exists under
+    studyInputRoot, that copy wins; otherwise ref is returned unchanged. Absolute paths and the
+    default case (studyInputRoot == curatedRoot) are no-ops, preserving single-root behavior.
     """
-    p = Path(curatedPath)
-    if p.is_absolute():
-        return p
-    curatedRoot = Path(cm.getConfigVar("curatedRoot"))
-    studyInputRoot = Path(cm.getConfigVar("studyInputRoot"))
-    if studyInputRoot == curatedRoot:
+    p = Path(ref)
+    if p.is_absolute() or str(studyInputRoot) == str(curatedRoot):
         return p
     try:
-        rel = p.relative_to(curatedRoot)
+        rel = p.relative_to(Path(curatedRoot))
     except ValueError:
-        return p
-    candidate = studyInputRoot / rel
+        rel = p
+    candidate = Path(studyInputRoot) / rel
     ret = candidate if candidate.exists() else p
     return ret
 

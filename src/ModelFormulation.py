@@ -179,6 +179,16 @@ def instantiateElementFromIntake(simdm, modelFormulation, siteSheetRow, classMap
     parmList['modelEmissionCategory'] = modelFormulation.get('Emission Category', None)
     parmList['modelCategory'] = parmList.get('modelCategory', modelFormulation.get('Category', None))
     parmList['modelSubcategory'] = parmList.get('modelSubcategory', modelFormulation.get('Subcategory', None))
+    # Overlay per-run file references (GC files) against studyInputRoot at instantiation, so the
+    # resolved path is what gets serialized and read everywhere downstream. No-op in single-root
+    # mode (studyInputRoot == curatedRoot). CSU-METEC/MAES #93.
+    curatedRoot = simdm.config.get('curatedRoot')
+    studyInputRoot = simdm.config.get('studyInputRoot')
+    if curatedRoot and studyInputRoot:
+        for fileParam in au.CWD_RELATIVE_INPUT_PARAMS:
+            if parmList.get(fileParam):
+                parmList[fileParam] = str(au.resolveInputRef(parmList[fileParam], curatedRoot, studyInputRoot))
+
     cls = classMap[modelFormulation['Python Category']][modelFormulation['Python Class']]['class']
     inst = cls(**{**instParms, **parmList})
     return inst, usedSheetParms
