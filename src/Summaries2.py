@@ -977,7 +977,15 @@ def summarizeSimulation(config):
     unitIDSummaryDF = _filterAndPivot(nonRatioDF, 'unitID', mcIterations)
     METypeSummaryDF = _filterAndPivot(nonRatioDF, 'METype', mcIterations)
     pneumaticsDF = _filterAndPivot(nonRatioDF, 'pneumatic', mcIterations, pivotField='METype')
-    siteSummaryDF = _filterAndPivot(nonRatioDF, 'modelEmissionCategory', mcIterations, pivotField='simulation')
+    # Issue #77: the 'modelEmissionCategory' CICategory tag is shared by three
+    # full-total aggregation levels emitted by calculateAnnualSummaries — the
+    # per-category detail, the category-dropped rollup (NaN category), and the
+    # COMBINED total row. With pivotField='simulation' the group key omits the
+    # category column, so none of them are filtered out and all three are summed,
+    # triple-counting emissions. The COMBINED rows alone are the per-site totals;
+    # restrict to them before rolling up across sites.
+    combinedSiteTotalsDF = nonRatioDF[nonRatioDF['modelEmissionCategory'] == 'COMBINED']
+    siteSummaryDF = _filterAndPivot(combinedSiteTotalsDF, 'modelEmissionCategory', mcIterations, pivotField='simulation')
     siteSummaryDF = siteSummaryDF.assign(CICategory='simulation')
 
     c2c1Parts = list(filter(lambda df: not df.empty, [
