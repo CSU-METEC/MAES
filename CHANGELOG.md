@@ -3,6 +3,35 @@
 
 ## v0.4.0 (unreleased)
 
+### Bug Fixes (2026-05-26)
+
+- **Summaries2.py** — `_createEmissionDF`: clip events at the simulation-window boundary
+  (issue #87). The engine logs the full sampled `duration` of whatever state is in
+  progress when simpy stops at `simDurationSecs`, so `timestamp + duration` can exceed the
+  window. Left unclipped, the overrun added spurious emission credit past the window,
+  biasing every rate-integrated quantity (annual summaries, PDFs) upward — verified at
+  +67.8% on a real 41.5-day `Compressor Rod Packing Vent` overrun in `JennaBug2`.
+  `_createEmissionDF` now takes `simDurationSecs` and clips each event's `duration_s` to
+  `min(duration, simDurationSecs − timestamp)` (floored at 0), recomputing
+  `totalEmission_kg` from the clipped duration; `emission_kgPerS` (the rate) is unchanged.
+  This is the single point where the emission DataFrame is built and saved as
+  `InstEmissions` (the dataset the PDF cascade reads back), so the rate summaries, event
+  summaries, and PDFs are all consistent over `[0, simDurationSecs]`, restoring the
+  identity `mean_pdf = mean_events`. Note: `calculateEventSummary`'s `meanEventDuration_s`
+  / `totalEventDuration_s` now reflect in-window durations for overrunning events; the
+  full sampled durations remain available in the raw events parquet. Independent of the
+  additive `overrunSecs` / `underrunSecs` column proposal (#89).
+
+### Tests (2026-05-26)
+
+- **test/test_issue87_event_clipping.py**: new test file covering simulation-window event
+  clipping (issue #87). Asserts that overrunning events are clipped to the in-window
+  remainder with `totalEmission_kg` recomputed and the rate preserved; interior and
+  exactly-at-boundary events are untouched; an event starting past the window yields zero
+  (not negative) duration; `calculateAnnualSummaries` totals reflect only in-window
+  emission; and `_buildMCRunTimeseries` → PDF mean equals the rate-integrated mean over
+  `[0, T]` after clipping.
+
 ### Schema Changes (2026-03-31)
 
 - **defaultConfig.json** / **ParquetLib.py**: renamed the new Parquet summary directory
