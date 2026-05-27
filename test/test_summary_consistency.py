@@ -98,6 +98,25 @@ def test_summary_mean_gt_max_is_violation():
     assert res[('SimSummary', 'mean_le_max')].severity == 'violation'
 
 
+def test_summary_ulp_mean_over_max_not_flagged():
+    """Constant-rate emitter: mean = sum/N can land ~1 ULP above max from float64
+    rounding (all 388 real JennaBug2 mean>max rows were this). Must not be a violation."""
+    val = 2815.516539
+    mean_ulp = np.nextafter(val, np.inf)   # one ULP above the exact max
+    df = _summary([('METHANE', mean_ulp, val, val, val)])
+    res = _by_check(sc.check_summary_bounds(df, 'SiteSummary'))
+    assert res[('SiteSummary', 'mean_le_max')].count == 0
+    assert res[('SiteSummary', 'lowerCI_le_mean')].count == 0
+    assert res[('SiteSummary', 'mean_le_upperCI')].count == 0
+
+
+def test_summary_real_mean_over_max_still_flagged():
+    """A genuine mean>max (well beyond ULP) is still a violation."""
+    df = _summary([('METHANE', 10.1, 10.0, 3.0, 8.0)])
+    res = _by_check(sc.check_summary_bounds(df, 'SiteSummary'))
+    assert res[('SiteSummary', 'mean_le_max')].count == 1
+
+
 def test_summary_ci_disorder_is_warning_and_c2c1_excluded():
     df = _summary([
         ('METHANE', 5.0, 10.0, 6.0, 4.0),       # lowerCI>mean and mean>upperCI

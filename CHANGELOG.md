@@ -20,7 +20,10 @@
     row (issue #77, a violation); per-site `siteTotals` PDF mean vs `SiteSummary`
     site-total mean (issue #74, reported as a **warning** because #74 is an open,
     unresolved discrepancy and the identity is not yet guaranteed). `simDurationSecs` is
-    read from the `simDurationDays` column; absent datasets are skipped.
+    read from the `simDurationDays` column; absent datasets are skipped. The `mean ≤ max`
+    / CI-bound comparisons use a small relative tolerance so a constant-rate emitter
+    (whose `mean = sum/N` can land ~1 ULP above the exact `max` from float64 rounding) is
+    not flagged as a spurious violation.
 
 ### Tests (2026-05-27)
 

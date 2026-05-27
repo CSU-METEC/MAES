@@ -131,10 +131,15 @@ def check_instemissions(ieDF, simDurationSecs, rtol=1e-6):
     return results
 
 
-def check_summary_bounds(df, dataset):
+def check_summary_bounds(df, dataset, rtol=1e-9, atol=1e-12):
     """mean <= max is a hard invariant (mean is the average of the readings, bounded
     by their max). CI-bound ordering is a warning — valid for skewed distributions
-    with extreme MC outliers (see SummaryTest.checkSimSummaryConsistency)."""
+    with extreme MC outliers (see SummaryTest.checkSimSummaryConsistency).
+
+    Comparisons use a small relative tolerance: for a constant-rate emitter every
+    reading is identical, so mean = sum/N can land ~1 ULP (~1e-16 relative) above the
+    exact max purely from float64 rounding. Without the tolerance those rows would be
+    flagged as spurious mean>max violations."""
     required = ['species', 'mean', 'max', 'lowerCI', 'upperCI']
     missing = [c for c in required if c not in df.columns]
     if missing:
@@ -142,13 +147,18 @@ def check_summary_bounds(df, dataset):
                             f'skipped — missing columns {missing}')]
     checkDF = df[df['species'] != RATIO_SPECIES]
     n = len(checkDF)
+
+    def _exceeds(a, b):
+        # a > b beyond a relative+absolute tolerance; NaN comparisons yield False
+        return (a - b) > (rtol * b.abs() + atol)
+
     results = [
         CheckResult('mean_le_max', dataset, 'violation',
-                    int((checkDF['mean'] > checkDF['max']).sum()), n),
+                    int(_exceeds(checkDF['mean'], checkDF['max']).sum()), n),
         CheckResult('lowerCI_le_mean', dataset, 'warning',
-                    int((checkDF['lowerCI'] > checkDF['mean']).sum()), n),
+                    int(_exceeds(checkDF['lowerCI'], checkDF['mean']).sum()), n),
         CheckResult('mean_le_upperCI', dataset, 'warning',
-                    int((checkDF['mean'] > checkDF['upperCI']).sum()), n),
+                    int(_exceeds(checkDF['mean'], checkDF['upperCI']).sum()), n),
     ]
     return results
 
@@ -272,7 +282,7 @@ def run_checks(dfs, structural=True, cross_level=True, rtol=1e-6, warn_rtol=0.05
             results += check_instemissions(dfs['InstEmissions'], T, rtol=rtol)
         for name in ('SiteSummary', 'SimSummary'):
             if name in dfs:
-                results += check_summary_bounds(dfs[name], name)
+                results += check_summary_bounds(dfs[name], name, rtol=rtol)
         for name in ('PDF', 'SimPDF'):
             if name in dfs:
                 results += check_pdf_structural(dfs[name], name)
