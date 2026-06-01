@@ -3,6 +3,39 @@
 
 ## v0.4.0 (unreleased)
 
+### Bug Fixes (2026-06-01)
+
+- **SiteMain2.py** / **Summaries2.py** — the simulation-level summary now aggregates **all**
+  sites (issue #101). The single `simSummary` workitem is generated once after the study
+  loop, so it inherited whichever site's config the config manager was left on (the last
+  study). As a result `summarizeSimulation` / `createSimPDF` read only that one site's
+  `SiteSummary` / `PDF` (`SimPDF mixture: 1 sites`) and the `simulation`-level total
+  reflected a single site rather than the whole simulation. `generateWorkitems` now
+  accumulates every site's `SiteSummary` and `PDF` output directory and threads them onto
+  the workitem (`allSiteSummaryDirs` / `allSitePDFDirs`); a new `_readSummaryAcrossSites`
+  helper reads and concatenates across them (each per-site dataset is hive-partitioned by
+  `site`, so the column is reconstructed and preserved). Falls back to the single
+  configured path for single-study runs.
+
+### Schema Changes (2026-06-01)
+
+- **defaultConfig.json**: `SimSummary` and `SimPDF` are now written to a deterministic,
+  job-level location (issue #101). Added `simulationParquetDir` =
+  `{outputRoot}/MC_{scenarioTimestamp}/parquet`; `parquetNewSimSummary` and
+  `parquetNewSimPDF` resolve under it (`{simulationParquetDir}/Summary/SimSummary` and
+  `.../SimPDF`) instead of the per-study `{parquetDir}/Summary/...`. Previously these
+  simulation-wide datasets landed under whichever site was processed last; they now live
+  at the job root, independent of study order. Per-site datasets (`SiteSummary`, `PDF`,
+  `InstEmissions`, `EventSummary`, `PDFCache`) are unchanged.
+
+### Tests (2026-06-01)
+
+- **test/test_issue101_simsummary_aggregation.py**: new test file (issue #101). Covers the
+  `_readSummaryAcrossSites` helper aggregating across sites and its single-path fallback;
+  `summarizeSimulation` producing a `simulation` total that sums all sites (not just the
+  last); `createSimPDF` mixing every site's PDF (vs. the old single-site mixture); and the
+  job-level, site-independent `SimSummary` / `SimPDF` write paths.
+
 ### Schema Changes (2026-03-31)
 
 - **defaultConfig.json** / **ParquetLib.py**: renamed the new Parquet summary directory

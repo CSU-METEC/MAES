@@ -916,10 +916,25 @@ def _computeSimC2C1(inDF, CICategory, mcIterations, pivotField=None):
     return retDF
 
 
+def _readSummaryAcrossSites(config, dirsKey, fallbackKey, **readKwargs):
+    """Read and concatenate a per-site Summary dataset (e.g. SiteSummary, PDF)
+    across every site in the simulation.
+
+    ``dirsKey`` holds the list of per-site dataset directories threaded onto the
+    simSummary workitem by ``generateWorkitems``. When absent (single-study runs,
+    or direct callers that did not populate it) this falls back to the single
+    configured ``fallbackKey`` path. Each per-site directory is hive-partitioned
+    by ``site``, so the column is reconstructed on read and preserved by concat.
+    """
+    dirs = config.get(dirsKey) or [config[fallbackKey]]
+    frames = [pd.read_parquet(d, **readKwargs) for d in dirs]
+    return pd.concat(frames, ignore_index=True)
+
 def createSimPDF(config):
     logger.info("Creating simulation-level PDF (mixture approach)")
 
-    siteList = pd.read_parquet(config['parquetNewPDF'], columns=['site'])['site'].unique().tolist()
+    siteList = _readSummaryAcrossSites(config, 'allSitePDFDirs', 'parquetNewPDF',
+                                       columns=['site'])['site'].unique().tolist()
     if not siteList:
         logger.info("No PDF data, skipping SimPDF")
         return
@@ -928,8 +943,8 @@ def createSimPDF(config):
     allPDFRowsList = []
     for siteCacheLevel, simCacheLevel, simGroupCols in SIM_PDF_LEVEL_MAP:
         logger.info(f"SimPDF mixture: {siteCacheLevel} -> {simCacheLevel}")
-        sitePDFDF = pd.read_parquet(config['parquetNewPDF'],
-                                    filters=[('CICategory', '=', siteCacheLevel)])
+        sitePDFDF = _readSummaryAcrossSites(config, 'allSitePDFDirs', 'parquetNewPDF',
+                                            filters=[('CICategory', '=', siteCacheLevel)])
         if sitePDFDF.empty:
             continue
 
@@ -962,10 +977,11 @@ def createSimPDF(config):
 
 def summarizeSimulation(config):
     # this method depends on site-level simulations (aka 'summarize' function) being performed prior to this call.
-    logger.info(f"{config['parquetNewSummary']=}")
+    summaryDirs = config.get('allSiteSummaryDirs') or [config['parquetNewSummary']]
+    logger.info(f"summarizeSimulation: aggregating {len(summaryDirs)} site summary dir(s)")
     with Timer("Read summaries") as t0:
         logging.info("Read summary parquet files")
-        fullSummaryDF = pd.read_parquet(config['parquetNewSummary'])
+        fullSummaryDF = _readSummaryAcrossSites(config, 'allSiteSummaryDirs', 'parquetNewSummary')
         t0.setCount(len(fullSummaryDF))
 
     mcIterations = config['monteCarloIterations']
