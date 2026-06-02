@@ -3,6 +3,36 @@
 
 ## v0.4.0 (unreleased)
 
+### Validation (2026-05-27)
+
+- **Testing/SummaryConsistency.py**: new directory-level consistency checker for a MAES
+  `Summary/` parquet output. Unlike `SummaryTest.py` (new-vs-legacy comparison driven by a
+  scenario config), it operates on a directory alone and is unit-testable on synthetic
+  DataFrames. Two independently switchable tiers (`--structural` / `--cross-level` CLI
+  flags; `--rtol`, `--warn-rtol` tolerances; non-zero exit only on violations):
+  - **structural** — `InstEmissions`: timestamps/durations non-negative, events do not
+    overrun the simulation window (issue #87), emissions non-negative, `totalEmission_kg`
+    consistent with rate × duration; `SiteSummary`/`SimSummary`: `mean ≤ max` (violation),
+    CI-bound ordering (warning); `PDF`/`SimPDF`: probability non-negative, CDF monotone
+    and bounded by 1.
+  - **cross-level** — `SimSummary` rollup: `simulation` total equals the sum over each of
+    the modelReadableName / METype / unitID levels and the modelEmissionCategory COMBINED
+    row (issue #77, a violation); per-site `siteTotals` PDF mean vs `SiteSummary`
+    site-total mean (issue #74, reported as a **warning** because #74 is an open,
+    unresolved discrepancy and the identity is not yet guaranteed). `simDurationSecs` is
+    read from the `simDurationDays` column; absent datasets are skipped. The `mean ≤ max`
+    / CI-bound comparisons use a small relative tolerance so a constant-rate emitter
+    (whose `mean = sum/N` can land ~1 ULP above the exact `max` from float64 rounding) is
+    not flagged as a spurious violation.
+
+### Tests (2026-05-27)
+
+- **test/test_summary_consistency.py**: new test file covering `SummaryConsistency.py`.
+  Each check is exercised on a clean fixture (no violations) and an injected fault flagged
+  at the correct severity — including a fixture mirroring the issue #77 triple-count
+  (`simulation` = 3 × level totals) and confirmation that the issue #74 PDF-vs-summary
+  mismatch is a warning, never a hard violation.
+
 ### Bug Fixes (2026-06-01)
 
 - **SiteMain2.py** / **Summaries2.py** — the simulation-level summary now aggregates **all**
