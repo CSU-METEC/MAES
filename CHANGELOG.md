@@ -3,6 +3,27 @@
 
 ## v0.4.0 (unreleased)
 
+### Schema Changes (2026-06-02)
+
+- **defaultConfig.json**: `-dr` (directory) runs now consolidate their `Summary/` parquet
+  tree into a single **job-level** location, matching bundle output. `summaryParquetDir`'s
+  default changed from the per-study `{parquetDir}` to `{outputRoot}/MC_{scenarioTimestamp}/parquet`.
+  Because every `parquetNew*` summary key already resolves through `summaryParquetDir`, this
+  moves **both** the site-level datasets (`SiteSummary`, `InstEmissions`, `EventSummary`,
+  `PDF`, `PDFCache`, hive-partitioned by `site`) and the sim-level datasets (`SimSummary`,
+  `SimPDF`) — plus `SummaryLegacy` — from `<outputRoot>/<site>/MC_<ts>/parquet/Summary/` to
+  the consolidated `<outputRoot>/MC_<ts>/parquet/Summary/`. Bundle mode is unaffected: it
+  sets `summaryParquetDir` explicitly via `bundleSummaryParquetDir` and overrides the default.
+  Non-summary parquet (`events`, `timeseries`, `gascomposition`, `metadata`, `eventList`)
+  stays per-study under `{parquetDir}`. Consumers that located `-dr` Summary output under a
+  per-site directory must read the job-level path instead.
+
+### Tests (2026-06-02)
+
+- **test/test_dr_consolidated_summary_layout.py**: asserts that a `-dr` run resolves every
+  Summary dataset to a study-independent (job-level) path while per-site raw parquet stays
+  study-specific, and that `summaryParquetDir` resolves to `{outputRoot}/MC_{scenarioTimestamp}/parquet`.
+
 ### Schema Changes (2026-03-31)
 
 - **defaultConfig.json** / **ParquetLib.py**: renamed the new Parquet summary directory

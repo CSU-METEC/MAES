@@ -64,7 +64,7 @@
       "equipmentFile": "{templateDir}/equipment.json",
       "mdIndexFile": "{templateDir}/mdIndex.csv",
       "parquetDir": "{simulationRoot}/parquet",
-      "summaryParquetDir": "{parquetDir}",
+      "summaryParquetDir": "{outputRoot}/MC_{scenarioTimestamp}/parquet",
 
       "parquetEventDS":          "{parquetDir}/events",
       "parquetTimeseriesDS":     "{parquetDir}/timeseries",

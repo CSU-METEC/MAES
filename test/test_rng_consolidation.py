@@ -23,6 +23,7 @@ import subprocess
 import tempfile
 
 import numpy as np
+import pandas as pd
 import pytest
 import scipy.stats
 
@@ -120,13 +121,13 @@ def test_seeded_sim_run_reproducible(tmp_path: pathlib.Path) -> None:
     run_sim(dir_a)
     run_sim(dir_b)
 
-    import pyarrow.dataset as ds
-
     def load_totals(out_dir: pathlib.Path) -> np.ndarray:
         pq_dirs = list(out_dir.rglob("InstEmissions"))
         assert pq_dirs, f"No InstEmissions parquet found under {out_dir}"
-        dataset = ds.dataset(str(pq_dirs[0]), format="parquet")
-        df = dataset.to_table().to_pandas()
+        # Read like the rest of the engine (summarizeSimulation/createSimPDF): pd.read_parquet
+        # reconstructs hive partition columns (site, mcRun) automatically. InstEmissions is
+        # partitioned by ['site', 'mcRun'], so mcRun is path-encoded, not a file column.
+        df = pd.read_parquet(str(pq_dirs[0]))
         return df.groupby("mcRun")["totalEmission_kg"].sum().sort_index().values
 
     totals_a = load_totals(dir_a)
