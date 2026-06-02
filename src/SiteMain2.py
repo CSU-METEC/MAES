@@ -176,6 +176,12 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     createPDFCacheWorkitems = []
     simSummaryWorkitems = []
 
+    # The per-site SiteSummary/PDF output dirs, accumulated as each site's config
+    # is expanded. The single simSummary workitem aggregates across all of these,
+    # rather than seeing only the last site left in the config manager.
+    allSiteSummaryDirs = []
+    allSitePDFDirs = []
+
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
         cm.expandPhase("arguments", studyDefinitionFile=studyFilename)
@@ -194,8 +200,12 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
         createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCache'))
-    # simSummary happens once per simulation
+        allSiteSummaryDirs.append(cm.getConfigVar('parquetNewSummary'))
+        allSitePDFDirs.append(cm.getConfigVar('parquetNewPDF'))
+    # simSummary happens once per simulation, aggregating every site's summaries
     simSummaryWI = generateSingleWorkitem(cm, 'simSummary')
+    simSummaryWI['allSiteSummaryDirs'] = allSiteSummaryDirs
+    simSummaryWI['allSitePDFDirs'] = allSitePDFDirs
     simSummaryWorkitems.append(simSummaryWI)
 
     retWorkitems = []

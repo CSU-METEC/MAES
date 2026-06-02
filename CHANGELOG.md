@@ -33,6 +33,87 @@
   (`simulation` = 3 × level totals) and confirmation that the issue #74 PDF-vs-summary
   mismatch is a warning, never a hard violation.
 
+### Bug Fixes (2026-06-01)
+
+- **SiteMain2.py** / **Summaries2.py** — the simulation-level summary now aggregates **all**
+  sites (issue #101). The single `simSummary` workitem is generated once after the study
+  loop, so it inherited whichever site's config the config manager was left on (the last
+  study). As a result `summarizeSimulation` / `createSimPDF` read only that one site's
+  `SiteSummary` / `PDF` (`SimPDF mixture: 1 sites`) and the `simulation`-level total
+  reflected a single site rather than the whole simulation. `generateWorkitems` now
+  accumulates every site's `SiteSummary` and `PDF` output directory and threads them onto
+  the workitem (`allSiteSummaryDirs` / `allSitePDFDirs`); a new `_readSummaryAcrossSites`
+  helper reads and concatenates across them (each per-site dataset is hive-partitioned by
+  `site`, so the column is reconstructed and preserved). Falls back to the single
+  configured path for single-study runs.
+
+### Schema Changes (2026-06-01)
+
+- **defaultConfig.json**: `SimSummary` and `SimPDF` are now written to a deterministic,
+  job-level location (issue #101). Added `simulationParquetDir` =
+  `{outputRoot}/MC_{scenarioTimestamp}/parquet`; `parquetNewSimSummary` and
+  `parquetNewSimPDF` resolve under it (`{simulationParquetDir}/Summary/SimSummary` and
+  `.../SimPDF`) instead of the per-study `{parquetDir}/Summary/...`. Previously these
+  simulation-wide datasets landed under whichever site was processed last; they now live
+  at the job root, independent of study order. Per-site datasets (`SiteSummary`, `PDF`,
+  `InstEmissions`, `EventSummary`, `PDFCache`) are unchanged.
+
+### Tests (2026-06-01)
+
+- **test/test_issue101_simsummary_aggregation.py**: new test file (issue #101). Covers the
+  `_readSummaryAcrossSites` helper aggregating across sites and its single-path fallback;
+  `summarizeSimulation` producing a `simulation` total that sums all sites (not just the
+  last); `createSimPDF` mixing every site's PDF (vs. the old single-site mixture); and the
+  job-level, site-independent `SimSummary` / `SimPDF` write paths.
+
+### Bug Fixes (2026-05-26)
+
+- **Summaries2.py** — `summarizeSimulation`: fixed simulation-level triple-count (issue #77).
+  The `'simulation'` SimSummary rows were built by feeding all `CICategory ==
+  'modelEmissionCategory'` rows through `_filterAndPivot(..., pivotField='simulation')`.
+  That tag is shared by three full-total aggregation levels from `calculateAnnualSummaries`
+  — the per-category detail, the category-dropped rollup (NaN category), and the COMBINED
+  total row — each of which already sums to the full per-site total. Because the
+  `pivotField='simulation'` group key omits the category column, none were filtered out and
+  all three were summed, inflating every simulation-level `mean`/`total` by exactly 3x.
+  Symptom (issue #77): `sum(mean)` for `CICategory=='simulation'` was 3x the sum for
+  `CICategory=='modelReadableName'`. Fixed by restricting to the COMBINED per-site totals
+  before the cross-site rollup. Verified the simulation total now equals the
+  modelReadableName total on both `includeFugitive` paths.
+
+- **Summaries2.py** — `_createEmissionDF`: clip events at the simulation-window boundary
+  (issue #87). The engine logs the full sampled `duration` of whatever state is in
+  progress when simpy stops at `simDurationSecs`, so `timestamp + duration` can exceed the
+  window. Left unclipped, the overrun added spurious emission credit past the window,
+  biasing every rate-integrated quantity (annual summaries, PDFs) upward — verified at
+  +67.8% on a real 41.5-day `Compressor Rod Packing Vent` overrun in `JennaBug2`.
+  `_createEmissionDF` now takes `simDurationSecs` and clips each event's `duration_s` to
+  `min(duration, simDurationSecs − timestamp)` (floored at 0), recomputing
+  `totalEmission_kg` from the clipped duration; `emission_kgPerS` (the rate) is unchanged.
+  This is the single point where the emission DataFrame is built and saved as
+  `InstEmissions` (the dataset the PDF cascade reads back), so the rate summaries, event
+  summaries, and PDFs are all consistent over `[0, simDurationSecs]`, restoring the
+  identity `mean_pdf = mean_events`. Note: `calculateEventSummary`'s `meanEventDuration_s`
+  / `totalEventDuration_s` now reflect in-window durations for overrunning events; the
+  full sampled durations remain available in the raw events parquet. Independent of the
+  additive `overrunSecs` / `underrunSecs` column proposal (#89).
+
+### Tests (2026-05-26)
+
+- **test/test_issue77_simulation_rollup.py**: new test file covering the simulation-level
+  triple-count fix (issue #77). Builds a multi-site, multi-category `calculateAnnualSummaries`
+  output and asserts the COMBINED-only simulation rollup equals both the true total and the
+  `modelReadableName` total on both `includeFugitive` paths, plus a test that pins the
+  pre-fix 3x behavior to guard against regression.
+
+- **test/test_issue87_event_clipping.py**: new test file covering simulation-window event
+  clipping (issue #87). Asserts that overrunning events are clipped to the in-window
+  remainder with `totalEmission_kg` recomputed and the rate preserved; interior and
+  exactly-at-boundary events are untouched; an event starting past the window yields zero
+  (not negative) duration; `calculateAnnualSummaries` totals reflect only in-window
+  emission; and `_buildMCRunTimeseries` → PDF mean equals the rate-integrated mean over
+  `[0, T]` after clipping.
+
 ### Schema Changes (2026-03-31)
 
 - **defaultConfig.json** / **ParquetLib.py**: renamed the new Parquet summary directory

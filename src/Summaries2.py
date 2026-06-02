@@ -57,7 +57,7 @@ def _convertKGPerYear2MetricTonsPerYear(x):
 def _convertKGPerYear2KGPerHour(x):
     return x * KG_PER_YEAR_TO_KG_PER_HOUR
 
-def _createEmissionDF(inDF):
+def _createEmissionDF(inDF, simDurationSecs):
     COLS_TO_KEEP = {'mcRun': 'mcRun',
                     'site': 'site',
                     'species': 'species',
@@ -79,8 +79,28 @@ def _createEmissionDF(inDF):
         psno=inDF['psno'].fillna('')
     )
 
+    # Issue #87: clip events that overrun the simulation window so every downstream
+    # consumer integrates emissions only over [0, simDurationSecs]. The engine logs the
+    # full sampled duration of whatever state is in progress when simpy stops at
+    # simDurationSecs, so `timestamp + duration` can exceed the window. Left unclipped,
+    # the overrun adds spurious emission credit past the window and biases all
+    # rate-integrated quantities (annual summaries, PDFs) upward for long / fat-tailed
+    # event classes. This is the single point where the emission DataFrame is built and
+    # saved as InstEmissions -- the dataset the PDF cascade reads back -- so clipping
+    # here keeps the rate summaries, the event summaries, and the PDFs mutually
+    # consistent over [0, simDurationSecs]. The raw events parquet retains the full
+    # sampled durations. The rate (emission_kgPerS) is unchanged; only duration_s and
+    # totalEmission_kg shrink, for the at-most-one in-progress event per emitter state
+    # machine whose end exceeds the window. `.clip(lower=0)` guards the degenerate case
+    # of an event timestamped at or after the window end (which the engine should not
+    # produce) from yielding a negative duration.
+    clippedDuration = np.minimum(
+        inDF['duration'],
+        (simDurationSecs - inDF['timestamp']).clip(lower=0)
+    )
     emissionDF = emissionDF.assign(
-        totalEmission_kg=emissionDF['emission_kgPerS']*emissionDF['duration'],
+        duration=clippedDuration,
+        totalEmission_kg=emissionDF['emission_kgPerS'] * clippedDuration,
     )
 
     emissionDF = emissionDF.rename(columns=COLS_TO_KEEP)
@@ -728,7 +748,7 @@ def summarizeSingleSite(config, instEmissionDF):
     mcIterations = config['monteCarloIterations']
     with Timer("summarize") as t0:
         simDurationDays = config['simDurationDays']
-        instEmissionDF = _createEmissionDF(instEmissionDF)
+        instEmissionDF = _createEmissionDF(instEmissionDF, simDurationDays * u.SECONDS_PER_DAY)
         _saveSummaryDS(config, instEmissionDF, 'InstEmissions')
         instEmissionNoFugitiveDF = instEmissionDF[instEmissionDF['modelEmissionCategory'] != 'FUGITIVE']
 
@@ -916,10 +936,25 @@ def _computeSimC2C1(inDF, CICategory, mcIterations, pivotField=None):
     return retDF
 
 
+def _readSummaryAcrossSites(config, dirsKey, fallbackKey, **readKwargs):
+    """Read and concatenate a per-site Summary dataset (e.g. SiteSummary, PDF)
+    across every site in the simulation.
+
+    ``dirsKey`` holds the list of per-site dataset directories threaded onto the
+    simSummary workitem by ``generateWorkitems``. When absent (single-study runs,
+    or direct callers that did not populate it) this falls back to the single
+    configured ``fallbackKey`` path. Each per-site directory is hive-partitioned
+    by ``site``, so the column is reconstructed on read and preserved by concat.
+    """
+    dirs = config.get(dirsKey) or [config[fallbackKey]]
+    frames = [pd.read_parquet(d, **readKwargs) for d in dirs]
+    return pd.concat(frames, ignore_index=True)
+
 def createSimPDF(config):
     logger.info("Creating simulation-level PDF (mixture approach)")
 
-    siteList = pd.read_parquet(config['parquetNewPDF'], columns=['site'])['site'].unique().tolist()
+    siteList = _readSummaryAcrossSites(config, 'allSitePDFDirs', 'parquetNewPDF',
+                                       columns=['site'])['site'].unique().tolist()
     if not siteList:
         logger.info("No PDF data, skipping SimPDF")
         return
@@ -928,8 +963,8 @@ def createSimPDF(config):
     allPDFRowsList = []
     for siteCacheLevel, simCacheLevel, simGroupCols in SIM_PDF_LEVEL_MAP:
         logger.info(f"SimPDF mixture: {siteCacheLevel} -> {simCacheLevel}")
-        sitePDFDF = pd.read_parquet(config['parquetNewPDF'],
-                                    filters=[('CICategory', '=', siteCacheLevel)])
+        sitePDFDF = _readSummaryAcrossSites(config, 'allSitePDFDirs', 'parquetNewPDF',
+                                            filters=[('CICategory', '=', siteCacheLevel)])
         if sitePDFDF.empty:
             continue
 
@@ -962,10 +997,11 @@ def createSimPDF(config):
 
 def summarizeSimulation(config):
     # this method depends on site-level simulations (aka 'summarize' function) being performed prior to this call.
-    logger.info(f"{config['parquetNewSummary']=}")
+    summaryDirs = config.get('allSiteSummaryDirs') or [config['parquetNewSummary']]
+    logger.info(f"summarizeSimulation: aggregating {len(summaryDirs)} site summary dir(s)")
     with Timer("Read summaries") as t0:
         logging.info("Read summary parquet files")
-        fullSummaryDF = pd.read_parquet(config['parquetNewSummary'])
+        fullSummaryDF = _readSummaryAcrossSites(config, 'allSiteSummaryDirs', 'parquetNewSummary')
         t0.setCount(len(fullSummaryDF))
 
     mcIterations = config['monteCarloIterations']
@@ -977,7 +1013,15 @@ def summarizeSimulation(config):
     unitIDSummaryDF = _filterAndPivot(nonRatioDF, 'unitID', mcIterations)
     METypeSummaryDF = _filterAndPivot(nonRatioDF, 'METype', mcIterations)
     pneumaticsDF = _filterAndPivot(nonRatioDF, 'pneumatic', mcIterations, pivotField='METype')
-    siteSummaryDF = _filterAndPivot(nonRatioDF, 'modelEmissionCategory', mcIterations, pivotField='simulation')
+    # Issue #77: the 'modelEmissionCategory' CICategory tag is shared by three
+    # full-total aggregation levels emitted by calculateAnnualSummaries — the
+    # per-category detail, the category-dropped rollup (NaN category), and the
+    # COMBINED total row. With pivotField='simulation' the group key omits the
+    # category column, so none of them are filtered out and all three are summed,
+    # triple-counting emissions. The COMBINED rows alone are the per-site totals;
+    # restrict to them before rolling up across sites.
+    combinedSiteTotalsDF = nonRatioDF[nonRatioDF['modelEmissionCategory'] == 'COMBINED']
+    siteSummaryDF = _filterAndPivot(combinedSiteTotalsDF, 'modelEmissionCategory', mcIterations, pivotField='simulation')
     siteSummaryDF = siteSummaryDF.assign(CICategory='simulation')
 
     c2c1Parts = list(filter(lambda df: not df.empty, [
