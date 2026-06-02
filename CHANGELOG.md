@@ -3,6 +3,29 @@
 
 ## v0.4.0 (unreleased)
 
+### Bug Fixes (2026-05-26)
+
+- **Summaries2.py** — `summarizeSimulation`: fixed simulation-level triple-count (issue #77).
+  The `'simulation'` SimSummary rows were built by feeding all `CICategory ==
+  'modelEmissionCategory'` rows through `_filterAndPivot(..., pivotField='simulation')`.
+  That tag is shared by three full-total aggregation levels from `calculateAnnualSummaries`
+  — the per-category detail, the category-dropped rollup (NaN category), and the COMBINED
+  total row — each of which already sums to the full per-site total. Because the
+  `pivotField='simulation'` group key omits the category column, none were filtered out and
+  all three were summed, inflating every simulation-level `mean`/`total` by exactly 3x.
+  Symptom (issue #77): `sum(mean)` for `CICategory=='simulation'` was 3x the sum for
+  `CICategory=='modelReadableName'`. Fixed by restricting to the COMBINED per-site totals
+  before the cross-site rollup. Verified the simulation total now equals the
+  modelReadableName total on both `includeFugitive` paths.
+
+### Tests (2026-05-26)
+
+- **test/test_issue77_simulation_rollup.py**: new test file covering the simulation-level
+  triple-count fix (issue #77). Builds a multi-site, multi-category `calculateAnnualSummaries`
+  output and asserts the COMBINED-only simulation rollup equals both the true total and the
+  `modelReadableName` total on both `includeFugitive` paths, plus a test that pins the
+  pre-fix 3x behavior to guard against regression.
+
 ### Schema Changes (2026-03-31)
 
 - **defaultConfig.json** / **ParquetLib.py**: renamed the new Parquet summary directory
