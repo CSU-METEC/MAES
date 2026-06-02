@@ -5,6 +5,19 @@
 
 ### Bug Fixes (2026-05-26)
 
+- **Summaries2.py** — `summarizeSimulation`: fixed simulation-level triple-count (issue #77).
+  The `'simulation'` SimSummary rows were built by feeding all `CICategory ==
+  'modelEmissionCategory'` rows through `_filterAndPivot(..., pivotField='simulation')`.
+  That tag is shared by three full-total aggregation levels from `calculateAnnualSummaries`
+  — the per-category detail, the category-dropped rollup (NaN category), and the COMBINED
+  total row — each of which already sums to the full per-site total. Because the
+  `pivotField='simulation'` group key omits the category column, none were filtered out and
+  all three were summed, inflating every simulation-level `mean`/`total` by exactly 3x.
+  Symptom (issue #77): `sum(mean)` for `CICategory=='simulation'` was 3x the sum for
+  `CICategory=='modelReadableName'`. Fixed by restricting to the COMBINED per-site totals
+  before the cross-site rollup. Verified the simulation total now equals the
+  modelReadableName total on both `includeFugitive` paths.
+
 - **Summaries2.py** — `_createEmissionDF`: clip events at the simulation-window boundary
   (issue #87). The engine logs the full sampled `duration` of whatever state is in
   progress when simpy stops at `simDurationSecs`, so `timestamp + duration` can exceed the
@@ -23,6 +36,12 @@
   additive `overrunSecs` / `underrunSecs` column proposal (#89).
 
 ### Tests (2026-05-26)
+
+- **test/test_issue77_simulation_rollup.py**: new test file covering the simulation-level
+  triple-count fix (issue #77). Builds a multi-site, multi-category `calculateAnnualSummaries`
+  output and asserts the COMBINED-only simulation rollup equals both the true total and the
+  `modelReadableName` total on both `includeFugitive` paths, plus a test that pins the
+  pre-fix 3x behavior to guard against regression.
 
 - **test/test_issue87_event_clipping.py**: new test file covering simulation-window event
   clipping (issue #87). Asserts that overrunning events are clipped to the in-window
