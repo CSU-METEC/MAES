@@ -24,6 +24,12 @@
   Summary dataset to a study-independent (job-level) path while per-site raw parquet stays
   study-specific, and that `summaryParquetDir` resolves to `{outputRoot}/MC_{scenarioTimestamp}/parquet`.
 
+### Documentation (2026-06-02)
+
+- **README.md**: removed stale, accidentally-committed merge-conflict markers (`<<<<<<<` /
+  `=======` / `>>>>>>>`) around the `### Usage` section, present since the `eb2631f2` main
+  merge (2025-01-24). Kept the Usage section.
+
 ### Schema Changes (2026-03-31)
 
 - **defaultConfig.json** / **ParquetLib.py**: renamed the new Parquet summary directory
