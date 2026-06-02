@@ -57,7 +57,7 @@ def _convertKGPerYear2MetricTonsPerYear(x):
 def _convertKGPerYear2KGPerHour(x):
     return x * KG_PER_YEAR_TO_KG_PER_HOUR
 
-def _createEmissionDF(inDF):
+def _createEmissionDF(inDF, simDurationSecs):
     COLS_TO_KEEP = {'mcRun': 'mcRun',
                     'site': 'site',
                     'species': 'species',
@@ -79,8 +79,28 @@ def _createEmissionDF(inDF):
         psno=inDF['psno'].fillna('')
     )
 
+    # Issue #87: clip events that overrun the simulation window so every downstream
+    # consumer integrates emissions only over [0, simDurationSecs]. The engine logs the
+    # full sampled duration of whatever state is in progress when simpy stops at
+    # simDurationSecs, so `timestamp + duration` can exceed the window. Left unclipped,
+    # the overrun adds spurious emission credit past the window and biases all
+    # rate-integrated quantities (annual summaries, PDFs) upward for long / fat-tailed
+    # event classes. This is the single point where the emission DataFrame is built and
+    # saved as InstEmissions -- the dataset the PDF cascade reads back -- so clipping
+    # here keeps the rate summaries, the event summaries, and the PDFs mutually
+    # consistent over [0, simDurationSecs]. The raw events parquet retains the full
+    # sampled durations. The rate (emission_kgPerS) is unchanged; only duration_s and
+    # totalEmission_kg shrink, for the at-most-one in-progress event per emitter state
+    # machine whose end exceeds the window. `.clip(lower=0)` guards the degenerate case
+    # of an event timestamped at or after the window end (which the engine should not
+    # produce) from yielding a negative duration.
+    clippedDuration = np.minimum(
+        inDF['duration'],
+        (simDurationSecs - inDF['timestamp']).clip(lower=0)
+    )
     emissionDF = emissionDF.assign(
-        totalEmission_kg=emissionDF['emission_kgPerS']*emissionDF['duration'],
+        duration=clippedDuration,
+        totalEmission_kg=emissionDF['emission_kgPerS'] * clippedDuration,
     )
 
     emissionDF = emissionDF.rename(columns=COLS_TO_KEEP)
@@ -728,7 +748,7 @@ def summarizeSingleSite(config, instEmissionDF):
     mcIterations = config['monteCarloIterations']
     with Timer("summarize") as t0:
         simDurationDays = config['simDurationDays']
-        instEmissionDF = _createEmissionDF(instEmissionDF)
+        instEmissionDF = _createEmissionDF(instEmissionDF, simDurationDays * u.SECONDS_PER_DAY)
         _saveSummaryDS(config, instEmissionDF, 'InstEmissions')
         instEmissionNoFugitiveDF = instEmissionDF[instEmissionDF['modelEmissionCategory'] != 'FUGITIVE']
 
