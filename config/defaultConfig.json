@@ -63,6 +63,7 @@
       "equipmentFile": "{templateDir}/equipment.json",
       "mdIndexFile": "{templateDir}/mdIndex.csv",
       "parquetDir": "{simulationRoot}/parquet",
+      "simulationParquetDir": "{outputRoot}/MC_{scenarioTimestamp}/parquet",
 
       "parquetEventDS":          "{parquetDir}/events",
       "parquetTimeseriesDS":     "{parquetDir}/timeseries",
@@ -72,11 +73,11 @@
       "parquetEventListDS":      "{parquetDir}/eventList",
       "parquetNewSummary":       "{parquetDir}/Summary/SiteSummary",
       "parquetNewInstEmissions": "{parquetDir}/Summary/InstEmissions",
-      "parquetNewSimSummary":    "{parquetDir}/Summary/SimSummary",
+      "parquetNewSimSummary":    "{simulationParquetDir}/Summary/SimSummary",
       "parquetNewEventSummary":  "{parquetDir}/Summary/EventSummary",
       "parquetNewPDF":      "{parquetDir}/Summary/PDF",
       "parquetNewPDFCache": "{parquetDir}/Summary/PDFCache",
-      "parquetNewSimPDF":   "{parquetDir}/Summary/SimPDF"
+      "parquetNewSimPDF":   "{simulationParquetDir}/Summary/SimPDF"
     },
 
     "MCIteration": {
