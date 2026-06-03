@@ -16,6 +16,7 @@
     "defaultValues": {
       "inputRoot": "input",
       "outputRoot": "output",
+      "randomSeed": null,
       "scenarioTimestampFormat": "%Y%m%d_%H%M%S",
       "disableSimulation": false,
       "disableGraph": false,

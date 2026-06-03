@@ -3,6 +3,33 @@
 
 ## v0.4.0 (unreleased)
 
+### Bug Fixes (2026-06-03)
+
+- **SimRNG.py** / **SiteMain2.py** — site-aware MC seeding (issue #106). `runSim` seeded
+  every site's simulation with the MC run number alone, so two sites with identical study
+  definitions replayed bit-for-bit identical random streams and produced numerically
+  identical per-site `SiteSummary` output. The seed is now composed by
+  `SimRNG.composeSeed` as `[baseSeed?, crc32(siteName), mcRunNum]`: site identity
+  separates sites within a run, the MC run number keeps iterations distinct (#69), and
+  the optional `--randomSeed` base keeps whole-simulation reproducibility (#96).
+  **Default-mode results change for every site** (the seed composition changed) — this is
+  inherent to the fix, and re-runs remain deterministic.
+- **AppUtils.py** — ported the `-rs/--randomSeed` CLI flag from Curated_Root
+  (`ab45594`, issue #96): seed each MC run with `[randomSeed, …, mcRunNum]` when given;
+  unset → default seeding. Applied explicitly so a seed of `0` is not dropped by the
+  truthy CLI filter. The original commit's contract tests are not ported (they need
+  `Testing/OutputEquivalence`, which is not on this branch).
+
+### Tests (2026-06-03)
+
+- **test/test_issue106_site_seeding.py**: red-green coverage for #106. Fast tier — the
+  `composeSeed` contract (distinct per site, distinct per MC run, reproducible,
+  `--randomSeed` prepended, crc32 site key, legacy fallback). Slow tier (`-m slow`,
+  MAES conda env) — the canonical repro: two byte-identical study sheets run via
+  `--directory` must produce different `SiteSummary` numbers; a default rerun stays
+  bit-identical; `--randomSeed 42` shifts both sites without collapsing them. The `slow`
+  marker is now registered in `pyproject.toml`.
+
 ### Validation (2026-05-27)
 
 - **Testing/SummaryConsistency.py**: new directory-level consistency checker for a MAES

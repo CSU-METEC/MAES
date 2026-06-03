@@ -35,6 +35,11 @@ python-semantic-release = "^9.16.0"
 mkdocs-material = "^9.5.49"
 python-semantic-release = "^9.15.2"
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: long-running engine integration tests (run in the MAES conda env)",
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

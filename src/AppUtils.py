@@ -52,6 +52,11 @@ def getParser(defaultConfig):
     parser.add_argument("-t",  "--testIntervalDays", help="simulation / serialization duration, days", type=int)
     parser.add_argument('-mc', '--monteCarloIterations', help="number of MC iterations", type=int)
     parser.add_argument('-r',  '--runNumber', help="scenario number", type=int)
+    parser.add_argument('-rs', '--randomSeed', type=int,
+                        help="Base RNG seed (non-negative). Combined with each MC run number "
+                             "as the seed sequence [randomSeed, mcRunNum], giving reproducible "
+                             "but per-run-distinct streams. Default (unset): seed each MC run "
+                             "with its run number (legacy behavior).")
 
     parser.add_argument("-ts", "--scenarioTimestamp", help="simulation / serialization identifier (timestamp)")
 
@@ -122,6 +127,11 @@ def getConfig(defaultConfig=DEFAULT_CONFIG, commandArgs=sys.argv[1:]):
 
     filteredCommandLineArgs = dict(filter(lambda x: x[1], args.__dict__.items()))
     cm.expandPhase("arguments", **filteredCommandLineArgs)
+
+    # randomSeed is applied explicitly because the truthy filter above would drop a
+    # legitimate seed of 0 (a common, valid seed). None means "unset" → legacy seeding.
+    if getattr(args, "randomSeed", None) is not None:
+        cm.expandPhase("defaultValues", randomSeed=args.randomSeed)
 
     # Process arguments out of the study definition file.
     # Exclude any keys already set by CLI args so the study file cannot override them.
