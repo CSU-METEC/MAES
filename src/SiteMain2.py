@@ -57,11 +57,13 @@ def initializeSim(config, simdm):
 
 def runSim(config, simdm):
     mcRunNum = config['MCScenario']
-    baseSeed = config.get('randomSeed')
-    # Legacy default (baseSeed is None): seed each MC run with its run number. When a base
-    # seed is supplied, seed with the sequence [baseSeed, mcRunNum] so runs stay distinct
-    # per MC iteration but the whole simulation is reproducible and varies with the seed.
-    SimRNG.seed(mcRunNum if baseSeed is None else [int(baseSeed), int(mcRunNum)])
+    # Seed = [baseSeed?, crc32(siteName), mcRunNum] (SimRNG.composeSeed): site identity
+    # keeps identical site definitions from replaying the same stream within a run
+    # (issue #106); mcRunNum keeps MC iterations distinct (#69); the optional
+    # --randomSeed base keeps the whole simulation reproducible on demand (#96).
+    SimRNG.seed(SimRNG.composeSeed(mcRunNum,
+                                   siteName=config.get('siteName'),
+                                   baseSeed=config.get('randomSeed')))
     with Timer(f"Run Simulation MC Iteration {mcRunNum}") as t0:
         with Timer("  Restore templates") as t1:
             simdm.restoreTemplates()
