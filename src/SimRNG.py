@@ -10,12 +10,33 @@ All simulation code draws from this module so that:
 
 Usage:
     import SimRNG
-    SimRNG.seed(mcRunNum)   # call once at the top of each MC iteration
+    SimRNG.seed(SimRNG.composeSeed(mcRunNum, siteName=siteName))  # top of each MC iteration
     x = SimRNG.random()     # scalar uniform draw on [0, 1)
 """
+import zlib
+
 import numpy as np
 
 _rng: np.random.Generator = np.random.default_rng()
+
+
+def composeSeed(mcRunNum, siteName=None, baseSeed=None) -> list:
+    """Build the seed material for one MC run: ``[baseSeed?, crc32(siteName)?, mcRunNum]``.
+
+    Site identity is mixed in so two sites with identical study definitions do
+    not replay the same stream within a run (CSU-METEC/MAES #106); the MC run
+    number keeps runs distinct per iteration (#69); the optional ``baseSeed``
+    (--randomSeed) prepends a user-chosen base so the whole simulation is
+    reproducible on demand and varies with the seed (#96). crc32 keeps the site
+    component stable across platforms and interpreter sessions (unlike hash()).
+    """
+    parts = []
+    if baseSeed is not None:
+        parts.append(int(baseSeed))
+    if siteName is not None:
+        parts.append(zlib.crc32(str(siteName).encode("utf-8")))
+    parts.append(int(mcRunNum))
+    return parts
 
 
 def seed(s=None) -> None:
