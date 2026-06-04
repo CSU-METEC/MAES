@@ -1,3 +1,11 @@
+import os
+# Cap BLAS / OpenMP threads BEFORE pandas/numpy/pyarrow are imported (see
+# SiteMain2.py for explanation). GraphUtils below imports pandas, so this must
+# stay above every other import in this entry-point file.
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+             "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+    os.environ.setdefault(_var, "1")
+
 import GraphUtils as gu
 import AppUtils as au
 import logging

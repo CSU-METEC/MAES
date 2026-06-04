@@ -1,3 +1,14 @@
+import os
+# Cap BLAS / OpenMP / pyarrow threads BEFORE pandas/numpy/pyarrow are imported.
+# On Linux multiprocessing defaults to fork, which inherits the parent's BLAS
+# thread pool — and BLAS reads these env vars at library load time. Setting them
+# in the pool initializer is too late. This block makes sure the parent (and
+# therefore every forked worker) starts with thread counts of 1. Override by
+# setting the env var explicitly (e.g. OMP_NUM_THREADS=4) before launching.
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+             "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+    os.environ.setdefault(_var, "1")
+
 import AppUtils as au
 import ModelFormulation as mf
 import logging
@@ -10,7 +21,7 @@ import functools
 import utilities.EmissionsCSVGenerator as eg
 import Units as u
 import ParquetLib as pl
-import os
+
 import pandas as pd
 import datetime as dt
 
@@ -208,15 +219,33 @@ def runLocal(workQueue):
         #     save this mc for review/debugging
     return retList
 
+def _workerInitializer():
+    # Each worker handles one workitem at a time; without these caps BLAS / pyarrow
+    # spawn N threads per worker and a 64-worker pool oversubscribes the host badly.
+    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+                "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+        os.environ.setdefault(var, "1")
+    try:
+        import pyarrow as pa
+        pa.set_cpu_count(1)
+        pa.set_io_thread_count(1)
+    except Exception:
+        pass
+
 def runMultiprocessing(workQueue, workers):
     import multiprocessing as mp
     workType = 'UNKNOWN'
-    if len(workQueue) > 0:
+    nItems = len(workQueue)
+    if nItems > 0:
         workType = workQueue[0].get('workType', 'UNKNOWN')
-    logger.info(f"multiprocessing w/ work type: {workType}, workers: {workers}")
+    # Don't spin up more workers than there are workitems (matters for single-item phases).
+    effectiveWorkers = max(1, min(workers, nItems)) if nItems > 0 else workers
+    # ~4 chunks per worker keeps load balancing while cutting IPC overhead on large queues.
+    chunksize = max(1, nItems // (effectiveWorkers * 4)) if nItems > 0 else 1
+    logger.info(f"multiprocessing w/ work type: {workType}, workers: {effectiveWorkers}, items: {nItems}, chunksize: {chunksize}")
     with Timer(f"{workType}") as t0:
-        with mp.Pool(workers) as p:
-            res = list(p.imap_unordered(runWorkitem, workQueue))
+        with mp.Pool(effectiveWorkers, initializer=_workerInitializer) as p:
+            res = list(p.imap_unordered(runWorkitem, workQueue, chunksize=chunksize))
         t0.setCount(len(res))
         return res
     pass

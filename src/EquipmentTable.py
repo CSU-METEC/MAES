@@ -324,15 +324,58 @@ class EquipmentTable(ABC):
 class JsonEquipmentTable(EquipmentTable):
 
     def __init__(self, eqAttributes=None, eqMap=None):
+        self._pendingRows = []
         if eqAttributes is not None:
-            self.equipmentAttributes = eqAttributes
+            self._equipmentAttributes = eqAttributes
         else:
-            self.equipmentAttributes = pd.DataFrame(columns=EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS)
+            self._equipmentAttributes = pd.DataFrame(columns=EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS)
 
         if eqMap is not None:
             self.equipmentMap = eqMap
         else:
             self.equipmentMap = {}  # we want this to be name -> EquipmentTableEntry
+
+    # equipmentAttributes is read by many callers (getMetadata, getEquipment,
+    # tablesForMCRun, MEETSimSummary, ModelFormulation). We buffer per-row appends
+    # in self._pendingRows and only build a DataFrame when something actually reads,
+    # turning the previous O(N^2) per-row concat into O(N).
+    @property
+    def equipmentAttributes(self):
+        if self._pendingRows:
+            # Build with dtype=object so each value keeps its original Python
+            # type. Without dtype=object, pd.DataFrame infers per-column dtypes
+            # from the data — and a key column mixing ints with None gets
+            # coerced to float64, silently turning 12345 into 12345.0. That
+            # round-trips to metadata.csv as "12345.0", but the event logger
+            # writes str(12345) == "12345" for the same equipment, so the
+            # metadata <-> events merge in readParquetEvents misses on every
+            # row, leaving NaN METype/modelReadableName/modelEmissionCategory.
+            # Downstream groupby then drops every row and the summarize phase
+            # crashes on list(np.sum(empty, axis=0)). dtype=object matches the
+            # original empty-seed-then-row-by-row-concat behavior exactly.
+            new = pd.DataFrame(
+                self._pendingRows,
+                columns=EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS,
+                dtype=object,
+            )
+            self._pendingRows = []
+            # Defense-in-depth: any NaN that snuck in (e.g. a blank cell in
+            # the study sheet read as NaN by pd.read_excel) would still break
+            # equipmentMap dict lookups (NaN != NaN as a tuple key).
+            for col in ('facilityID', 'unitID', 'emitterID', 'mcRunNum'):
+                s = new[col]
+                if s.isna().any():
+                    new[col] = s.where(s.notna(), None)
+            if self._equipmentAttributes.empty:
+                self._equipmentAttributes = new
+            else:
+                self._equipmentAttributes = pd.concat([self._equipmentAttributes, new], ignore_index=True)
+        return self._equipmentAttributes
+
+    @equipmentAttributes.setter
+    def equipmentAttributes(self, value):
+        self._pendingRows = []
+        self._equipmentAttributes = value
 
     class FakeInstance:
         def __init__(self, facilityID, unitID, emitterID, mcRunNum):
@@ -348,7 +391,8 @@ class JsonEquipmentTable(EquipmentTable):
         return self.getEquipment(mcRunNum=-1)
 
     def getEquipment(self, mcRunNum=None):
-        tmpls = self.equipmentAttributes[self.equipmentAttributes['mcRunNum'] == mcRunNum]
+        attrs = self.equipmentAttributes
+        tmpls = attrs[attrs['mcRunNum'] == mcRunNum]
         tmplKeys = tmpls.apply(self._instanceKey, axis='columns')
         ret = list(map(lambda x: self.equipmentMap[x], tmplKeys))
         return ret
@@ -369,14 +413,14 @@ class JsonEquipmentTable(EquipmentTable):
         return ret
 
     def addEquipment(self, instance):
-        instDict = filterDict(instance.__dict__, EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS)
-        self.equipmentAttributes = pd.concat([self.equipmentAttributes, pd.DataFrame(instDict, index=[0])])
         key = self._instanceKey(instance)
         if key in self.equipmentMap:
             prevInstance = self.equipmentMap[key]
             msg = f"Duplicate equipment key: {key}, previous instance: {prevInstance}"
             logging.error(msg)
             raise me.IllegalElementError(msg)
+        instDict = filterDict(instance.__dict__, EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS)
+        self._pendingRows.append(instDict)
         self.equipmentMap[key] = instance
 
     def elementLookup(self, facilityID, unitID=None, emitterID=None, mcRunNum=-1):
@@ -384,11 +428,12 @@ class JsonEquipmentTable(EquipmentTable):
         return self.equipmentMap.get(key, None)
 
     def tablesForMCRun(self, mcRunNum=None):
+        attrs = self.equipmentAttributes
         if mcRunNum is None:
-            mdToDump = self.equipmentAttributes
+            mdToDump = attrs
             equipmentToDump = self.equipmentMap
         else:
-            mdToDump = self.equipmentAttributes[self.equipmentAttributes['mcRunNum'] == mcRunNum]
+            mdToDump = attrs[attrs['mcRunNum'] == mcRunNum]
             equipmentToDump = self.getEquipment(mcRunNum)
 
         return mdToDump, equipmentToDump
