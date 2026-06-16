@@ -1,3 +1,12 @@
+import os
+# Cap BLAS / OpenMP / pyarrow thread counts to 1 BEFORE pandas/numpy/pyarrow are
+# imported below. Each forked Pool worker otherwise inherits an uncapped pool and
+# spawns N threads, oversubscribing the host on many-worker runs. Must stay above
+# every other import in this module.
+for envVar in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+               "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+    os.environ.setdefault(envVar, "1")
+
 import AppUtils as au
 import ModelFormulation as mf
 import logging
@@ -13,7 +22,6 @@ import functools
 import utilities.EmissionsCSVGenerator as eg
 import Units as u
 import ParquetLib as pl
-import os
 import pandas as pd
 import datetime as dt
 import Summaries2 as sum
@@ -290,9 +298,25 @@ def configFromConfigMgr(cMgr):
     return config
 
 def initWorker(base: dict) -> None:
-    """Set the shared workitem base dict in each Pool worker process."""
+    """Set the shared workitem base dict in each Pool worker, and cap this
+    worker's BLAS/pyarrow thread pools to 1.
+
+    The env caps are also set at module import and inherited via fork, but a
+    worker started under the 'spawn' start method re-imports fresh, so they are
+    reasserted here. pyarrow's own thread pools are not env-driven, so they are
+    pinned explicitly.
+    """
     global workerBase
     workerBase = base
+    for envVar in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+                   "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+        os.environ.setdefault(envVar, "1")
+    try:
+        import pyarrow as pa
+        pa.set_cpu_count(1)
+        pa.set_io_thread_count(1)
+    except Exception:
+        pass
 
 
 def makeSlimWorkitem(base: dict, workitem: dict) -> dict:
@@ -356,7 +380,13 @@ def instEmissionsRowCount(wi: dict) -> int:
 def runMultiprocessing(workQueue, workers):
     import multiprocessing as mp
     workType = workQueue[0].get('workType', 'UNKNOWN') if workQueue else 'UNKNOWN'
-    logger.info(f"multiprocessing w/ work type: {workType}, workers: {workers}")
+    nItems = len(workQueue)
+    # Don't spin up more workers than there are workitems (matters for single-item phases).
+    if nItems > 0:
+        effectiveWorkers = max(1, min(workers, nItems))
+    else:
+        effectiveWorkers = workers
+    logger.info(f"multiprocessing w/ work type: {workType}, workers: {effectiveWorkers}, items: {nItems}")
     if workType == 'createPDFCache':
         # createPDFCache runs after the parquet phase, which writes InstEmissions parquet
         # files to parquetNewInstEmissions. Those files already exist on disk here, so
@@ -370,7 +400,7 @@ def runMultiprocessing(workQueue, workers):
         # to the OS, so without this, worker RSS grows monotonically across sequential mc
         # runs within a process. For N5+ workloads this exhausts physical RAM + swap before
         # the pool closes. The fork cost (~50-100 ms) is negligible vs simulation run times.
-        with mp.Pool(workers, initializer=initWorker, initargs=(base,),
+        with mp.Pool(effectiveWorkers, initializer=initWorker, initargs=(base,),
                      maxtasksperchild=1) as p:
             res = list(p.imap_unordered(runWorkitemSlim, slimQueue))
         t0.setCount(len(res))

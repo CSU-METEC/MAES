@@ -1,3 +1,11 @@
+import os
+# Cap BLAS / OpenMP thread counts to 1 BEFORE pandas/numpy/pyarrow load (GraphUtils
+# below imports pandas). Forked workers inherit these caps instead of each spawning
+# N threads and oversubscribing the host. Must stay above every other import here.
+for envVar in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+               "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+    os.environ.setdefault(envVar, "1")
+
 import GraphUtils as gu
 import AppUtils as au
 import logging
