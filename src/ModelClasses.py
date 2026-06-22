@@ -4320,6 +4320,10 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
                                                               'max': self.tankOverpressureMTBFMaxSec})
                 pass
             pass
+        
+        if self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
+            nextState = self.overPressureVars(rateChangeDelay)
+            return nextState
 
         if (self.tankOverpressureMTBFMinSec - self.tankOverpressureMTBFMinSec/10) <= \
                 self.overpressureTimeTracker <= \
