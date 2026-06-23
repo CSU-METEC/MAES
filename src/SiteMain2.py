@@ -182,9 +182,12 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
     createPDFCacheWorkitems = []
     simSummaryWorkitems = []
 
-    # The per-site SiteSummary/PDF output dirs, accumulated as each site's config
-    # is expanded. The single simSummary workitem aggregates across all of these,
-    # rather than seeing only the last site left in the config manager.
+    # The SiteSummary/PDF datasets are single shared, hive-partitioned-by-site
+    # directories (their config paths carry no {site} component), so every site in
+    # the loop resolves the SAME path. Add each distinct directory exactly once; the
+    # simSummary workitem then reads each shared dataset once and recovers `site` from
+    # the partition. Appending per-site would read the whole dataset N times and inflate
+    # every SimSummary/SimPDF level by the site count (issue #114).
     allSiteSummaryDirs = []
     allSitePDFDirs = []
 
@@ -206,8 +209,12 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
         createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCache'))
-        allSiteSummaryDirs.append(cm.getConfigVar('parquetNewSummary'))
-        allSitePDFDirs.append(cm.getConfigVar('parquetNewPDF'))
+        summaryDir = cm.getConfigVar('parquetNewSummary')
+        if summaryDir not in allSiteSummaryDirs:
+            allSiteSummaryDirs.append(summaryDir)
+        pdfDir = cm.getConfigVar('parquetNewPDF')
+        if pdfDir not in allSitePDFDirs:
+            allSitePDFDirs.append(pdfDir)
     # simSummary happens once per simulation, aggregating every site's summaries
     simSummaryWI = generateSingleWorkitem(cm, 'simSummary')
     simSummaryWI['allSiteSummaryDirs'] = allSiteSummaryDirs
