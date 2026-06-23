@@ -233,7 +233,7 @@ def plot_standard_timeseries(ax, parq2, interval_days=5.0, compareWith=None):
         ax_compare.set_ylabel('CompareWith (kg/h)', color='green')
         ax_compare.tick_params(axis='y', labelcolor='green')
         ax_compare.grid(False)  # Disable grid for the secondary Y-axis
-        ax_compare.set_ylim(0, compareWith*1.5)  # Set limits for the secondary Y-axis
+        ax_compare.set_ylim(0, compareWith*2)  # Set limits for the secondary Y-axis
         
         # Align the zeros of both Y-axes
         # primary_ylim = ax.get_ylim()
@@ -288,6 +288,7 @@ def plotTimeseriesPerUnitID(parq, unitIDs, saveIn, facName, pdfOnRight=True, int
         parq2['timestamp'] = parq2['timestamp_s']
         parq2['timestamp_days'] = parq2['timestamp'] / 86400.0
         parq2['nextTS'] = parq2['timestamp'] + parq2['duration_s']
+        parq2 = parq2.drop(parq2[parq2['emissions_kgPerH'] > 100].index)
 
         if pdfOnRight:
             fig = plt.figure(figsize=(14, 8))  # Increased figure size for better readability
@@ -430,8 +431,9 @@ def main():
         # plotPDFsAndCDFsUnitID(parq=parq, byType=byType, saveIn=saveIn, facName=args.facilityName)
     # plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', saveIn=saveIn, facName=args.facilityName, 
                         #   excludeModelReadableName=None, mcRuns=mcRuns)
-    # plotTimeseriesPerUnitID(parq=parq, unitIDs=['tank_battery_OIL'], saveIn=saveIn, mcRuns=mcRuns,
-    #                         excludeModelReadableName=['Tank Battery Component Leak'], facName=args.facilityName, interval_days=5, pdfOnRight=True)
+    plotTimeseriesPerUnitID(parq=parq, unitIDs=['tank_battery_OIL'], saveIn=saveIn, mcRuns=mcRuns,
+                            excludeModelReadableName=['Tank Battery Component Leak', 'Pressure Relief Vent'], 
+                            facName=args.facilityName, interval_days=5, pdfOnRight=False, compareWith=0.000060, )
     plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', indType = ['tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, 
                           excludeModelReadableName=None, spPlotName='With', mcRuns=mcRuns, compareWith=0.000150169008787642)
     # plotPDFsAndCDFsUnitID(parq=parq, byType='unitID', indType = ['tank_battery_OIL'], saveIn=saveIn, facName=args.facilityName, 
