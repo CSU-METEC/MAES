@@ -62,6 +62,8 @@ def getParser(defaultConfig):
 
     parser.add_argument('-w',  '--workers', type=int, help="Number of parallel python images (experimental)")
 
+    parser.add_argument('-noPDF', '--noPDF', help="Skip PDF generation (the per-site createPDFCache phase and the simulation-level SimPDF) while keeping all other summaries", action='store_true', default=False)
+
     parser.add_argument('-si', '--disableSimulation', help="Disable simulation in MEETMain", action='store_true', default=False)
     parser.add_argument('-gr', '--disableGraph', help="Disable graph creation in MEETMain", action='store_true', default=False)
     parser.add_argument('-su', '--disableSummary', help="Disable summary generation in MEETMain", action='store_true', default=False)
