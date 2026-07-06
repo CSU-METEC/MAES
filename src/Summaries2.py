@@ -1045,6 +1045,9 @@ def summarizeSimulation(config):
     fullSimSummaryDF = fullSimSummaryDF.assign(simDurationDays=config['simDurationDays'])
     _saveSummaryDS(config, fullSimSummaryDF, 'SimSummary')
 
-    createSimPDF(config)
+    if config.get('noPDF'):
+        logger.info("noPDF set: skipping SimPDF generation")
+    else:
+        createSimPDF(config)
 
     pass

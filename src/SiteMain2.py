@@ -175,6 +175,10 @@ def getFileList(cm):
         yield (cm.getConfigVar("studyFilename"), cm.getConfigVar("studyDefinitionFile"), cm.getConfigVar('studyName'))
 
 def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
+    # --noPDF drops the per-site PDF cache phase here; summarizeSimulation skips SimPDF
+    # for the same flag. Build a local copy so the ALL_PHASES default is never mutated.
+    if cm.getConfigVar('noPDF'):
+        phasesToInclude = list(filter(lambda phase: phase != 'createPDFCache', phasesToInclude))
     initWorkitems = []
     simWorkitems = []
     parquetWorkitems = []

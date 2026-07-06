@@ -18,6 +18,7 @@
       "outputRoot": "output",
       "randomSeed": null,
       "scenarioTimestampFormat": "%Y%m%d_%H%M%S",
+      "noPDF": false,
       "disableSimulation": false,
       "disableGraph": false,
       "disableSummary": false,
