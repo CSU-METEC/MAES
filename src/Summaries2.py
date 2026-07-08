@@ -741,7 +741,15 @@ def _buildCoarseCacheLevel(fineDF, groupCols, levelName, binSize=1e-6, coalesce=
         colVals = []
         for groupKey in groupKeysList:
             colVals.append(groupKey[colIdx])
-        colArrays[col] = np.repeat(np.array(colVals), groupSizes)
+        keyArr = np.asarray(colVals)
+        if keyArr.dtype.kind in ('U', 'S'):
+            # String identity values: repeat an OBJECT-dtype array so np.repeat copies
+            # references to the per-group Python strings (matching the memory behaviour of the
+            # old [value] * n lists, where all n rows shared one string object). A fixed-width
+            # '<U' array here would materialise a separate string per row on conversion to the
+            # frame's object column — measured as ~+26% tree peak RSS on the mc=100 workload.
+            keyArr = np.array(colVals, dtype=object)
+        colArrays[col] = np.repeat(keyArr, groupSizes)
     colArrays['startTime_s'] = np.concatenate(startsOut)
     colArrays['endTime_s'] = np.concatenate(endsOut)
     colArrays['emission_kgPerH'] = np.concatenate(valsOut)
@@ -812,7 +820,13 @@ def createPDFCache(config):
         colVals = []
         for groupKey in groupKeysList:
             colVals.append(groupKey[colIdx])
-        colArrays[col] = np.repeat(np.array(colVals), groupSizes)
+        keyArr = np.asarray(colVals)
+        if keyArr.dtype.kind in ('U', 'S'):
+            # Object-dtype repeat copies REFERENCES to the per-group strings (the old
+            # [value] * n lists' memory behaviour); a '<U' array materialises a separate
+            # string per row — measured ~+26% tree peak RSS. See _buildCoarseCacheLevel.
+            keyArr = np.array(colVals, dtype=object)
+        colArrays[col] = np.repeat(keyArr, groupSizes)
     colArrays['startTime_s'] = np.concatenate(startsOut)
     colArrays['endTime_s'] = np.concatenate(endsOut)
     colArrays['emission_kgPerH'] = np.concatenate(valsOut)
