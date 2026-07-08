@@ -297,6 +297,46 @@ class TimeseriesRLE(Timeseries):
         df = pd.DataFrame.from_records(dictList)
         return cls(df, valueColName=valueColName, **kwargs)
 
+    @classmethod
+    def fromValidatedArrays(cls, startTimes, endTimes, values,
+                            startTimeColName='timestamp', endTimeColName='nextTS',
+                            valueColName='tsValue', name=None, units=None):
+        """Trusted constructor for arrays whose RLE invariants hold BY CONSTRUCTION (issue #121).
+
+        __init__ validates every incoming frame: column presence, interval overlap
+        (endTime vs the next row's startTime), zero-duration rows, and end-time sortedness —
+        several pandas operations per construction. That is the right defence where data
+        ENTERS the system (raw event logs, files), but pure waste for the OUTPUT of
+        sumEventArrays, which guarantees strictly-increasing unique start times, contiguous
+        positive-duration intervals, and no overlaps by the way it is built (sorted unique
+        event times define the interval edges). Profiling (issue #121) showed this re-
+        validation, repeated ~50k times per site cache build, was a significant slice of
+        createPDFCache runtime.
+
+        This constructor therefore bypasses __init__ (object.__new__ + direct attribute
+        assignment) and sets every attribute __init__ would have set:
+          name/units (base Timeseries state), df, the three column-name fields, colList,
+          and sorted=True (asserted, not re-derived — the caller's construction guarantees it).
+        Callers MUST only pass arrays produced by sumEventArrays (or arrays with the same
+        proven invariants); anything else must go through the validating __init__.
+        """
+        obj = cls.__new__(cls)
+        # Base-class state (Timeseries.__init__ sets exactly these two).
+        obj.name = name
+        obj.units = units
+        # One DataFrame construction from columnar arrays — the single pandas object this
+        # path creates. reset_index is unnecessary: a fresh frame already has a RangeIndex.
+        obj.df = pd.DataFrame({startTimeColName: startTimes,
+                               endTimeColName: endTimes,
+                               valueColName: values})
+        obj.startTimeColName = startTimeColName
+        obj.endTimeColName = endTimeColName
+        obj.valueColName = valueColName
+        obj.colList = [startTimeColName, endTimeColName, valueColName]
+        # __init__ derives this via _isSorted(); the kernel's output is sorted by construction.
+        obj.sorted = True
+        return obj
+
     @property
     def _durations(self):
         dur = self.df[self.endTimeColName] - self.df[self.startTimeColName]
@@ -1129,6 +1169,68 @@ class TimeseriesCDF():
 # TimeseriesSet
 #
 
+def sumEventArrays(startsList, endsList, valsList):
+    """Array-native signed-event sweep summation (issue #121).
+
+    This is EXACTLY the algorithm TimeseriesSet.sum() has always used — emit +value at each
+    interval start and -value at each interval end, sort all events by time, running-sum the
+    deltas to get the summed level on each inter-event interval, and clip near-zero floating-
+    point residuals — implemented on raw numpy arrays instead of per-call DataFrames, concat,
+    and groupby. Profiling (issue #121) showed ~99% of createPDFCache runtime was pandas
+    object machinery around this algorithm; the arithmetic itself is unchanged.
+
+    Parameters are parallel lists (one entry per input timeseries) of 1-D arrays:
+    startsList[i] / endsList[i] / valsList[i] hold interval start times, end times, and values
+    of input i. Intervals within one input must be non-overlapping (callers validate, exactly
+    as TimeseriesRLE.__init__ always has); input ORDER does not matter because all events are
+    globally sorted here.
+
+    Returns (startTimes, endTimes, values) arrays of the summed step function. Output
+    invariants, BY CONSTRUCTION (these are what let fromValidatedArrays skip re-validation):
+      - startTimes is strictly increasing (unique sorted event times);
+      - endTimes[i] is the next unique event time, so every duration is > 0;
+      - intervals are contiguous and non-overlapping.
+    """
+    # Signed event table: one +value event per interval start, one -value event per interval
+    # end. np.negative allocates the negated copies (the legacy path's 'delta': -vals).
+    times = np.concatenate(startsList + endsList)
+    deltas = np.concatenate(valsList + list(map(np.negative, valsList)))
+    if len(times) == 0:
+        empty = np.array([])
+        return empty, empty, empty
+    # Global sort by event time. 'stable' keeps a deterministic order for events sharing a
+    # timestamp; the segment-sum below adds all same-time deltas together regardless, exactly
+    # like the legacy groupby('time').sum(). (Float addition ORDER within a shared timestamp
+    # can differ from pandas' internal order, so results may differ at the ~1e-16 ULP level —
+    # far below both the 1e-10 residual clip here and the >=1e-6 _roundForPDF quantisation
+    # applied immediately downstream in the PDF cascade.)
+    order = np.argsort(times, kind="stable")
+    times = times[order]
+    deltas = deltas[order]
+    # Segment boundaries: positions where the (sorted) event time changes. reduceat then sums
+    # each same-time run of deltas — the vectorized equivalent of groupby('time')['delta'].sum().
+    isNew = np.empty(len(times), dtype=bool)
+    isNew[0] = True
+    isNew[1:] = times[1:] != times[:-1]
+    segStartIdx = np.flatnonzero(isNew)
+    uniqueTimes = times[segStartIdx]
+    segSums = np.add.reduceat(deltas, segStartIdx)
+    # Running level: cumsum of the per-time net deltas gives the summed value on the interval
+    # [uniqueTimes[i], uniqueTimes[i+1]). Identical to the legacy cumsum over the grouped table.
+    cumLevels = np.cumsum(segSums)
+    startTimes = uniqueTimes[:-1]
+    endTimes = uniqueTimes[1:]
+    values = cumLevels[:-1]
+    # Near-zero residual clip — SAME semantics and SAME 1e-10 threshold as the legacy sum():
+    # when several inputs share an endpoint, their +/- deltas cancel with float64 rounding
+    # noise (~1e-14 for kg/h-scale rates) instead of exact zeros, creating phantom intervals
+    # spanning the gaps between real events. NOTE this deliberately drops ALL near-zero
+    # intervals, positive ones included — preserving the legacy behaviour exactly (see the
+    # original comment retained in _sumLegacy).
+    keepMask = np.abs(values) >= 1e-10
+    return startTimes[keepMask], endTimes[keepMask], values[keepMask]
+
+
 class TimeseriesSet():
 
     def __init__(self, tsSetList):
@@ -1139,6 +1241,49 @@ class TimeseriesSet():
         self.tsSetList.append(ts)
 
     def sum(self):
+        """Sum the member timeseries into one summed step function (TimeseriesRLE).
+
+        Fast path (issue #121): when every member is a PLAIN TimeseriesRLE — an exact type()
+        check, so subclasses like TimeseriesCategorical (state timelines, whose values are
+        category codes that must not be arithmetically summed) always take the legacy path —
+        extract the raw arrays once, run the array-native kernel (sumEventArrays), and wrap
+        the result via the trusted constructor. Same algorithm, same residual-clip semantics,
+        none of the per-call DataFrame/concat/groupby overhead.
+
+        The legacy frame-based implementation is retained verbatim as _sumLegacy: it is the
+        fallback for mixed/subclassed member sets AND the reference implementation the unit
+        tests compare the fast path against.
+        """
+        if not self.tsSetList:
+            return TimeseriesRLE(pd.DataFrame(columns=['timestamp', 'nextTS', 'tsValue']))
+        allPlainRLE = all(map(lambda singleTS: type(singleTS) is TimeseriesRLE, self.tsSetList))
+        if not allPlainRLE:
+            return self._sumLegacy()
+
+        first = self.tsSetList[0]
+        startsList = []
+        endsList = []
+        valsList = []
+        for singleTS in self.tsSetList:
+            df = singleTS.df
+            # .to_numpy() on each column once per member — the only pandas touch on this path.
+            startsList.append(df[singleTS.startTimeColName].to_numpy())
+            endsList.append(df[singleTS.endTimeColName].to_numpy())
+            valsList.append(df[singleTS.valueColName].to_numpy())
+        startTimes, endTimes, values = sumEventArrays(startsList, endsList, valsList)
+        if len(values) == 0:
+            # Legacy behaviour: an empty result uses the DEFAULT column names, not the first
+            # member's (see the tail of _sumLegacy) — preserved exactly.
+            return TimeseriesRLE(pd.DataFrame(columns=['timestamp', 'nextTS', 'tsValue']))
+        # The kernel's output invariants (strictly increasing, positive-duration, non-
+        # overlapping intervals) hold by construction, so the trusted constructor may skip
+        # the per-row validation TimeseriesRLE.__init__ would re-run.
+        return TimeseriesRLE.fromValidatedArrays(startTimes, endTimes, values,
+                                                 startTimeColName=first.startTimeColName,
+                                                 endTimeColName=first.endTimeColName,
+                                                 valueColName=first.valueColName)
+
+    def _sumLegacy(self):
         if not self.tsSetList:
             return TimeseriesRLE(pd.DataFrame(columns=['timestamp', 'nextTS', 'tsValue']))
 
