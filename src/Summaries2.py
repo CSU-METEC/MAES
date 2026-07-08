@@ -679,41 +679,75 @@ def _coalesceAdjacentEqual(starts, ends, values):
     return starts[runStartIdx], ends[runEndIdx], values[runStartIdx]
 
 
-def _roundedCacheArrays(summedTS, binSize, coalesce):
-    """Round a summed timeseries' rates to binSize; return (startTimes, endTimes, values).
+def _roundedCacheArrays(startTimes, endTimes, values, binSize, coalesce):
+    """Round summed emission rates to binSize; return (startTimes, endTimes, values) arrays.
 
-    When coalesce is True, consecutive intervals sharing a rounded rate are merged
-    (_coalesceAdjacentEqual) — the change that lets a coarser binSize actually shrink the cache
-    without altering the PDF. When False, every interval is kept (legacy behaviour)."""
-    starts = summedTS.df[summedTS.startTimeColName].values
-    ends = summedTS.df[summedTS.endTimeColName].values
-    values = _roundForPDF(summedTS.df[summedTS.valueColName].values, binSize)
+    Operates directly on the arrays produced by ts.sumEventArrays (issue #121) — no timeseries
+    object needed. When coalesce is True, consecutive intervals sharing a rounded rate are
+    merged (_coalesceAdjacentEqual) — the change that lets a coarser binSize actually shrink
+    the cache without altering the duration-weighted PDF. When False, every interval is kept
+    (legacy behaviour)."""
+    values = _roundForPDF(values, binSize)
     if coalesce:
-        starts, ends, values = _coalesceAdjacentEqual(starts, ends, values)
-    return starts, ends, values
+        startTimes, endTimes, values = _coalesceAdjacentEqual(startTimes, endTimes, values)
+    return startTimes, endTimes, values
 
 
 def _buildCoarseCacheLevel(fineDF, groupCols, levelName, binSize=1e-6, coalesce=False):
+    """Aggregate the fine cache to one coarse cache level; array-native path (issue #121).
+
+    Two changes from the frame-per-group original, both pure mechanics (same math, same rows):
+      1. Each sub-group's intervals go straight from the fine-cache columns into
+         ts.sumEventArrays — no per-sub-group TimeseriesRLE construction. The fine cache rows
+         being aggregated here are outputs of THIS call's own summation kernel, so their RLE
+         invariants already hold; re-validating them per sub-group was pure overhead.
+      2. Store-side accumulation: per-group results are collected as arrays and materialised
+         as ONE DataFrame per level (np.repeat for the identity columns), instead of one
+         DataFrame per group plus a concat over all of them. Profiling (issue #121) showed the
+         per-group frame construction + N-way concat rivaled the summation itself.
+    """
     aggGroupCols = [*groupCols, 'modelEmissionCategory', 'mcRun']
-    rowsList = []
+    groupKeysList = []
+    groupSizesList = []
+    startsOut = []
+    endsOut = []
+    valsOut = []
     for groupKey, groupDF in fineDF.groupby(aggGroupCols):
-        catTSList = []
+        startsList = []
+        endsList = []
+        valsList = []
         for _, subDF in groupDF.groupby(['facilityID', *CACHE_IDENTITY_COLS]):
-            catTSList.append(_cacheGroupToTimeseriesRLE(subDF))
-        summedTS = ts.TimeseriesSet(catTSList).sum()
-        if summedTS.isempty():
+            startsList.append(subDF['startTime_s'].to_numpy())
+            endsList.append(subDF['endTime_s'].to_numpy())
+            valsList.append(subDF['emission_kgPerH'].to_numpy())
+        startArr, endArr, valArr = ts.sumEventArrays(startsList, endsList, valsList)
+        startArr, endArr, valArr = _roundedCacheArrays(startArr, endArr, valArr, binSize, coalesce)
+        if len(valArr) == 0:
             continue
-        identityDict = dict(zip(aggGroupCols, groupKey))
-        startArr, endArr, valArr = _roundedCacheArrays(summedTS, binSize, coalesce)
-        n = len(valArr)
-        rowsList.append(pd.DataFrame({
-            **{col: [val] * n for col, val in identityDict.items()},
-            'startTime_s': startArr,
-            'endTime_s': endArr,
-            'emission_kgPerH': valArr,
-            'cacheLevel': [levelName] * n,
-        }))
-    return pd.concat(rowsList, ignore_index=True) if rowsList else pd.DataFrame()
+        groupKeysList.append(groupKey)
+        groupSizesList.append(len(valArr))
+        startsOut.append(startArr)
+        endsOut.append(endArr)
+        valsOut.append(valArr)
+    if not groupKeysList:
+        return pd.DataFrame()
+    # One frame for the whole level. Identity columns are built by repeating each group's key
+    # value by that group's interval count; np.array infers the per-column dtype from the key
+    # values themselves (strings stay strings, mcRun stays integer), matching what the old
+    # per-group frames produced.
+    groupSizes = np.array(groupSizesList)
+    colArrays = {}
+    for colIdx, col in enumerate(aggGroupCols):
+        colVals = []
+        for groupKey in groupKeysList:
+            colVals.append(groupKey[colIdx])
+        colArrays[col] = np.repeat(np.array(colVals), groupSizes)
+    colArrays['startTime_s'] = np.concatenate(startsOut)
+    colArrays['endTime_s'] = np.concatenate(endsOut)
+    colArrays['emission_kgPerH'] = np.concatenate(valsOut)
+    totalRows = int(groupSizes.sum())
+    colArrays['cacheLevel'] = np.full(totalRows, levelName, dtype=object)
+    return pd.DataFrame(colArrays)
 
 def createPDFCache(config):
     logger.info(f"Creating PDF cache for site {config['siteName']}")
@@ -737,31 +771,55 @@ def createPDFCache(config):
     binSize = config.get('pdfBinSize', 1e-6)
     coalesce = config.get('pdfCoalesce', False)
     groupCols = ['facilityID', *CACHE_IDENTITY_COLS, 'mcRun']
-    cacheRowsList = []
+    # Array accumulation for the fine level (issue #121): collect each group's summed interval
+    # arrays plus its identity key, and materialise ONE DataFrame at the end (np.repeat for the
+    # identity columns) — replacing one DataFrame construction per group plus a group-count-wide
+    # concat, which profiling showed rivaled the summation work itself at ~100k groups/site.
+    groupKeysList = []
+    groupSizesList = []
+    startsOut = []
+    endsOut = []
+    valsOut = []
     with Timer("Build PDF cache") as t1:
         for groupKey, groupDF in instEmissionDF.groupby(groupCols):
             summedTS = _buildMCRunTimeseries(groupDF)
             if summedTS.isempty():
                 continue
-            startArr, endArr, valArr = _roundedCacheArrays(summedTS, binSize, coalesce)
-            n = len(valArr)
-            identityDict = dict(zip(groupCols, groupKey))
-            cacheRowsList.append(pd.DataFrame({
-                **{col: [val] * n for col, val in identityDict.items()},
-                'startTime_s': startArr,
-                'endTime_s': endArr,
-                'emission_kgPerH': valArr,
-            }))
-        t1.setCount(len(cacheRowsList))
+            startArr, endArr, valArr = _roundedCacheArrays(
+                summedTS.df[summedTS.startTimeColName].to_numpy(),
+                summedTS.df[summedTS.endTimeColName].to_numpy(),
+                summedTS.df[summedTS.valueColName].to_numpy(),
+                binSize, coalesce)
+            if len(valArr) == 0:
+                continue
+            groupKeysList.append(groupKey)
+            groupSizesList.append(len(valArr))
+            startsOut.append(startArr)
+            endsOut.append(endArr)
+            valsOut.append(valArr)
+        t1.setCount(len(groupKeysList))
 
-    if not cacheRowsList:
+    if not groupKeysList:
         logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
         return pd.DataFrame()
 
-    fineCacheDF = pd.concat(cacheRowsList, ignore_index=True)
+    # Same one-frame materialisation as _buildCoarseCacheLevel; per-column dtype is inferred
+    # from the key values (strings stay strings, mcRun stays integer), matching the frames the
+    # per-group construction used to produce.
+    groupSizes = np.array(groupSizesList)
+    colArrays = {}
+    for colIdx, col in enumerate(groupCols):
+        colVals = []
+        for groupKey in groupKeysList:
+            colVals.append(groupKey[colIdx])
+        colArrays[col] = np.repeat(np.array(colVals), groupSizes)
+    colArrays['startTime_s'] = np.concatenate(startsOut)
+    colArrays['endTime_s'] = np.concatenate(endsOut)
+    colArrays['emission_kgPerH'] = np.concatenate(valsOut)
+    fineCacheDF = pd.DataFrame(colArrays)
     fineCacheDF = fineCacheDF.assign(cacheLevel='modelReadableName')
     allLevelDFs = [fineCacheDF]
-    statsRows = [{'cacheLevel': 'modelReadableName', 'groupCount': len(cacheRowsList),
+    statsRows = [{'cacheLevel': 'modelReadableName', 'groupCount': len(groupKeysList),
                   'intervalRows': len(fineCacheDF), 'buildSeconds': t1.deltat.total_seconds()}]
 
     for levelName, levelGroupCols in PDF_GROUPINGS[:-1]:
@@ -802,15 +860,45 @@ def _buildMCRunTimeseries(mcRunDF):
         mcRun = mcRunDF['mcRun'].iloc[0]
         logger.warning(f"_buildMCRunTimeseries: {len(zeroDurationDF)} zero-duration events filtered out for site {site}, mcRun {mcRun}")
         mcRunDF = mcRunDF[mcRunDF['duration_s'] > 0]
-    emitterTSList = []
-    for _, emitterDF in mcRunDF.groupby('emitterID'):
-        starts = emitterDF['timestamp_s'].values
-        ends = starts + emitterDF['duration_s'].values
-        values = emitterDF['emission_kgPerS'].values * u.SECONDS_PER_HOUR
-        emitterTSList.append(ts.TimeseriesRLE.fromCollections(starts, ends, values))
+    # Array-native path (issue #121): collect each emitter's interval arrays and hand them
+    # straight to the summation kernel, instead of wrapping every emitter in a TimeseriesRLE
+    # (a DataFrame construction + per-row validation apiece) only for sum() to immediately
+    # extract the arrays back out. Raw InstEmissions IS a system boundary, so the validation
+    # TimeseriesRLE.__init__ used to provide is preserved below, vectorized, with the same
+    # exception type: an overlap between consecutive rows (as ordered) is malformed input.
+    startsList = []
+    endsList = []
+    valsList = []
+    emitterCount = 0
+    for emitterID, emitterDF in mcRunDF.groupby('emitterID'):
+        starts = emitterDF['timestamp_s'].to_numpy(dtype=float)
+        ends = starts + emitterDF['duration_s'].to_numpy(dtype=float)
+        values = emitterDF['emission_kgPerS'].to_numpy(dtype=float) * u.SECONDS_PER_HOUR
+        # Same check TimeseriesRLE.__init__ ran on each per-emitter frame: end[i] may not
+        # exceed the NEXT row's start (rows in their given order). Zero-duration rows were
+        # already filtered above (duration_s <= 0), mirroring the ctor's zero-duration guard.
+        if len(starts) > 1 and np.any(ends[:-1] > starts[1:]):
+            msg = f"Overlapping interval(s) for emitter {emitterID} in _buildMCRunTimeseries"
+            logger.error(msg)
+            raise ts.MalformedTimeseriesError(msg)
+        startsList.append(starts)
+        endsList.append(ends)
+        valsList.append(values)
+        emitterCount += 1
     with Timer("emitter sum", loglevel=logging.DEBUG) as t:
-        result = ts.TimeseriesSet(emitterTSList).sum()
-        t.setCount(len(emitterTSList))
+        sumStarts, sumEnds, sumValues = ts.sumEventArrays(startsList, endsList, valsList)
+        t.setCount(emitterCount)
+    if len(sumValues) == 0:
+        # Mirrors the legacy empty-sum result (default column names).
+        result = ts.TimeseriesRLE(pd.DataFrame(columns=['timestamp', 'nextTS', 'tsValue']))
+        return result
+    # Column names match what the legacy path produced (fromCollections' defaults propagated
+    # through sum() via the first member), so downstream consumers see an identical object.
+    # The kernel's output invariants let the trusted constructor skip re-validation.
+    result = ts.TimeseriesRLE.fromValidatedArrays(sumStarts, sumEnds, sumValues,
+                                                  startTimeColName='timestamp',
+                                                  endTimeColName='nextTS',
+                                                  valueColName='valueCollection')
     return result
 
 def _buildPDFForGroup(groupDF, identityCols, CICategory, totalSimSecs):
