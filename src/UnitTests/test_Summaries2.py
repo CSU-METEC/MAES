@@ -6,7 +6,8 @@ import unittest
 import numpy as np
 import pandas as pd
 import Timeseries as ts
-from Summaries2 import _makePDFRows, _buildPDFForGroupFromCache
+from Summaries2 import _makePDFRows
+from Summaries2 import _buildPDFForGroupFromCacheLegacy as _buildPDFForGroupFromCache
 
 
 def _makeSparseRLE(activeSecs: float, rateKgPerH: float) -> ts.TimeseriesRLE:

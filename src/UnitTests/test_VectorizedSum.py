@@ -25,6 +25,8 @@ import pandas as pd
 import Timeseries as ts
 import Units as u
 from Summaries2 import _buildMCRunTimeseries, _coalesceAdjacentEqual, _roundedCacheArrays
+from Summaries2 import (_validateCacheBoundary, calculatePDFSummaryFromCache,
+                        _calculatePDFSummaryFromCacheLegacy)
 
 
 def makeRLE(starts, ends, values):
@@ -331,6 +333,189 @@ class TestBuildMCRunTimeseries(unittest.TestCase):
         mcRunDF = self.makeInstEmissions([('em1', 0.0, 0.0, 1.0)])
         result = _buildMCRunTimeseries(mcRunDF)
         self.assertTrue(result.isempty())
+
+
+class TestDurationWeightedDistribution(unittest.TestCase):
+    """The round-2 kernel must reproduce pandas' durations.groupby(values).sum() exactly."""
+
+    def test_matches_pandas_groupby_random(self):
+        rng = np.random.default_rng(1234)
+        for trial in range(30):
+            pieces = int(rng.integers(1, 5))
+            valsList = []
+            dursList = []
+            for _ in range(pieces):
+                n = int(rng.integers(1, 30))
+                # Draw from a small value pool so cross-piece collisions actually occur.
+                valsList.append(rng.choice(np.array([0.1, 0.5, 1.0, 2.5, 7.0]), size=n))
+                dursList.append(rng.uniform(1.0, 100.0, size=n))
+            values, durations = ts.durationWeightedDistribution(valsList, dursList)
+            refSeries = pd.Series(np.concatenate(dursList)).groupby(
+                pd.Series(np.concatenate(valsList))).sum()
+            np.testing.assert_array_equal(values, refSeries.index.to_numpy())
+            np.testing.assert_allclose(durations, refSeries.to_numpy(), rtol=1e-12)
+
+    def test_empty(self):
+        values, durations = ts.durationWeightedDistribution([], [])
+        self.assertEqual(len(values), 0)
+        values, durations = ts.durationWeightedDistribution([np.array([])], [np.array([])])
+        self.assertEqual(len(values), 0)
+
+    def test_values_strictly_ascending(self):
+        values, _ = ts.durationWeightedDistribution([np.array([3.0, 1.0, 3.0, 2.0])],
+                                                    [np.array([1.0, 1.0, 1.0, 1.0])])
+        self.assertTrue(np.all(np.diff(values) > 0))
+
+
+def makeSyntheticCache(rng, mcRuns=3, fugitiveMode='mixed'):
+    """Build a small synthetic PDF-cache frame with fine (per-facility) and coarse
+    (NaN-facility) levels, non-overlapping intervals per partition, and configurable FUGITIVE
+    presence: 'mixed' (VENTED+FUGITIVE), 'none' (VENTED only), 'only' (FUGITIVE only)."""
+    if fugitiveMode == 'mixed':
+        cats = ['VENTED', 'FUGITIVE']
+    elif fugitiveMode == 'none':
+        cats = ['VENTED']
+    else:
+        cats = ['FUGITIVE']
+    records = []
+    for mcRun in range(mcRuns):
+        for emCat in cats:
+            for level, facility in (('modelReadableName', 'F1'), ('modelReadableName', 'F2'),
+                                    ('siteTotals', None)):
+                n = int(rng.integers(1, 6))
+                edges = np.cumsum(rng.uniform(1.0, 50.0, size=n + 1))
+                for i in range(n):
+                    records.append({'facilityID': facility, 'site': 'S1', 'species': 'METHANE',
+                                    'operator': 'OP', 'psno': 'P1',
+                                    'METype': 'Sep' if level == 'modelReadableName' else '',
+                                    'unitID': 'U1' if level == 'modelReadableName' else '',
+                                    'modelReadableName': 'M1' if level == 'modelReadableName' else '',
+                                    'modelEmissionCategory': emCat, 'mcRun': mcRun,
+                                    'startTime_s': float(edges[i]), 'endTime_s': float(edges[i + 1]),
+                                    'emission_kgPerH': float(rng.uniform(0.2, 9.0)),
+                                    'cacheLevel': level})
+    return pd.DataFrame.from_records(records)
+
+
+SYNTH_GROUPINGS = [('siteTotals', ['site', 'species', 'operator', 'psno']),
+                   ('modelReadableName', ['site', 'species', 'operator', 'psno',
+                                          'METype', 'unitID', 'modelReadableName'])]
+
+
+def canonPDF(df):
+    """Canonical row order + fresh index for frame comparison (legacy concat carries
+    duplicate per-group indexes; content is what must match)."""
+    if df.empty:
+        return df.reset_index(drop=True)
+    return df.sort_values(list(df.columns)).reset_index(drop=True)
+
+
+class TestPDFFromCacheEquivalence(unittest.TestCase):
+    """The array-native calculatePDFSummaryFromCache must reproduce the retained legacy
+    implementation row-for-row: values, probabilities, cumulative probabilities, columns."""
+
+    def assertFramesMatch(self, newDF, oldDF):
+        self.assertEqual(list(newDF.columns), list(oldDF.columns))
+        self.assertEqual(len(newDF), len(oldDF))
+        new = canonPDF(newDF)
+        old = canonPDF(oldDF)
+        for col in newDF.columns:
+            if new[col].dtype.kind in ('f',):
+                np.testing.assert_allclose(new[col].to_numpy(), old[col].to_numpy(),
+                                           rtol=1e-12, atol=1e-15)
+            else:
+                # Union-filled identity columns legitimately hold NaN (a level that lacks the
+                # column) on BOTH sides; object-array NaN != NaN, so compare via sentinel fill.
+                np.testing.assert_array_equal(new[col].fillna('__nan__').to_numpy(),
+                                              old[col].fillna('__nan__').to_numpy())
+
+    def runEquivalence(self, fugitiveMode, seed):
+        rng = np.random.default_rng(seed)
+        cacheDF = makeSyntheticCache(rng, fugitiveMode=fugitiveMode)
+        totalSimSecs = 1.0e4
+        newFull, newNoFug, newStats = calculatePDFSummaryFromCache(
+            cacheDF, totalSimSecs, groupings=SYNTH_GROUPINGS)
+        oldFull, oldNoFug, oldStats = _calculatePDFSummaryFromCacheLegacy(
+            cacheDF, totalSimSecs, groupings=SYNTH_GROUPINGS)
+        self.assertFramesMatch(newFull, oldFull)
+        self.assertFramesMatch(newNoFug, oldNoFug)
+        # Stats: same groups and mcRunCounts (buildSeconds legitimately differs).
+        newS = newStats.drop(columns=['buildSeconds'])
+        oldS = oldStats.drop(columns=['buildSeconds'])
+        self.assertTrue(canonPDF(newS).equals(canonPDF(oldS)))
+
+    def test_mixed_categories(self):
+        self.runEquivalence('mixed', 11)
+
+    def test_no_fugitive_group(self):
+        """Tier 1b: without FUGITIVE, the noFugitive output equals the full output."""
+        self.runEquivalence('none', 22)
+        rng = np.random.default_rng(22)
+        cacheDF = makeSyntheticCache(rng, fugitiveMode='none')
+        full, noFug, _ = calculatePDFSummaryFromCache(cacheDF, 1.0e4, groupings=SYNTH_GROUPINGS)
+        self.assertTrue(canonPDF(full).equals(canonPDF(noFug)))
+
+    def test_fugitive_only_group(self):
+        """A FUGITIVE-only group contributes to full but NOT to noFugitive — on both paths."""
+        self.runEquivalence('only', 33)
+        rng = np.random.default_rng(33)
+        cacheDF = makeSyntheticCache(rng, fugitiveMode='only')
+        full, noFug, _ = calculatePDFSummaryFromCache(cacheDF, 1.0e4, groupings=SYNTH_GROUPINGS)
+        self.assertFalse(full.empty)
+        self.assertTrue(noFug.empty)
+
+    def test_probability_normalizes_to_active_fraction(self):
+        """The new path must preserve the probability semantics the legacy regression test
+        guards for _makePDFRows: probabilities sum to activeSecs/totalSimSecs, not 1.0."""
+        cacheDF = pd.DataFrame.from_records([
+            {'facilityID': 'F1', 'site': 'S1', 'species': 'METHANE', 'operator': 'OP',
+             'psno': 'P1', 'METype': '', 'unitID': '', 'modelReadableName': '',
+             'modelEmissionCategory': 'VENTED', 'mcRun': 0,
+             'startTime_s': 0.0, 'endTime_s': 10.0, 'emission_kgPerH': 5.0,
+             'cacheLevel': 'siteTotals'}])
+        full, _, _ = calculatePDFSummaryFromCache(
+            cacheDF, 100.0, groupings=[('siteTotals', ['site', 'species', 'operator', 'psno'])])
+        self.assertAlmostEqual(float(full['probability'].sum()), 10.0 / 100.0, places=12)
+        self.assertAlmostEqual(float(full['cumulativeProbability'].iloc[-1]), 1.0, places=12)
+
+
+class TestValidateCacheBoundary(unittest.TestCase):
+    """The single-pass validation must catch what the per-sub-group RLE constructors caught."""
+
+    @staticmethod
+    def validCache():
+        rng = np.random.default_rng(5)
+        return makeSyntheticCache(rng)
+
+    def test_valid_cache_passes(self):
+        _validateCacheBoundary(self.validCache())
+
+    def test_zero_duration_raises(self):
+        cacheDF = self.validCache()
+        cacheDF.loc[cacheDF.index[0], 'endTime_s'] = cacheDF.loc[cacheDF.index[0], 'startTime_s']
+        with self.assertRaises(ts.MalformedTimeseriesError):
+            _validateCacheBoundary(cacheDF)
+
+    def test_overlap_within_partition_raises(self):
+        cacheDF = self.validCache()
+        # Make row 0 of one partition overlap the NEXT row of the same partition.
+        firstPartition = cacheDF[(cacheDF['cacheLevel'] == 'modelReadableName')
+                                 & (cacheDF['mcRun'] == 0)
+                                 & (cacheDF['modelEmissionCategory'] == cacheDF['modelEmissionCategory'].iloc[0])
+                                 & (cacheDF['facilityID'] == 'F1')]
+        if len(firstPartition) < 2:
+            self.skipTest("synthetic partition too small to overlap")
+        idx0 = firstPartition.index[0]
+        idx1 = firstPartition.index[1]
+        cacheDF.loc[idx0, 'endTime_s'] = cacheDF.loc[idx1, 'startTime_s'] + 1.0
+        with self.assertRaises(ts.MalformedTimeseriesError):
+            _validateCacheBoundary(cacheDF)
+
+    def test_adjacent_partitions_do_not_false_positive(self):
+        """Rows of DIFFERENT partitions may 'overlap' in time freely (they are different
+        distributions); validation must group correctly, including NaN facilityID coarse rows."""
+        cacheDF = self.validCache()
+        _validateCacheBoundary(cacheDF)   # mixed fine (F1/F2) + coarse (NaN) rows share times
 
 
 if __name__ == '__main__':

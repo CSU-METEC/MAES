@@ -1236,6 +1236,47 @@ def sumEventArrays(startsList, endsList, valsList):
     return startTimes[keepMask], endTimes[keepMask], values[keepMask]
 
 
+def durationWeightedDistribution(valuesList, durationsList):
+    """Array-native duration-weighted value distribution (issue #121, round 2).
+
+    The exact vectorized equivalent of what TimeseriesSet.toPDF() has always computed —
+    concatenate the member intervals and run `durations.groupby(values).sum()` — i.e. for every
+    distinct interval VALUE, the total DURATION spent at that value. That (value, totalDuration)
+    table is the duration-weighted PDF the whole cascade is built on; toCDF() is then just a
+    cumulative sum over it. Profiling showed the pandas groupby-per-distribution (one call per
+    PDF group, ~13k groups per site) was dominated by per-call machinery, exactly like the
+    summation kernel's case.
+
+    Parameters are parallel lists of 1-D arrays (one entry per contributing timeseries, e.g. one
+    per MC run): valuesList[i] holds interval values, durationsList[i] the matching durations.
+
+    Returns (uniqueValues, totalDurations): uniqueValues strictly ascending (pandas groupby with
+    sort=True ordered its keys the same way), totalDurations the per-value duration sums. Empty
+    inputs return empty arrays.
+    """
+    if not valuesList:
+        empty = np.array([])
+        return empty, empty
+    values = np.concatenate(valuesList)
+    durations = np.concatenate(durationsList)
+    if len(values) == 0:
+        empty = np.array([])
+        return empty, empty
+    # Sort values (stable, deterministic); equal values become contiguous runs.
+    order = np.argsort(values, kind="stable")
+    sortedVals = values[order]
+    sortedDurs = durations[order]
+    # Segment boundaries where the sorted value changes; reduceat sums each run's durations —
+    # the vectorized equivalent of groupby(value)['duration'].sum() with sorted keys.
+    isNew = np.empty(len(sortedVals), dtype=bool)
+    isNew[0] = True
+    isNew[1:] = sortedVals[1:] != sortedVals[:-1]
+    segStartIdx = np.flatnonzero(isNew)
+    uniqueValues = sortedVals[segStartIdx]
+    totalDurations = np.add.reduceat(sortedDurs, segStartIdx)
+    return uniqueValues, totalDurations
+
+
 class TimeseriesSet():
 
     def __init__(self, tsSetList):

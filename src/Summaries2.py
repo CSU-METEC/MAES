@@ -980,7 +980,9 @@ def _makePDFRows(mcRunTSList, identityCols, CICategory, totalSimSecs):
         'cumulativeProbability': cdf.data['cumulative_probability'].values,
     })
 
-def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs, binSize=1e-6):
+def _buildPDFForGroupFromCacheLegacy(groupDF, identityCols, CICategory, totalSimSecs, binSize=1e-6):
+    # LEGACY implementation, retained verbatim (issue #121 round 2): reference for the
+    # equivalence tests of the array-native path below, exactly as _sumLegacy is for sum().
     fullMCRunTSList = []
     noFugMCRunTSList = []
     # Tier 1c: check once whether this group has any FUGITIVE intervals
@@ -1019,7 +1021,9 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs, 
     }
     return _makePDFRows(fullMCRunTSList, identityCols, CICategory, totalSimSecs), _makePDFRows(noFugMCRunTSList, identityCols, CICategory, totalSimSecs), stats
 
-def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, binSize=1e-6, groupings=None):
+def _calculatePDFSummaryFromCacheLegacy(cacheDF, totalSimSecs, binSize=1e-6, groupings=None):
+    # LEGACY implementation, retained verbatim (issue #121 round 2): reference for the
+    # equivalence tests of the array-native calculatePDFSummaryFromCache below.
     if groupings is None:
         groupings = PDF_GROUPINGS
     fullResultDFList = []
@@ -1029,7 +1033,7 @@ def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, binSize=1e-6, groupings=
         levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
         for _, groupDF in levelDF.groupby(groupCols):
             identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
-            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs, binSize)
+            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCacheLegacy(groupDF, identityCols, CICategory, totalSimSecs, binSize)
             statsList.append(stats)
             if fullPDFRows is not None:
                 fullResultDFList.append(fullPDFRows)
@@ -1039,6 +1043,207 @@ def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, binSize=1e-6, groupings=
     noFugPDFDF = pd.concat(noFugResultDFList) if noFugResultDFList else pd.DataFrame()
     statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
     return fullPDFDF, noFugPDFDF, statsDF
+
+def _validateCacheBoundary(cacheDF):
+    """One-pass boundary validation of a PDF cache frame (issue #121, round 2).
+
+    The legacy PDF build validated cache rows implicitly: every sub-group went through the
+    TimeseriesRLE constructor (_cacheGroupToTimeseriesRLE), whose per-row checks (positive
+    durations; no overlap between consecutive rows as stored) ran once PER SUB-GROUP — ~100k
+    frame constructions per site. The array-native build skips those constructions, so the
+    defence moves HERE: one vectorized pass over the whole frame, run once per
+    calculatePDFSummaryFromCache call. This matters because cacheDF is not always this
+    process's own output — validatePDFCache and PDF-recalculation flows load it from parquet.
+
+    The overlap check partitions by the finest cache identity (cacheLevel x identity columns x
+    mcRun x facilityID): within each original sub-frame those columns are constant (coarse
+    levels fill absent identity columns with '' and carry NaN facilityID — dropna=False keeps
+    those rows grouped), so this partition reproduces exactly the row runs the per-sub-group
+    constructors used to see. Raises the same exception type they raised.
+    """
+    badDuration = cacheDF['endTime_s'] <= cacheDF['startTime_s']
+    if badDuration.any():
+        msg = f"PDF cache has {int(badDuration.sum())} zero/negative-duration interval row(s)"
+        logger.error(msg)
+        raise ts.MalformedTimeseriesError(msg)
+    keyCols = ['cacheLevel', *CACHE_IDENTITY_COLS, 'mcRun']
+    if 'facilityID' in cacheDF.columns:
+        keyCols = [*keyCols, 'facilityID']
+    nextStart = cacheDF.groupby(keyCols, dropna=False, sort=False)['startTime_s'].shift(-1)
+    overlap = cacheDF['endTime_s'] > nextStart   # NaN (last row of a partition) compares False
+    if overlap.any():
+        msg = f"PDF cache has {int(overlap.sum())} overlapping interval row(s) within a cache partition"
+        logger.error(msg)
+        raise ts.MalformedTimeseriesError(msg)
+
+
+def _catArraysFromCacheRows(catDF):
+    """Extract one emission-category's cache rows as (starts, ends, values) arrays.
+
+    Mirrors the legacy branch pair in _buildPDFForGroupFromCacheLegacy: when the rows carry
+    facility detail (fine cache level), the per-facility interval sets are SUMMED into one
+    timeseries — including for a single facility, because the legacy code always routed the
+    facility branch through TimeseriesSet.sum() (whose residual clip and boundary merging are
+    part of the observable output). Coarse-level rows (facilityID NaN) are taken as-is, exactly
+    as the legacy code wrapped them in a single un-summed RLE."""
+    if 'facilityID' in catDF.columns and catDF['facilityID'].notna().any():
+        startsList = []
+        endsList = []
+        valsList = []
+        for _, facilityDF in catDF.groupby('facilityID'):
+            startsList.append(facilityDF['startTime_s'].to_numpy())
+            endsList.append(facilityDF['endTime_s'].to_numpy())
+            valsList.append(facilityDF['emission_kgPerH'].to_numpy())
+        ret = ts.sumEventArrays(startsList, endsList, valsList)
+        return ret
+    ret = (catDF['startTime_s'].to_numpy(), catDF['endTime_s'].to_numpy(),
+           catDF['emission_kgPerH'].to_numpy())
+    return ret
+
+
+def _buildPDFArraysForGroup(groupDF, binSize):
+    """Array-native replacement for the per-group body of the legacy PDF build (issue #121 r2).
+
+    Returns (fullDist, noFugDist, mcRunCount, buildSeconds), where each dist is either None (no
+    contributing intervals) or a (values, durations) pair of parallel lists of arrays — one list
+    entry per MC run — ready for ts.durationWeightedDistribution. The per-run logic replicates
+    the legacy path exactly, including the #70 Tier-1 shortcuts:
+      - Tier 1a: a single emission category skips the cross-category summation entirely;
+      - Tier 1b: a group with no FUGITIVE intervals reuses the full result for noFugitive
+        (same rounded arrays, no recompute);
+      - Tier 1c: the FUGITIVE presence check runs once per group, not per run.
+    Rounding (_roundForPDF) is applied AFTER cross-category summation, per run, exactly where
+    the legacy code applied it via df.assign."""
+    hasFugitive = 'FUGITIVE' in groupDF['modelEmissionCategory'].values
+    fullValsList = []
+    fullDursList = []
+    noFugValsList = []
+    noFugDursList = []
+    mcRunCount = 0
+    with Timer("build MC run timeseries from coarse cache", loglevel=logging.DEBUG) as t:
+        for _, mcRunDF in groupDF.groupby('mcRun'):
+            catArrays = {}
+            for emCat, catDF in mcRunDF.groupby('modelEmissionCategory'):
+                catArrays[emCat] = _catArraysFromCacheRows(catDF)
+            catList = list(catArrays.values())
+            # Tier 1a: single category — its arrays ARE the full timeseries, no summation.
+            if len(catList) == 1:
+                fullStarts, fullEnds, fullVals = catList[0]
+            else:
+                sList = []
+                eList = []
+                vList = []
+                for starts, ends, vals in catList:
+                    sList.append(starts)
+                    eList.append(ends)
+                    vList.append(vals)
+                fullStarts, fullEnds, fullVals = ts.sumEventArrays(sList, eList, vList)
+            if len(fullVals) > 0:
+                fullValsRounded = _roundForPDF(fullVals, binSize)
+                fullValsList.append(fullValsRounded)
+                fullDursList.append(fullEnds - fullStarts)
+                mcRunCount += 1
+                # Tier 1b: no FUGITIVE anywhere in the group — noFugitive == full; share the
+                # already-rounded arrays instead of recomputing (legacy appended the same
+                # rounded TS object).
+                if not hasFugitive:
+                    noFugValsList.append(fullValsRounded)
+                    noFugDursList.append(fullEnds - fullStarts)
+            if hasFugitive:
+                noFugCatList = []
+                for emCat, arrays in catArrays.items():
+                    if emCat != 'FUGITIVE':
+                        noFugCatList.append(arrays)
+                if len(noFugCatList) == 1:
+                    nfStarts, nfEnds, nfVals = noFugCatList[0]
+                elif noFugCatList:
+                    sList = []
+                    eList = []
+                    vList = []
+                    for starts, ends, vals in noFugCatList:
+                        sList.append(starts)
+                        eList.append(ends)
+                        vList.append(vals)
+                    nfStarts, nfEnds, nfVals = ts.sumEventArrays(sList, eList, vList)
+                else:
+                    nfVals = np.array([])
+                if len(nfVals) > 0:
+                    noFugValsList.append(_roundForPDF(nfVals, binSize))
+                    noFugDursList.append(nfEnds - nfStarts)
+        t.setCount(mcRunCount)
+    fullDist = (fullValsList, fullDursList) if fullValsList else None
+    noFugDist = (noFugValsList, noFugDursList) if noFugValsList else None
+    ret = (fullDist, noFugDist, mcRunCount, t.deltat.total_seconds())
+    return ret
+
+
+def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, binSize=1e-6, groupings=None):
+    """Build the full + noFugitive PDF/CDF frames from a PDF cache; array-native (issue #121 r2).
+
+    Produces the same rows, in the same order, with the same columns as the legacy
+    implementation (retained above as _calculatePDFSummaryFromCacheLegacy): for every
+    (cacheLevel, identity) group, the duration-weighted distribution of the summed, rounded
+    emission rates — 'probability' normalised by totalSimSecs (so it sums to the ACTIVE
+    fraction of simulated time, not 1.0), 'cumulativeProbability' normalised within the
+    distribution. Three mechanical changes, no behavioural ones:
+      1. cache-row validation runs ONCE, vectorized (_validateCacheBoundary), instead of once
+         per sub-group inside TimeseriesRLE constructors;
+      2. per-group summation and the per-distribution groupby run on raw arrays
+         (ts.sumEventArrays / ts.durationWeightedDistribution);
+      3. output rows accumulate as arrays and materialise as ONE frame per grouping level
+         (identity columns via object-dtype np.repeat — see the RAM note in
+         _buildCoarseCacheLevel), instead of one frame per distribution + a global concat.
+    """
+    if groupings is None:
+        groupings = PDF_GROUPINGS
+    _validateCacheBoundary(cacheDF)
+    fullLevelDFs = []
+    noFugLevelDFs = []
+    statsList = []
+    for CICategory, groupCols in groupings:
+        levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
+        fullAcc = {'keys': [], 'sizes': [], 'vals': [], 'probs': [], 'cums': []}
+        noFugAcc = {'keys': [], 'sizes': [], 'vals': [], 'probs': [], 'cums': []}
+        for groupKey, groupDF in levelDF.groupby(groupCols):
+            keyTuple = groupKey if isinstance(groupKey, tuple) else (groupKey,)
+            fullDist, noFugDist, mcRunCount, buildSeconds = _buildPDFArraysForGroup(groupDF, binSize)
+            stats = {'CICategory': CICategory, **dict(zip(groupCols, keyTuple)),
+                     'mcRunCount': mcRunCount, 'buildSeconds': buildSeconds}
+            statsList.append(stats)
+            for dist, acc in ((fullDist, fullAcc), (noFugDist, noFugAcc)):
+                if dist is None:
+                    continue
+                values, durations = ts.durationWeightedDistribution(dist[0], dist[1])
+                if len(values) == 0:
+                    continue
+                acc['keys'].append(keyTuple)
+                acc['sizes'].append(len(values))
+                acc['vals'].append(values)
+                acc['probs'].append(durations / totalSimSecs)
+                acc['cums'].append(np.cumsum(durations) / durations.sum())
+        for acc, levelDFs in ((fullAcc, fullLevelDFs), (noFugAcc, noFugLevelDFs)):
+            if not acc['keys']:
+                continue
+            sizes = np.array(acc['sizes'])
+            colArrays = {}
+            for colIdx, col in enumerate(groupCols):
+                colVals = []
+                for keyTuple in acc['keys']:
+                    colVals.append(keyTuple[colIdx])
+                keyArr = np.asarray(colVals)
+                if keyArr.dtype.kind in ('U', 'S'):
+                    keyArr = np.array(colVals, dtype=object)
+                colArrays[col] = np.repeat(keyArr, sizes)
+            colArrays['CICategory'] = np.full(int(sizes.sum()), CICategory, dtype=object)
+            colArrays['emissionRate_kgPerH'] = np.concatenate(acc['vals'])
+            colArrays['probability'] = np.concatenate(acc['probs'])
+            colArrays['cumulativeProbability'] = np.concatenate(acc['cums'])
+            levelDFs.append(pd.DataFrame(colArrays))
+    fullPDFDF = pd.concat(fullLevelDFs) if fullLevelDFs else pd.DataFrame()
+    noFugPDFDF = pd.concat(noFugLevelDFs) if noFugLevelDFs else pd.DataFrame()
+    statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
+    return fullPDFDF, noFugPDFDF, statsDF
+
 
 def validatePDFCache(config):
     logger.info(f"Validating PDF cache for site {config['siteName']}")
