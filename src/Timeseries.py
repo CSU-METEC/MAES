@@ -1191,11 +1191,16 @@ def sumEventArrays(startsList, endsList, valsList):
       - endTimes[i] is the next unique event time, so every duration is > 0;
       - intervals are contiguous and non-overlapping.
     """
+    # Empty edge: no input timeseries at all (np.concatenate rejects an empty list of arrays).
+    if not startsList:
+        empty = np.array([])
+        return empty, empty, empty
     # Signed event table: one +value event per interval start, one -value event per interval
     # end. np.negative allocates the negated copies (the legacy path's 'delta': -vals).
     times = np.concatenate(startsList + endsList)
     deltas = np.concatenate(valsList + list(map(np.negative, valsList)))
     if len(times) == 0:
+        # Members exist but every one is empty — still an empty sum.
         empty = np.array([])
         return empty, empty, empty
     # Global sort by event time. 'stable' keeps a deterministic order for events sharing a
