@@ -660,7 +660,40 @@ def _roundForPDF(values, binSize=1e-6):
     return np.round(np.asarray(values) / binSize) * binSize
 
 
-def _buildCoarseCacheLevel(fineDF, groupCols, levelName, binSize=1e-6):
+def _coalesceAdjacentEqual(starts, ends, values):
+    """Merge consecutive intervals that share a value into single spanning intervals.
+
+    Intervals are assumed time-ordered and contiguous (a summed step function). Each maximal run
+    of equal consecutive values collapses to one interval [firstStart, lastEnd]; the total duration
+    at each value is preserved exactly, so a duration-weighted PDF built from the coalesced
+    intervals is identical to one built from the un-coalesced intervals."""
+    values = np.asarray(values)
+    starts = np.asarray(starts)
+    ends = np.asarray(ends)
+    if len(values) == 0:
+        return starts, ends, values
+    isRunStart = np.ones(len(values), dtype=bool)
+    isRunStart[1:] = values[1:] != values[:-1]
+    runStartIdx = np.flatnonzero(isRunStart)
+    runEndIdx = np.append(runStartIdx[1:] - 1, len(values) - 1)
+    return starts[runStartIdx], ends[runEndIdx], values[runStartIdx]
+
+
+def _roundedCacheArrays(summedTS, binSize, coalesce):
+    """Round a summed timeseries' rates to binSize; return (startTimes, endTimes, values).
+
+    When coalesce is True, consecutive intervals sharing a rounded rate are merged
+    (_coalesceAdjacentEqual) — the change that lets a coarser binSize actually shrink the cache
+    without altering the PDF. When False, every interval is kept (legacy behaviour)."""
+    starts = summedTS.df[summedTS.startTimeColName].values
+    ends = summedTS.df[summedTS.endTimeColName].values
+    values = _roundForPDF(summedTS.df[summedTS.valueColName].values, binSize)
+    if coalesce:
+        starts, ends, values = _coalesceAdjacentEqual(starts, ends, values)
+    return starts, ends, values
+
+
+def _buildCoarseCacheLevel(fineDF, groupCols, levelName, binSize=1e-6, coalesce=False):
     aggGroupCols = [*groupCols, 'modelEmissionCategory', 'mcRun']
     rowsList = []
     for groupKey, groupDF in fineDF.groupby(aggGroupCols):
@@ -671,12 +704,13 @@ def _buildCoarseCacheLevel(fineDF, groupCols, levelName, binSize=1e-6):
         if summedTS.isempty():
             continue
         identityDict = dict(zip(aggGroupCols, groupKey))
-        n = len(summedTS.df)
+        startArr, endArr, valArr = _roundedCacheArrays(summedTS, binSize, coalesce)
+        n = len(valArr)
         rowsList.append(pd.DataFrame({
             **{col: [val] * n for col, val in identityDict.items()},
-            'startTime_s': summedTS.df[summedTS.startTimeColName].values,
-            'endTime_s': summedTS.df[summedTS.endTimeColName].values,
-            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values, binSize),
+            'startTime_s': startArr,
+            'endTime_s': endArr,
+            'emission_kgPerH': valArr,
             'cacheLevel': [levelName] * n,
         }))
     return pd.concat(rowsList, ignore_index=True) if rowsList else pd.DataFrame()
@@ -691,7 +725,17 @@ def createPDFCache(config):
         t0.setCount(len(instEmissionDF))
 
     instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    # pdfSpecies (optional config list): restrict the PDF cascade to these species values only.
+    # The 'species' column carries 16 values incl. non-species energy rows (LHV, DeltaH); each
+    # value multiplies groups/rows/time ~linearly through every cache level. Default None keeps
+    # all values — identical outputs to the unfiltered engine (backward compatible). Annual /
+    # instantaneous summaries are unaffected (this filter exists only inside the PDF cascade).
+    pdfSpecies = config.get('pdfSpecies', None)
+    if pdfSpecies:
+        instEmissionDF = instEmissionDF[instEmissionDF['species'].isin(pdfSpecies)]
+        logger.info(f"PDF cascade restricted to species {pdfSpecies}: {len(instEmissionDF)} rows")
     binSize = config.get('pdfBinSize', 1e-6)
+    coalesce = config.get('pdfCoalesce', False)
     groupCols = ['facilityID', *CACHE_IDENTITY_COLS, 'mcRun']
     cacheRowsList = []
     with Timer("Build PDF cache") as t1:
@@ -699,13 +743,14 @@ def createPDFCache(config):
             summedTS = _buildMCRunTimeseries(groupDF)
             if summedTS.isempty():
                 continue
-            n = len(summedTS.df)
+            startArr, endArr, valArr = _roundedCacheArrays(summedTS, binSize, coalesce)
+            n = len(valArr)
             identityDict = dict(zip(groupCols, groupKey))
             cacheRowsList.append(pd.DataFrame({
                 **{col: [val] * n for col, val in identityDict.items()},
-                'startTime_s': summedTS.df[summedTS.startTimeColName].values,
-                'endTime_s': summedTS.df[summedTS.endTimeColName].values,
-                'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values, binSize),
+                'startTime_s': startArr,
+                'endTime_s': endArr,
+                'emission_kgPerH': valArr,
             }))
         t1.setCount(len(cacheRowsList))
 
@@ -721,7 +766,7 @@ def createPDFCache(config):
 
     for levelName, levelGroupCols in PDF_GROUPINGS[:-1]:
         with Timer(f"Build coarse cache {levelName}", loglevel=logging.DEBUG) as t2:
-            coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName, binSize)
+            coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName, binSize, coalesce)
             t2.setCount(len(coarseDF))
         if not coarseDF.empty:
             for col in [*CACHE_IDENTITY_COLS, 'mcRun']:
