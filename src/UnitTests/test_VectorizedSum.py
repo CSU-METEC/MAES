@@ -243,21 +243,52 @@ class TestCoalesceAdjacentEqual(unittest.TestCase):
         s, e, v = _coalesceAdjacentEqual(starts, ends, values)
         self.assertEqual(len(v), 2)
 
+    def test_no_merge_across_gap(self):
+        """THE regression the KS sweep caught (issue #121): equal-valued intervals flanking a
+        GAP (removed near-zero interval / non-emitting time) must NOT merge — bridging the gap
+        stamps non-emitting time with an emission rate and corrupts the PDF. Measured on real
+        data: 293 such bridges spanned 4.5e9 seconds and shifted distributions by KS 0.11+."""
+        starts = np.array([0.0, 10.0])   # gap: [5.0, 10.0) is non-emitting
+        ends = np.array([5.0, 20.0])
+        values = np.array([2.0, 2.0])    # equal values — the old merge-on-value-alone trap
+        s, e, v = _coalesceAdjacentEqual(starts, ends, values)
+        self.assertEqual(len(v), 2)
+        np.testing.assert_array_equal(s, starts)
+        np.testing.assert_array_equal(e, ends)
+        # And duration mass at value 2.0 must be exactly 15s, never the bridged 20s.
+        self.assertAlmostEqual(float(np.sum(e - s)), 15.0, places=12)
+
+    def test_mixed_gaps_and_contiguity(self):
+        """Contiguous equal pair merges; the equal interval across a gap stays separate."""
+        starts = np.array([0.0, 5.0, 20.0])
+        ends = np.array([5.0, 10.0, 30.0])
+        values = np.array([1.0, 1.0, 1.0])
+        s, e, v = _coalesceAdjacentEqual(starts, ends, values)
+        np.testing.assert_array_equal(s, np.array([0.0, 20.0]))
+        np.testing.assert_array_equal(e, np.array([10.0, 30.0]))
+        np.testing.assert_array_equal(v, np.array([1.0, 1.0]))
+
     def test_empty(self):
         empty = np.array([])
         s, e, v = _coalesceAdjacentEqual(empty, empty, empty)
         self.assertEqual(len(v), 0)
 
     def test_duration_mass_preserved_random(self):
-        """For random already-rounded step functions: sum of durations per distinct value must
-        be identical before and after coalescing — the exact property the duration-weighted
-        PDF depends on."""
+        """For random step functions WITH GAPS: sum of durations per distinct value must be
+        identical before and after coalescing — the exact property the duration-weighted PDF
+        depends on. (The original version of this test only generated contiguous intervals,
+        which is precisely why it failed to catch the gap-bridging bug the KS sweep found.)"""
         rng = np.random.default_rng(7)
         for trial in range(25):
             n = int(rng.integers(2, 40))
-            edges = np.cumsum(rng.uniform(1.0, 10.0, size=n + 1))
-            starts = edges[:-1]
-            ends = edges[1:]
+            edges = np.cumsum(rng.uniform(1.0, 10.0, size=2 * n + 1))
+            starts = edges[0:2 * n:2]
+            ends = edges[1:2 * n + 1:2]
+            # Randomly close ~half the gaps so runs of genuinely contiguous intervals occur.
+            closeGap = rng.random(n - 1) < 0.5
+            for i in range(n - 1):
+                if closeGap[i]:
+                    starts[i + 1] = ends[i]
             values = rng.choice(np.array([0.1, 0.2, 0.3]), size=n)
             s, e, v = _coalesceAdjacentEqual(starts, ends, values)
             for distinctValue in np.unique(values):

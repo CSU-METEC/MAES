@@ -661,19 +661,31 @@ def _roundForPDF(values, binSize=1e-6):
 
 
 def _coalesceAdjacentEqual(starts, ends, values):
-    """Merge consecutive intervals that share a value into single spanning intervals.
+    """Merge consecutive intervals that share a value AND are contiguous into spanning intervals.
 
-    Intervals are assumed time-ordered and contiguous (a summed step function). Each maximal run
-    of equal consecutive values collapses to one interval [firstStart, lastEnd]; the total duration
-    at each value is preserved exactly, so a duration-weighted PDF built from the coalesced
-    intervals is identical to one built from the un-coalesced intervals."""
+    Each maximal run of equal-valued, gap-free consecutive intervals collapses to one interval
+    [firstStart, lastEnd]. Because only contiguous intervals merge, the step function is
+    unchanged at every instant, so the total duration at each value — and therefore the
+    duration-weighted PDF/CDF — is preserved EXACTLY.
+
+    The contiguity condition (starts[i] == ends[i-1]) is load-bearing, not pedantry: summed
+    timeseries contain GAPS wherever the summation's near-zero residual clip removed an interval
+    (and wherever nothing emitted), and equal-valued intervals frequently flank such gaps. An
+    earlier version of this function merged on value equality alone and silently bridged those
+    gaps — stamping non-emitting time with an emission rate. Measured on the real mc=100
+    workload: of 1,011,270 equal-value consecutive pairs, 1,010,977 were contiguous (legitimate
+    merges) and just 293 bridged gaps — but those 293 spanned 4.5e9 seconds and shifted some
+    distributions by KS 0.11+. The contiguity check keeps ~99.97% of the row reduction and
+    restores exactness (verified by the KS sweep's coalesce-on-vs-off self-check)."""
     values = np.asarray(values)
     starts = np.asarray(starts)
     ends = np.asarray(ends)
     if len(values) == 0:
         return starts, ends, values
     isRunStart = np.ones(len(values), dtype=bool)
-    isRunStart[1:] = values[1:] != values[:-1]
+    # A new run starts where the value CHANGES or where the interval is NOT contiguous with its
+    # predecessor (a gap — merging across it would alter the step function).
+    isRunStart[1:] = (values[1:] != values[:-1]) | (starts[1:] != ends[:-1])
     runStartIdx = np.flatnonzero(isRunStart)
     runEndIdx = np.append(runStartIdx[1:] - 1, len(values) - 1)
     return starts[runStartIdx], ends[runEndIdx], values[runStartIdx]
