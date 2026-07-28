@@ -3,6 +3,7 @@ import ModelFormulation as mf
 import logging
 from DESMain2 import main as DESMain
 import SimDataManager as sdm
+import SimRNG
 from Timer import Timer
 import MEETClasses as mc
 from pathlib import Path
@@ -13,8 +14,9 @@ import ParquetLib as pl
 import os
 import pandas as pd
 import datetime as dt
+import Summaries2 as sum
 
-ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize']
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDFCache', 'simSummary']
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,13 @@ def initializeSim(config, simdm):
 
 def runSim(config, simdm):
     mcRunNum = config['MCScenario']
+    # Seed = [baseSeed?, crc32(siteName), mcRunNum] (SimRNG.composeSeed): site identity
+    # keeps identical site definitions from replaying the same stream within a run
+    # (issue #106); mcRunNum keeps MC iterations distinct (#69); the optional
+    # --randomSeed base keeps the whole simulation reproducible on demand (#96).
+    SimRNG.seed(SimRNG.composeSeed(mcRunNum,
+                                   siteName=config.get('siteName'),
+                                   baseSeed=config.get('randomSeed')))
     with Timer(f"Run Simulation MC Iteration {mcRunNum}") as t0:
         with Timer("  Restore templates") as t1:
             simdm.restoreTemplates()
@@ -95,15 +104,25 @@ def toParquet(config, simdm):
 
 def summarize(config, simdm):
     with Timer("Summarize") as t0:
-        # todo: this will reread the parquet files for all MC iterations.  Is it possible to do this iteration-by-iteration?
-        pl.postprocess(config)
+        sum.summarize(config)
     return t0.deltat.total_seconds()
+
+def summarizeSimulation(config, simdm):
+    with Timer("Summarize") as t0:
+        sum.summarizeSimulation(config)
+    return t0.deltat.total_seconds()
+
+def createPDFCache(config, simdm):
+    with Timer("Create PDF Cache") as t0:
+        statsDF = sum.createPDFCache(config)
+    return t0.deltat.total_seconds(), statsDF
 
 def runWorkitem(workitem):
     with sdm.SimDataManager(workitem) as simdm:
         worktype = workitem['workType']
         logger.info(f"runWorkitem: {worktype}, file: {workitem['studyFilename']}, mcIter: {workitem['MCIteration']}, pid: {os.getpid()}")
         runtime = 0
+        statsDF = pd.DataFrame()
         if worktype == 'initialization':
             runtime = initializeSim(workitem, simdm)
         elif worktype == 'simulation':
@@ -112,6 +131,10 @@ def runWorkitem(workitem):
             runtime = toParquet(workitem, simdm)
         elif worktype == 'summarize':
             runtime = summarize(workitem, simdm)
+        elif worktype == 'createPDFCache':
+            runtime, statsDF = createPDFCache(workitem, simdm)
+        elif worktype == 'simSummary':
+            runtime = summarizeSimulation(workitem, simdm)
         else:
             logger.error(f"Unknown worktype: {worktype}")
 
@@ -121,6 +144,7 @@ def runWorkitem(workitem):
         'studyFilename': workitem['studyFilename'],
         'MCScenario': workitem['MCScenario'],
         'runtime': runtime,
+        'statsDF': statsDF,
         'pid': os.getpid()
     }
 
@@ -151,10 +175,25 @@ def getFileList(cm):
         yield (cm.getConfigVar("studyFilename"), cm.getConfigVar("studyDefinitionFile"), cm.getConfigVar('studyName'))
 
 def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
+    # --noPDF drops the per-site PDF cache phase here; summarizeSimulation skips SimPDF
+    # for the same flag. Build a local copy so the ALL_PHASES default is never mutated.
+    if cm.getConfigVar('noPDF'):
+        phasesToInclude = list(filter(lambda phase: phase != 'createPDFCache', phasesToInclude))
     initWorkitems = []
     simWorkitems = []
     parquetWorkitems = []
     summaryWorkitems = []
+    createPDFCacheWorkitems = []
+    simSummaryWorkitems = []
+
+    # The SiteSummary/PDF datasets are single shared, hive-partitioned-by-site
+    # directories (their config paths carry no {site} component), so every site in
+    # the loop resolves the SAME path. Add each distinct directory exactly once; the
+    # simSummary workitem then reads each shared dataset once and recovers `site` from
+    # the partition. Appending per-site would read the whole dataset N times and inflate
+    # every SimSummary/SimPDF level by the site count (issue #114).
+    allSiteSummaryDirs = []
+    allSitePDFDirs = []
 
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
@@ -173,6 +212,18 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         # summarization happens at the site level only
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
+        createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCache'))
+        summaryDir = cm.getConfigVar('parquetNewSummary')
+        if summaryDir not in allSiteSummaryDirs:
+            allSiteSummaryDirs.append(summaryDir)
+        pdfDir = cm.getConfigVar('parquetNewPDF')
+        if pdfDir not in allSitePDFDirs:
+            allSitePDFDirs.append(pdfDir)
+    # simSummary happens once per simulation, aggregating every site's summaries
+    simSummaryWI = generateSingleWorkitem(cm, 'simSummary')
+    simSummaryWI['allSiteSummaryDirs'] = allSiteSummaryDirs
+    simSummaryWI['allSitePDFDirs'] = allSitePDFDirs
+    simSummaryWorkitems.append(simSummaryWI)
 
     retWorkitems = []
     if 'initialization' in phasesToInclude:
@@ -183,6 +234,10 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
         retWorkitems.append(parquetWorkitems)
     if 'summarize' in phasesToInclude:
         retWorkitems.append(summaryWorkitems)
+    if 'createPDFCache' in phasesToInclude:
+        retWorkitems.append(createPDFCacheWorkitems)
+    if 'simSummary' in phasesToInclude:
+        retWorkitems.append(simSummaryWorkitems)
 
     return retWorkitems
 
@@ -228,7 +283,7 @@ def defineConvenienceConfigVars(cMgr):
     pass
 
 def main(cm, workitemQueues=None):
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s  %(message)s")
+    logging.basicConfig(level=logging.INFO, format=au.LOG_FORMAT)
     defineConvenienceConfigVars(cm)
     if workitemQueues is None:
         listOfWorkitemQueues = generateWorkitems(cm)
@@ -252,12 +307,19 @@ def main(cm, workitemQueues=None):
     clocktime = t0.deltat.total_seconds()
     totalMCIterations = cm.getConfigVar('monteCarloIterations')
     logger.info(f"Total runtime: {totalRuntime} seconds, clock time: {clocktime}, MC Iterations: {totalMCIterations}, items: {len(resList)}")
-    resDF = pd.DataFrame(resList)
+    for worktype, prefix in [('createPDFCache', 'PDFCache')]:
+        statsDFs = [r['statsDF'] for r in resList if r['worktype'] == worktype and not r['statsDF'].empty]
+        if statsDFs:
+            statsFilename = f"{prefix}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
+            logger.info(f"Wrote {statsFilename}")
+
+    resDF = pd.DataFrame(resList).drop(columns=['statsDF'])
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
     resFilename = dt.datetime.now().strftime(resFileFormat)
+    resDF = resDF.assign(scenarioTimestamp=cm.getConfigVar('scenarioTimestamp'))
     resDF.to_csv(resFilename, index=False)
     logger.info(f"Wrote {resFilename}")
-
 
 # set this up as preMain so config does not get instantiated as a global variable
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "MAES"
-version = "0.2.0"
+version = "0.4.0"
 description = "Timeseries processing and analysis library"
 authors = [
     "Jerry Duggan <Jerry.Duggan@colstate.edu>",
@@ -34,6 +34,11 @@ python-semantic-release = "^9.16.0"
 [tool.poetry.group.dev.dependencies]
 mkdocs-material = "^9.5.49"
 python-semantic-release = "^9.15.2"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: long-running engine integration tests (run in the MAES conda env)",
+]
 
 [build-system]
 requires = ["poetry-core"]

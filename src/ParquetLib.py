@@ -19,7 +19,7 @@ EVENT_DS = 'events'
 TIMESERIES_DS = 'timeseries'
 GC_DS = 'gascomposition'
 METADATA_DS = 'metadata'
-SUMMARY_DS = 'simsummary'
+SUMMARY_DS = 'SummaryLegacy'
 
 SUMMARY_STATE_DS = 'summaryState'
 SUMMARY_FLUIDFLOW_DS = 'summaryFluidFlow'
@@ -30,15 +30,18 @@ SECONDSINHOUR = 3600
 US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 
-
-def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun']):
+def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun'], baseName=None):
     pqBase = au.expandFilename(config['parquetBaseTemplate'], {**config, 'dataset': dsName})
-    df.to_parquet(pqBase, partition_cols=partition_cols,
-                  basename_template=f"{dsName}-{{i}}.parquet",
-                  existing_data_behavior='overwrite_or_ignore',
-                  index=False)
+    toParquetkwArgs = {
+        'partition_cols': partition_cols,
+        'index': False
+    }
+    if baseName is not None:
+        toParquetkwArgs = {**toParquetkwArgs, 'basename_template': f"{baseName}-{{i}}.parquet"}
 
-def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site']):
+    df.to_parquet(pqBase, existing_data_behavior='delete_matching', **toParquetkwArgs)
+
+def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None):
     # ── Skip any empty write ──────────────────────
     if df is None or df.empty:
         site_hint = None
@@ -50,11 +53,20 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site']):
         logger.info(msg)
         return
 
+    if basename is None:
+        basename_template = f"{dsName}-{{i}}.parquet"
+    else:
+        basename_template = f"{basename}-{{i}}.parquet"
+
     pqBase = config[dsName]
     au.ensureDirectory(pqBase)
     df.to_parquet(pqBase, partition_cols=partition_cols,
-                  # basename_template=f"{dsName}-{{i}}.parquet",
-                  # existing_data_behavior='overwrite_or_ignore',
+                  basename_template=basename_template,
+                  # delete_matching clears all existing files in matching partitions before writing,
+                  # ensuring repeated calls overwrite rather than accumulate files.
+                  # overwrite_or_ignore only overwrites on filename collision; since pyarrow generates
+                  # unique filenames per call, it effectively appends and would cause duplicate rows.
+                  existing_data_behavior='delete_matching',
                   engine='auto',
                   index=False
                   )
@@ -265,10 +277,20 @@ def baseReadParquetFullConfig(config, dsName, site=None, mcRun=None, species=Non
     except FileNotFoundError as e:
         return e
 
-    if sort_by:
-        pqTable = pqTable.sort_by(sort_by)
-
     pqDF = pqTable.to_pandas()
+
+    # Sort in pandas rather than pyarrow: Table.sort_by calls take(), which
+    # concatenates each column's chunks into a single buffer. For regular
+    # Arrow string columns the offset buffer is i32 (~2 GiB cap), so a
+    # cross-MC read of a large site (e.g. ~70 mechanistic pneumatics x
+    # 50+ MCs of EMISSION events) hits ArrowInvalid: offset overflow
+    # while concatenating arrays (issue #92). Pandas object dtype has no
+    # such cap.
+    if sort_by:
+        sort_cols  = [c for c, _ in sort_by]
+        ascendings = [direction == 'ascending' for _, direction in sort_by]
+        pqDF = pqDF.sort_values(sort_cols, ascending=ascendings, kind='stable',
+                                ignore_index=True)
 
     if site is not None:
         pqDF = pqDF.assign(site=site)
@@ -351,6 +373,13 @@ def readParquetEvents(config, site=None, mcRun=None, mergeGC=False, species=None
     mdDF['site'] = mdDF['site'].astype('str')
     retDF['site'] = retDF['site'].astype('str')
     retDF = retDF.merge(mdDF, how='left', on=['facilityID', 'unitID', 'emitterID', 'mcRun', 'site'])
+    # add psno and operator name in emissions
+    operatorInfo = mdDF[mdDF['equipmentType'] == 'MEETFacility'][['facilityID', 'operator', 'psno']].drop_duplicates()
+    # newRetDF = retDF.drop(columns=['psno','operator']).merge(operatorInfo, on='facilityID', how='left')
+    psno_map = operatorInfo.set_index('facilityID')['psno']
+    op_map   = operatorInfo.set_index('facilityID')['operator']
+    retDF['psno'] = retDF['psno'].fillna(retDF['facilityID'].map(psno_map))
+    retDF['operator'] = retDF['operator'].fillna(retDF['facilityID'].map(op_map))
 
     return retDF
 
@@ -449,9 +478,13 @@ def processInstantEquipEmissions(df):
     return df
 
 def filterAbnormalEmissions(df):
-    valid_emitter_ids = df[df['modelEmissionCategory'] != 'FUGITIVE']['emitterID']
-    df = df[df['emitterID'].isin(valid_emitter_ids)]
-    return df
+    return df[df['modelEmissionCategory'] != 'FUGITIVE']
+
+def addPsnoOperatorToParquets(retDF, psnoMap, operatorMap):
+
+    retDF['psno'] = retDF['psno'].fillna(retDF['facilityID'].map(psnoMap))
+    retDF['operator'] = retDF['operator'].fillna(retDF['facilityID'].map(operatorMap))
+    return retDF
 
 def postProcessParquetResults(config, df, site):
     simDuration = config['simDurationDays']
@@ -462,13 +495,20 @@ def postProcessParquetResults(config, df, site):
     total_years = simDuration / u.DAYS_PER_YEAR  # Assuming u.DAYS_PER_YEAR is defined in Units module
     avg_frequency = total_events / total_years
 
+    operatorInfo = df[['facilityID', 'operator', 'psno']].drop_duplicates()
+
     # Get DFs for emissions for the parquet files
     logging.info("Creating Parquet Files for Emission by Categories for...")
     emissCatDFParq = processEmissionsCat(df)
+    emissCatDFParq = emissCatDFParq.merge(operatorInfo, on='facilityID')
     logging.info("Creating Parquet Files for Emission by Equipment...")
     emissEquipDFParq = processEquipEmissions(df)
+    emissEquipDFParq = emissEquipDFParq.merge(operatorInfo, on='facilityID')
     logging.info("Creating Parquet Files for Instantaneous Emissions by Equipment...")
     emissInstEquipDFParq = processInstantEquipEmissions(df)
+    emissInstEquipDFParq = emissInstEquipDFParq.merge(operatorInfo, on='facilityID')
+    
+
     toBaseParquet(config, emissCatDFParq, 'siteEmissionsbyCat', partition_cols=['facilityID'])
     toBaseParquet(config, emissEquipDFParq, 'siteEmissionsByEquip', partition_cols=['facilityID'])
     toBaseParquet(config, emissInstEquipDFParq, 'siteInstantEmissionsByEquip', partition_cols=['facilityID'])
@@ -521,6 +561,7 @@ def postprocess(config):
             site = df['site'].unique()[0]
             postProcessParquetResults(config, df, site)
 
+
 def getParquetMetadata(parquetDir):
     PARQUET_RE = re.compile(r'events\/site=(?P<site>.*)\/mcRun=(?P<mcRun>.*)')
 
@@ -529,7 +570,7 @@ def getParquetMetadata(parquetDir):
         "parquetTimeseriesDS":                  f"{parquetDir}/timeseries",
         "parquetGasCompositionDS":              f"{parquetDir}/gascomposition",
         "parquetMetadataDS":                    f"{parquetDir}/metadata",
-        "parquetSummaryDS":                     f"{parquetDir}/simsummary",
+        "parquetSummaryDS":                     f"{parquetDir}/SummaryLegacy",
         "parquetEventListDS":                   f"{parquetDir}/eventList",
         "parquetFilteredEventSummaryDS":        f"{parquetDir}/filteredEventSummary",
         "parquetSiteInstantaneousEmissionsDS":  f"{parquetDir}/siteInstantaneousEmissions",
