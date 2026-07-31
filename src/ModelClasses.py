@@ -1158,7 +1158,7 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
         MTBFMaxHour = (MTTRMaxHour * (1 - pLeak)) / pLeak
         MTTRHourDist = d.Uniform({'min': MTTRMinHour, 'max': MTTRMaxHour})  # uniform distribution for mttr max and min
         MTBFHourDist = d.Uniform({'min': MTBFMinHour, 'max': MTBFMaxHour})
-        newArgs = {**kwargs, 'pLeak': pLeak, 'MTBF': MTBFHourDist.pick(), 'MTTR': MTTRHourDist.pick()}
+        newArgs = {**kwargs, 'pLeak': pLeak, 'MTBF': MTBFHourDist.mean(), 'MTTR': MTTRHourDist.mean()}
         super().__init__(**newArgs)  # do this to pick up default value for componentCount
         self.MTTRMinDays = MTTRMinDays
         self.MTTRMaxDays = MTTRMaxDays
@@ -1167,8 +1167,8 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
     def activityPick(self, simdm, mcRunNum=-1):
         return 1, None, None
     
-    def pickFromMTTR(self, num):
-        return num
+    # def pickFromMTTR(self, num):
+    #     return num
 
     def overrideLeaks(self, leakList, simdm,
                       mcRunNum):  # MM edit: new function to adjust current leaks based on any previous emitters that should override them
