@@ -282,7 +282,6 @@
           "Model Parameters": [
 		    {"Model Parameter": "Common Single-Unit Vent Component Count",       "Python Parameter": "activityDistribution",   "Parameter Type": "Sheet"},
             {"Model Parameter": "Common Single-Unit Vent pLeak",                 "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
-            {"Model Parameter": "Common Single-unit Vent(Large Emitter) pLeak",  "Python Parameter": "pLeak",                  "Parameter Type": "Sheet"},
             {"Model Parameter":"Common Single-Unit Vent MTTR Min",               "Python Parameter": "MTTRMinDays",            "Parameter Type": "Sheet"},
 		    {"Model Parameter":"Common Single-Unit Vent MTTR Max",               "Python Parameter": "MTTRMaxDays",            "Parameter Type": "Sheet"},
             {"Model Parameter": "Leak GC Name",                            "Python Parameter": "gasComposition",         "Parameter Type": "Sheet"},
