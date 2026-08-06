@@ -3792,12 +3792,12 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
         # check when rate changes in inlet flows to keep track of ff driverRates
         cs = currentStateInfo.stateName
         # check if we want emission factor emissions or mechanistic
-        if not self.tankMode:
-            self.opDur = u.getSimDuration()
-            self.currentPrimaryEqRatio = 1
-            self.currentYIntercept = 0
-            self.prvSwitch = 0
-            return 'OPERATING'
+        # if not self.tankMode:
+        #     self.opDur = u.getSimDuration()
+        #     self.currentPrimaryEqRatio = 1
+        #     self.currentYIntercept = 0
+        #     self.prvSwitch = 0
+        #     return 'OPERATING'
 
         self.sumOfVaporOutletFlows = 0
         # reset sum of outlet flows for next state.
@@ -3817,6 +3817,15 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             nextState = 'OPERATING'
             self.opDur = u.getSimDuration()
             self.currentPrimaryEqRatio = 1
+            return nextState
+
+        if not self.tankMode:
+            nextState = 'OPERATING'
+            self.currentPrimaryEqRatio = 0
+            self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
+            self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
+            self.sumOfVaporOutletFlows = 999999  # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
+            self.opDur = rateChangeDelay
             return nextState
 
         # ThiefHatch/Vent opens randomly based on pLeak/MTTR. Keep a check of this when we check for threshold
