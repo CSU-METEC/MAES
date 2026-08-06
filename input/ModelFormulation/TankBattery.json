@@ -72,7 +72,7 @@
 	  "Model Parameters": [
 	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING,MECHANISTIC_THIEF_HATCH"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_uncontrolled_tank_{serialNo}"},
-	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"},
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "tank_gas_outlet,tank_flash,emitted_gas,tank_flash_emitted_gas"},
 	  {"Model Parameter": "Tank Controlled",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
 			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
 	  ]
