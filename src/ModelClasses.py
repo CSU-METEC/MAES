@@ -3349,9 +3349,31 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
     def initialStateTimes(self, **kwargs):
         self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))
-        ret = {'OPERATING': int(self.opDurDist.pick()),
-               'MALFUNCTIONING': int(self.malfDurDist.pick()),
-               'SHUT_IN': int(self.shutInDurDist.pick())}
+        ret = {
+            'OPERATING': self.opDurDist.mean(),
+            'MALFUNCTIONING': self.pMalf * self.malfDurDist.mean(),
+            'SHUT_IN': self.pShutIn * self.shutInDurDist.pick()
+        }
+        return ret
+
+    def initialStateUpdate(self, randomState, randomStateDelay, currentTime):
+        if randomState == 'OPERATING':
+            durDist = self.opDurDist
+        elif randomState == 'MALFUNCTIONING':
+            durDist = self.malfDurDist
+        elif randomState == 'SHUT_IN':
+            durDist = self.shutInDurDist
+        m = durDist.low
+        M = durDist.high
+        if M - m <= 1:
+            initial_duration = SimRNG.randrange(1, M)
+        else:
+            p = SimRNG.uniform(0, 1)
+            if p < 2 * m / (m + M):
+                initial_duration = math.ceil((m + M) * p / 2)
+            else:
+                initial_duration = math.ceil(M - math.sqrt((M - m) ** 2 - (M ** 2 - m ** 2) * (p - 2 * m / (m + M))))
+        ret = super().initialStateUpdate(randomState, initial_duration, currentTime)
         return ret
 
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
@@ -3578,16 +3600,25 @@ class MEETFlare(mc.MajorEquipment, ff.Volume, SimpleUpstreamFlowStateEnabled, mc
 
     def initialStateTimes(self):
         stateTimes = {
-            'OPERATING':      u.daysToSecs(self.opDurMax),
-            'UNLIT':          u.daysToSecs(self.unlitDurMax),
-            'MALFUNCTIONING': u.daysToSecs(self.malfDurMax)
+            'OPERATING':      self.opDurDist.mean(),
+            'UNLIT':          self.pMalfunction*self.malfDurDist.mean(),
+            'MALFUNCTIONING': self.pUnlit*self.unlitDurDist.mean()
         }
         return stateTimes
 
     def initialStateUpdate(self, randomState, randomStateDelay, currentTime):
-        self.transitionTimeForCurrentState = randomStateDelay
-        calcStateDuration = self.stateDuration(None, None, currentTime)
-        ret = super().initialStateUpdate(randomState, calcStateDuration, currentTime)
+        durDist = self.stateMachine[randomState]['durationForState']
+        m = durDist.low
+        M = durDist.high
+        if M-m<=1:
+            initial_duration = SimRNG.randrange(1, M)
+        else:
+            p = SimRNG.uniform(0, 1)
+            if p<2*m/(m+M):
+                initial_duration = math.ceil((m+M)*p/2)
+            else:
+                initial_duration = math.ceil(M - math.sqrt((M-m)**2-(M**2-m**2)*(p-2*m/(m+M))))
+        ret = super().initialStateUpdate(randomState, initial_duration, currentTime)
         return ret
 
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState='OPERATING'):
