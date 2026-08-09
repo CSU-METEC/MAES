@@ -3352,7 +3352,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
         ret = {
             'OPERATING': self.opDurDist.mean(),
             'MALFUNCTIONING': self.pMalf * self.malfDurDist.mean(),
-            'SHUT_IN': self.pShutIn * self.shutInDurDist.pick()
+            'SHUT_IN': self.pShutIn * self.shutInDurDist.mean()
         }
         return ret
 
