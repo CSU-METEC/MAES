@@ -3601,8 +3601,8 @@ class MEETFlare(mc.MajorEquipment, ff.Volume, SimpleUpstreamFlowStateEnabled, mc
     def initialStateTimes(self):
         stateTimes = {
             'OPERATING':      self.opDurDist.mean(),
-            'UNLIT':          self.pMalfunction*self.malfDurDist.mean(),
-            'MALFUNCTIONING': self.pUnlit*self.unlitDurDist.mean()
+            'UNLIT':          self.pUnlit*self.unlitDurDist.mean(),
+            'MALFUNCTIONING': self.pMalfunction*self.malfDurDist.mean()
         }
         return stateTimes
 
@@ -3619,6 +3619,7 @@ class MEETFlare(mc.MajorEquipment, ff.Volume, SimpleUpstreamFlowStateEnabled, mc
             else:
                 initial_duration = math.ceil(M - math.sqrt((M-m)**2-(M**2-m**2)*(p-2*m/(m+M))))
         ret = super().initialStateUpdate(randomState, initial_duration, currentTime)
+        self.transitionTimeForCurrentState = initial_duration
         return ret
 
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState='OPERATING'):
