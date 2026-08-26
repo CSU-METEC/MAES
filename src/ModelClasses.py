@@ -3825,6 +3825,14 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             # self.opDur = rateChangeDelay
             return nextState
 
+        if not self.tankMode and self.tankControlled:
+            nextState = 'OPERATING'
+            self.currentYIntercept = 0  # all outlet vapor flows go to the flares
+            self.currentPrimaryEqRatio = 1
+            self.prvSwitch = 0  # prv is closed
+            self.opDur = rateChangeDelay
+            return nextState
+
         if not self.tankMode:
             nextState = 'OPERATING'
             self.currentPrimaryEqRatio = 0
