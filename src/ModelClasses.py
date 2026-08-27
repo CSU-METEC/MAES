@@ -3846,9 +3846,23 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             # self.sumOfVaporOutletFlows = sum(map(lambda x: x.driverRate, itertools.chain(self.inletFluidFlows[self.vaporFF])))
             i = 10           # sum of inlet vapor plus flashes = sum of outlet vapors
         else:
+            timeToRateChange = min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows[self.fluid]))
+            rateChangeDelay = timeToRateChange - currentTime
+            self.sumOfVaporOutletFlows = self.sumOfVaporsWaterTank()
             nextState = 'OPERATING'
-            self.opDur = u.getSimDuration()
+            self.currentYIntercept = 0  # all outlet vapor flows go to the flares
             self.currentPrimaryEqRatio = 1
+            self.prvSwitch = 0  # prv is closed
+            self.opDur = rateChangeDelay
+            # self.opDur = rateChangeDelay
+            return nextState
+
+        if not self.tankMode and self.tankControlled:
+            nextState = 'OPERATING'
+            self.currentYIntercept = 0  # all outlet vapor flows go to the flares
+            self.currentPrimaryEqRatio = 1
+            self.prvSwitch = 0  # prv is closed
+            self.opDur = rateChangeDelay
             return nextState
 
         if not self.tankMode:
@@ -3976,11 +3990,12 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             else:
                 delay = u.getSimDuration()
         else:
-            delay = u.getSimDuration()
+            delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
             self.sumOfVaporOutletFlows = self.sumOfVaporsWaterTank()
             self.currentYIntercept = 0
             self.currentPrimaryEqRatio = 1
             self.prvSwitch = 0
+            self.opDur = delay
             ret = {'OPERATING': delay}
         self.tankOverpressureInitDist = d.Uniform({'min': 0,
                                                      'max': self.tankOverpressureMTBFMinSec})

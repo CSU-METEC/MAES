@@ -44,7 +44,9 @@
 	  "Model Parameters": [
 	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "PRV"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_tank_battery_prv_{serialNo}"},
-	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"}
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"},
+		  {"Model Parameter": "Tank Controlled", "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+  												{"Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "True"}
 	  ]
 	},
 	
@@ -67,12 +69,22 @@
 	  									{"Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
   		]
 	},
-	
-	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Uncontrolled Tank Emissions Mechanistic", "Category": "TANK VENT", "Emission Category": "FUGITIVE",
+
+	{"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Uncontrolled Tank Emissions Mechanistic OP STATE", "Category": "TANK VENT", "Emission Category": "FUGITIVE",
 	  "Model Parameters": [
-	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING,MECHANISTIC_THIEF_HATCH"},
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING"},
 	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_uncontrolled_tank_{serialNo}"},
 	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "emitted_gas,tank_flash_emitted_gas"},
+	  {"Model Parameter": "Tank Controlled",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
+			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
+	  ]
+	},
+
+	  {"Python Category": "Emitter", "Python Class": "MEETFFEmitter", "Readable Name": "Uncontrolled Tank Flash Emissions Mechanistic", "Category": "TANK VENT", "Emission Category": "FUGITIVE",
+	  "Model Parameters": [
+	  {		"Python Parameter": "statesActive",     "Parameter Type": "Constant", "Value": "OPERATING,MECHANISTIC_THIEF_HATCH,PRV"},
+	  {     "Python Parameter": "instanceFormat",   "Parameter Type": "Constant", "Value": "{unitID}_uncontrolled_tank_flash_{serialNo}"},
+	  {     "Python Parameter": "secondaryID",   "Parameter Type": "Constant", "Value": "tank_flash,tank_gas_outlet"},
 	  {"Model Parameter": "Tank Controlled",  "Python Parameter": "instantiationVal", "Parameter Type": "Sheet"},
 			{                                                 "Python Parameter": "valsForInstantiation", "Parameter Type": "Constant", "Value": "False"}
 	  ]
