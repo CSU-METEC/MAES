@@ -46,7 +46,7 @@ def mergeEmissionRecords(eventDF, tsTable, gascomp, debugEventList=False):
                                mcRun=emEmTsDF['mcRun'].astype(int),
                                emissionUnits='kg/s',
                                site=emEmTsDF['site'].astype(str))
-    
+
     EMISSION_EVENT_PIVOT_LIST = [
         'mcRun',
         'facilityID',

@@ -8,7 +8,7 @@
     "Activity / Emission Factor Name":  {"configVar": "factorName"},
     "Graph Specification File":         {"configVar": "graphSpec"},
     "Flash Composition Name":           {"configVar": "gcFilename"},
-	"Facility Type":                    {"configVar": "facilityType"}
+	  "Facility Type":                    {"configVar": "facilityType"}
   },
 
   "phaseValues": {
@@ -16,7 +16,9 @@
     "defaultValues": {
       "inputRoot": "input",
       "outputRoot": "output",
+      "randomSeed": null,
       "scenarioTimestampFormat": "%Y%m%d_%H%M%S",
+      "noPDF": false,
       "disableSimulation": false,
       "disableGraph": false,
       "disableSummary": false,
@@ -24,13 +26,13 @@
       "unitID": false,
       "Pneumatics": false,
       "abnormal": null,
-      "fullSummaries": false,
-      "annualSummaries": false,
-      "instantaneousSummaries": false,
-      "pdfSummaries": false,
-      "avgDurSummaries": false,
-      "siteEmiss":false,
-      "simulationEmissions":false,
+      "fullSummaries": true,
+      "annualSummaries": true,
+      "instantaneousSummaries": true,
+      "pdfSummaries": true,
+      "avgDurSummaries": true,
+      "siteEmiss":true,
+      "simulationEmissions": true,
       "statesAndTsPloting":false,
       "mcRunTS":null,
       "miiEmiss":false,
@@ -63,13 +65,21 @@
       "equipmentFile": "{templateDir}/equipment.json",
       "mdIndexFile": "{templateDir}/mdIndex.csv",
       "parquetDir": "{simulationRoot}/parquet",
+      "simulationParquetDir": "{outputRoot}/MC_{scenarioTimestamp}/parquet",
 
       "parquetEventDS":          "{parquetDir}/events",
       "parquetTimeseriesDS":     "{parquetDir}/timeseries",
       "parquetGasCompositionDS": "{parquetDir}/gascomposition",
       "parquetMetadataDS":       "{parquetDir}/metadata",
-      "parquetSummaryDS":        "{parquetDir}/simsummary",
-      "parquetEventListDS":      "{parquetDir}/eventList"
+      "parquetSummaryDS":        "{parquetDir}/SummaryLegacy",
+      "parquetEventListDS":      "{parquetDir}/eventList",
+      "parquetNewSummary":       "{parquetDir}/Summary/SiteSummary",
+      "parquetNewInstEmissions": "{parquetDir}/Summary/InstEmissions",
+      "parquetNewSimSummary":    "{simulationParquetDir}/Summary/SimSummary",
+      "parquetNewEventSummary":  "{parquetDir}/Summary/EventSummary",
+      "parquetNewPDF":      "{parquetDir}/Summary/PDF",
+      "parquetNewPDFCache": "{parquetDir}/Summary/PDFCache",
+      "parquetNewSimPDF":   "{simulationParquetDir}/Summary/SimPDF"
     },
 
     "MCIteration": {

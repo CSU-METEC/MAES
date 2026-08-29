@@ -22,7 +22,7 @@ import EquipmentTable as et
 import csv
 from Chooser import UnscaledEmpiricalDistChooser
 from Chooser import EmpiricalDistChooser
-import random
+import SimRNG
 import DistributionProfile as dp
 import itertools
 import pandas as pd
@@ -33,6 +33,8 @@ import json
 class MEETFacility(eqt.Facility):
     def __init__(self,
                  productionGCFilename=None,
+                 operator=None,
+                 psno=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.productionGCFilename = productionGCFilename
@@ -719,6 +721,8 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
                  initialState=None,
                  initialStateTime=None,
                  fuzzedInitialTime=None,
+                 _loadingWarnIssued=None,
+                 _driverTypeWarnIssued=None,
                  **kwargs):
         operatingFraction = self.resetZeroAndOne(operatingFraction)
         nopFraction = self.resetZeroAndOne(nopFraction)
@@ -769,6 +773,8 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
         self.initialState = initialState
         self.initialStateTime = initialStateTime
         self.fuzzedInitialTime = fuzzedInitialTime
+        self._loadingWarnIssued = False
+        self._driverTypeWarnIssued = False
 
         totalHours = self.opModeHours + self.nopModeHours + self.nodModeHours
         self.timeRatios = {'OPERATING': self.opModeHours / totalHours,
@@ -901,10 +907,10 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
     def nextStateNoOverload2(self, currentTime, currentStateData, currentStateInfo):
         cs = currentStateInfo.stateName
         if cs == 'OPERATING':
-            nextState = random.choices(['NOT_OPERATING_PRESSURIZED', 'BLOWDOWN'], weights=(self.nopPct, self.nodPct), k=1)[0]
+            nextState = SimRNG.choices(['NOT_OPERATING_PRESSURIZED', 'BLOWDOWN'], weights=(self.nopPct, self.nodPct), k=1)[0]
             # add OPERATING here for the sum = 1
         elif cs == 'NOT_OPERATING_PRESSURIZED':
-            nextState = random.choices(['STARTING', 'BLOWDOWN'], weights=(1.0, 0), k=1)[0]
+            nextState = SimRNG.choices(['STARTING', 'BLOWDOWN'], weights=(1.0, 0), k=1)[0]
         elif cs == 'NOT_OPERATING_DEPRESSURIZED':
             nextState = 'STARTING'
         elif cs == 'STARTING':
@@ -949,10 +955,12 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
 
     def checkForCorrectDriver(self, simdm):
         # if self.driverType not in filename.name:
-        curDataPath = Path(simdm.config['emitterProfileDir']) / 'Common' / 'EnginesfuelConsumpEq'
-        msg = (f'Driver Type {self.driverType} does not have a close approximation of load equations'
-               f' in {curDataPath}, using rated power instead. unitID = {self.unitID}')
-        logging.warning(msg)
+        if not self._driverTypeWarnIssued:
+            curDataPath = Path(simdm.config['emitterProfileDir']) / 'Common' / 'EnginesfuelConsumpEq'
+            msg = (f'Driver Type {self.driverType} does not have a close approximation of load equations'
+                   f' in {curDataPath}, using rated power instead. unitID = {self.unitID}')
+            logging.warning(msg)
+            self._driverTypeWarnIssued = True
         return None
 
     def getLoadConditions(self, loadCondition):
@@ -1035,20 +1043,22 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
             loading_kW, loading_pu = self.calcLoadingNoFF(loading_pu)
             return loading_kW, loading_pu, 0
         if self.inletFluidFlows:
-            if not self.inletFluidFlows['Vapor']:
+            if not self.inletFluidFlows.get('Vapor', []):
                 msg = f'No inlet vapors found for compressor {self.unitID}, switching to rated power'
                 logging.warning(msg)
                 loading_kW, loading_pu = self.calcLoadingNoFF(loading_pu)
             else:
-                fuelConsump, compressorLoad = self.calcCompressorLoad(self.inletFluidFlows['Vapor'], loading_pu)
+                fuelConsump, compressorLoad = self.calcCompressorLoad(self.inletFluidFlows.get('Vapor', []), loading_pu)
                 loading_kW = compressorLoad
         else:
             loading_kW, loading_pu = self.calcLoadingNoFF(loading_pu)
             if loading_kW > self.compressorkW:
-                msg = (f'Loading distribution > max rated load. The distribution is wrong, please check average '
-                       f'and standard loading parameters'
-                       f' in compressors tab, unitID: {self.unitID}, will continue using rated load')
-                logging.warning(msg)
+                if not self._loadingWarnIssued:
+                    msg = (f'Loading distribution > max rated load. The distribution is wrong, please check average '
+                           f'and standard loading parameters'
+                           f' in compressors tab, unitID: {self.unitID}, will continue using rated load')
+                    logging.warning(msg)
+                    self._loadingWarnIssued = True
                 loading_kW = self.compressorkW
         return loading_kW, loading_pu, fuelConsump
 
@@ -1102,7 +1112,7 @@ class MEETCompressor(mc.StateEnabledVolume, et.MajorEquipment, mc.StateChangeIni
         initialStateChooser = EmpiricalDistChooser(self.timeRatios)
         self.initialState = initialStateChooser.randomChoice()
         self.initialStateTime = self.stateTimes[self.initialState]
-        self.fuzzedInitialTime = int(self.initialStateTime * random.uniform(0, 1))
+        self.fuzzedInitialTime = int(self.initialStateTime * SimRNG.uniform(0, 1))
         # self.fuzzedInitialTime = self.initialStateTime
         self.stateTimes[self.initialState] = self.fuzzedInitialTime
 
@@ -1550,9 +1560,9 @@ class MEETContinuousSeparator2(mc.MajorEquipment, mc.StateChangeInitiator, ff.Vo
 
         self.currentGasFraction = 0
         try:
-            # delay = random.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
+            # delay = SimRNG.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
             #                                 self.getMinChangeTimeLiquids(self.outletFluidFlows)))
-            delay = random.randrange(1, min(self.containedSeparators['Condensate'].getChangeTime(),
+            delay = SimRNG.randrange(1, min(self.containedSeparators['Condensate'].getChangeTime(),
                                             self.containedSeparators['Water'].getChangeTime()))
         except:
             delay = 1
@@ -1841,7 +1851,7 @@ class LiquidContained(Contained):
         initialStateTimes = {f'{self.fluidName}_OPERATING': self.opDurDist.high,
                              f'{self.fluidName}_STUCK_DUMP_VALVE': self.sdvDurDist.high}
         randomState = UnscaledEmpiricalDistChooser(initialStateTimes).randomChoice()
-        randomStateTime = random.randrange(1, initialStateTimes[randomState])
+        randomStateTime = SimRNG.randrange(1, initialStateTimes[randomState])
         self.currentStateDur = randomStateTime
         self.currentState = randomState
         if randomState == f'{self.fluidName}_STUCK_DUMP_VALVE':
@@ -2251,7 +2261,7 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
     def initialStateUpdate(self, stateName, stateDuration, currentTime):
         self.currentGasFraction = 0
         try:
-            delay = random.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
+            delay = SimRNG.randrange(1, min(self.getMinChangeTimeLiquids(self.inletFluidFlows),
                                             self.getMinChangeTimeLiquids(self.outletFluidFlows)))
         except:
             delay = 1
@@ -2627,7 +2637,7 @@ class MEETDumpingSeparator(MEETContinuousSeparator):
         return nextState
 
     def initialStateTimes(self):
-        self.currentVolume = round(random.uniform(1, self.dumpVolume), 1)
+        self.currentVolume = round(SimRNG.uniform(1, self.dumpVolume), 1)
         if self.currentVolume >= self.dumpVolume:
             self.stateTimes = {'DUMPING': self.dumpTime}
         else:
@@ -3001,7 +3011,7 @@ class MEETContinuousPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
         cs = currentStateInfo.stateName
         # nextState = 'CONTINUOUS_VENT'
         if self.prevState is None:
-            nextState = random.choice(['CONTINUOUS_VENT', 'CONTINUOUS_VENT_ABNORMAL'])
+            nextState = SimRNG.choice(['CONTINUOUS_VENT', 'CONTINUOUS_VENT_ABNORMAL'])
             # nextState = 'CONTINUOUS_VENT'    # only for debugging
             if nextState == 'CONTINUOUS_VENT_ABNORMAL':
                 self.getNextStateAb(currentStateData, currentStateInfo, currentTime)
@@ -3059,11 +3069,11 @@ class MEETContinuousPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
             self.currentStateDur = int(self.opDurDist.pick())
         else:
             self.currentStateDur = int(self.abnormalDurDist.pick())
-        # random.randrange(1, stateTimes[randomState])
+        # SimRNG.randrange(1, stateTimes[randomState])
         if self.inletFluidFlows:
-            self.currentStateDelay = random.randrange(1, self.getMinChangeTimeLiquids(self.inletFluidFlows))
+            self.currentStateDelay = SimRNG.randrange(1, self.getMinChangeTimeLiquids(self.inletFluidFlows))
         else:
-            self.currentStateDelay = random.randrange(1, self.currentStateDur)
+            self.currentStateDelay = SimRNG.randrange(1, self.currentStateDur)
 
         self.trackingTimeAbnormal = self.currentStateDelay
         ret = super().initialStateUpdate(stateName, stateDuration=self.currentStateDelay, currentTime=currentTime)
@@ -3328,7 +3338,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
         
     def getTimeForState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
         cs = currentStateInfo.stateName
-        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows['Vapor']))  # assume no mixing of gcs
+        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))  # assume no mixing of gcs
         if cs == 'OPERATING':
             delay = int(self.opDurDist.pick())
         elif cs == 'MALFUNCTIONING':
@@ -3338,7 +3348,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
         return delay
 
     def initialStateTimes(self, **kwargs):
-        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows['Vapor']))
+        self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))
         ret = {'OPERATING': int(self.opDurDist.pick()),
                'MALFUNCTIONING': int(self.malfDurDist.pick()),
                'SHUT_IN': int(self.shutInDurDist.pick())}
@@ -4386,9 +4396,12 @@ class MEETFFEmitter(mc.EmissionManager):
         if stateInfo.stateName not in self.activeStatesList:
             return
 
-        deltat = min(map(lambda x: x.changeTimeAbsolute, self.majorEquipment.outletFluidFlows['Vapor'])) - currentTime
+        vaporFlows = self.majorEquipment.outletFluidFlows.get('Vapor', [])
+        if not vaporFlows:
+            return
+        deltat = min(map(lambda x: x.changeTimeAbsolute, vaporFlows)) - currentTime
 
-        for singleFlow in self.majorEquipment.outletFluidFlows.get('Vapor', []):
+        for singleFlow in vaporFlows:
             # deltat = singleFlow.changeTimeAbsolute - currentTime
             if singleFlow.secondaryID not in self.secondaryID:
                 continue
@@ -4580,17 +4593,17 @@ class MEETDehydrator(mc.MajorEquipment, mc.StateEnabledVolume):
     #     return cs
 
     def getTimeForState(self, currentTime=0, currentStateData=None, currentStateInfo=None):
-        timeToStateChange = min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows['Vapor']))
+        timeToStateChange = min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows.get('Vapor', [])))
         delay = timeToStateChange - currentTime
 
         return delay
 
     def initialStateTimes(self):
-        ret = {'OPERATING': min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows['Vapor']))}
+        ret = {'OPERATING': min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows.get('Vapor', [])))}
         return ret
 
     def initialStateUpdate(self, stateName, stateDuration, currentTime):
-        outflowCounts = len(self.outletFluidFlows['Vapor'])
+        outflowCounts = len(self.outletFluidFlows.get('Vapor', []))
         # self.strippingGasFlowRate = self.strippingGasFlowRate * 3/outflowCounts  # distribute the stripping gas to the still vent outlet flows
         # self.glycolPumpInjectionRate = self.glycolPumpInjectionRate * 3/outflowCounts  # distribute the pump injection rate to the flash tank outlet flows
         ret = sm.StateInfo(stateName, deltaTimeInState=stateDuration, absoluteTimeInState=currentTime + stateDuration)
