@@ -2129,8 +2129,7 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
                                          'stuckDumpValveDurDist', 'currentGasFraction', 'trackingTimeSubtract',
                                          'operatingDurationMinSec', 'operatingDurationMaxSec', 'operatingDurationDist',
                                          'stuckDumpValveDurMinSec', 'stuckDumpValveDurMaxSec', 'gasFractionDist',
-                                         'stateChangeTime', 'stuckDumpValveMTBFMinSec', 'stuckDumpValveMTBFMaxSec',
-                                         'stuckDumpValvepLeakDist', 'stuckDumpValvepLeak']
+                                         'stateChangeTime', 'stuckDumpValveMTBFMinSec', 'stuckDumpValveMTBFMaxSec']
 
     def __init__(self,
                  activityDistribution=None,
@@ -2146,11 +2145,10 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
                  stuckDumpValveDurMinDays=None,
                  stuckDumpValveDurMaxDays=None,
                  gasFractionDistFileName=None,
-                 stuckDumpValvepLeakFile=None,
+                 stuckDumpValvepLeak=None,
                  multipleInstances=None,
                  instanceFormat=None,
                  stuckDumpValveCC=None,
-                 downTankMechFlag=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.multipleInstances = multipleInstances
@@ -2163,16 +2161,10 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         self.primaryWaterRatio = primaryWaterRatio
         self.productionGC = productionGC
         self.eqComponentCount = eqComponentCount
-        simdm = sdm.SimDataManager.getSimDataManager()
-        # self.tankOverpressurePLeakFile = tankOverpressurePLeakFile
-        # self.tankOverpressurePLeakDist = getpLeakTank(self.tankOverpressurePLeakFile, simdm)
-        # self.tankOverpressurePLeak = self.tankOverpressurePLeakDist.pick()
-        self.stuckDumpValvepLeakFile = 0 if stuckDumpValvepLeakFile is None else stuckDumpValvepLeakFile
-        self.stuckDumpValvepLeakDist = getpLeakTank(self.stuckDumpValvepLeakFile, simdm)
-        self.stuckDumpValvepLeak = self.stuckDumpValvepLeakDist.pick()
-
+        self.stuckDumpValvepLeak = 0 if stuckDumpValvepLeak is None else stuckDumpValvepLeak
         self.stateChangeTime = 0
         self.gasFractionDistFileName = gasFractionDistFileName
+        simdm = sdm.SimDataManager.getSimDataManager()
         self.gasFractionDist = getFlashFrac(gasFractionDistFileName, simdm)
         self.stuckDumpValveDurMinDays = 0 if stuckDumpValveDurMinDays is None else stuckDumpValveDurMinDays
         self.stuckDumpValveDurMinSec = int(u.daysToSecs(self.stuckDumpValveDurMinDays))
@@ -2185,8 +2177,8 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         else:
             self.operatingDurationMinSec = int((self.stuckDumpValveDurMinSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # MTBF formula
             self.operatingDurationMaxSec = int((self.stuckDumpValveDurMaxSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # if separator dump valve is not stuck, it is operating
-            self.operatingDurationDist = d.Uniform({'min': self.operatingDurationMinSec, 'max': self.operatingDurationMaxSec})
-
+            self.operatingDurationDist = d.Uniform({'min': self.operatingDurationMinSec,   # this defn will change if we have another state
+                                                    'max': self.operatingDurationMaxSec})
         self.currentGasFraction = 0
         self.trackingTimeSubtract = 0
         self.delayCheck = 0
@@ -2196,7 +2188,6 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         self.waterFlowUnits = waterFlowUnits or 'bbl'
         self.vaporFlowUnits = vaporFlowUnits or 'scf'
         self.trackingTime = 0
-        self.downTankMechFlag = downTankMechFlag
         # OPERATING state = all valves operating normally
         # subStateMachine = phases with super state sdv
         # OVERPRESSURE = overpressure prv pops open, what happens to valves at this time?
@@ -2204,7 +2195,6 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
             'OPERATING': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateOP},
             'STUCK_DUMP_VALVE': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateSDV}
         }
-
         # self.subStateMachine = {
         #     'GAS': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateOP},
         #     'CONDENSATE': {'stateDuration': self.getTimeForState, 'nextState': self.getNextStateSDV},
@@ -2226,14 +2216,16 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
     def getTimeForState(self,  currentStateData=None, currentStateInfo=None, currentTime=None):
         cs = currentStateInfo.stateName
         if cs == 'OPERATING':
-            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime, self.opDur)
+            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime,
+                        self.opDur)
             # self.trackingTime += delay
             self.delayCheck = self.trackingTime+delay
             delay = self.updateDelay(delay, self.delayCheck, self.opDur, self.trackingTime)
             self.trackingTime += delay
             self.currentGasFraction = 0        # all gas goes to gas sales when in op state
         elif cs == 'STUCK_DUMP_VALVE':
-            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime, self.sdvDur)
+            delay = min(self.getMinChangeTimeLiquids(self.inletFluidFlows) - currentTime,
+                        self.sdvDur)
             # self.trackingTime += delay
             self.delayCheck = self.trackingTime+delay
             delay = self.updateDelay(delay, self.delayCheck, self.sdvDur, self.trackingTime)
@@ -2260,10 +2252,6 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
         if self.trackingTime >= self.sdvDur:
             self.trackingTimeSubtract = self.trackingTime
             self.trackingTime = 0
-            self.stuckDumpValvepLeak = self.stuckDumpValvepLeakDist.pick()
-            self.operatingDurationMinSec = int((self.stuckDumpValveDurMinSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # MTBF formula
-            self.operatingDurationMaxSec = int((self.stuckDumpValveDurMaxSec * (1 - self.stuckDumpValvepLeak)) / self.stuckDumpValvepLeak)  # if separator dump valve is not stuck, it is operating
-            self.operatingDurationDist = d.Uniform({'min': self.operatingDurationMinSec, 'max': self.operatingDurationMaxSec})
             self.opDur = int(self.operatingDurationDist.pick())
             nextState = 'OPERATING'
         else:
@@ -2283,7 +2271,6 @@ class MEETContinuousSeparator(mc.MajorEquipment, mc.StateEnabledVolume):
             delay2 = min(self.opDur, delay)
         elif stateName == 'STUCK_DUMP_VALVE':
             delay2 = min(self.sdvDur, delay)
-            self.currentGasFraction = self.gasFractionDist.pick()
         else:
             raise ValueError(f'Cannot set initial state in {self}, unitID {self.unitID}')
         self.updateFFChangeTime(currentTime+delay2, currentTime)
@@ -3712,843 +3699,7 @@ class MEETCommonHeader(mc.MajorEquipment, ff.Volume, mc.DESEnabled):
     def instantiateFromTemplate(self, simdm, **kwargs):
         return super().instantiateFromTemplate(simdm, **kwargs)
 
-
-class MEETBattery2BKP(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
-
-    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'slope', 'yIntercept', 'currentYIntercept',
-                                         'upstreamEquipment', 'sumOfVaporOutletFlows', 'prvSwitch',
-                                         'stateChangeNotificationRecipients', 'gasRatio',
-                                         'consolidatedFlowTable', 'totalGasVolume', 'flowGCTag', 'gcTag',
-                                         'vaporFF', 'consolidatedFlowTableVapor', 'opDur', 'consolidatedTankFlash',
-                                         'tankThiefHatchMTTRMinSec', 'tankThiefHatchMTTRMaxSec',
-                                         'tankThiefHatchDurDist', 'tankThiefHatchGasFrac',
-                                         'tankOverpressureMTTRMinSec', 'tankOverpressureMTTRMaxSec',
-                                         'tankOverpressureDurDist', 'tankOverpressureGasFrac', 'currentGasFraction',
-                                         'tankOverpressureThresholdScfs', 'inletFlowAtMaxPrimryFlowScfs',
-                                         'maxPrimaryOutletFlowScfs', 'primaryEqRatio', 'currentPrimaryEqRatio',
-                                         'tankOverpressureMTBFMinSec', 'tankOverpressureMTBFMaxSec',
-                                         'tankOverpressureMTBFDurDist', 'overpressureTimeTracker', 'tankVol', 'tankCapacityScf', 'volumeGas']
-
-    def __init__(self,
-                 activityDistribution=None,
-                 fluid=None,
-                 tankOverpressurePLeak=None,
-                 tankOverpressureMTTRMinDays=None,
-                 tankOverpressureMTTRMaxDays=None,
-                 tankOverpressureThresholdScfh=None,
-                 inletFlowAtMaxPrimryFlowScfh=None,
-                 maxPrimaryOutletFlowScfh=None,
-                 tankMode=None,
-                 tankControlled=None,
-                 tankCapacity=None,
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.activityDistribution = activityDistribution
-        self.fluid = fluid
-        self.vaporFF = 'Vapor'
-        self.flowGCTag = 'Tank'
-        self.gcTag = f"{self.flowGCTag}"
-        self.upstreamEquipment = []
-        self.tankOverpressurePLeak = 0 if tankOverpressurePLeak is None else tankOverpressurePLeak
-        self.tankOverpressureMTTRMinDays = 0 if tankOverpressureMTTRMinDays is None else tankOverpressureMTTRMinDays
-        self.tankOverpressureMTTRMaxDays = 0 if tankOverpressureMTTRMaxDays is None else tankOverpressureMTTRMaxDays
-        self.tankOverpressureMTTRMinSec = u.daysToSecs(self.tankOverpressureMTTRMinDays)
-        self.tankOverpressureMTTRMaxSec = u.daysToSecs(self.tankOverpressureMTTRMaxDays)
-        self.tankOverpressureDurDist = d.Uniform({'min': self.tankOverpressureMTTRMinSec,
-                                                  'max': self.tankOverpressureMTTRMaxSec})
-        # MTBFMinHour = (MTTRMinHour * (1 - pLeak)) / pLeak  # calc mtbf
-        self.tankOverpressureMTBFMinSec = (self.tankOverpressureMTTRMinSec * (1 - self.tankOverpressurePLeak)) / self.tankOverpressurePLeak
-        self.tankOverpressureMTBFMaxSec = (self.tankOverpressureMTTRMaxSec * (1 - self.tankOverpressurePLeak)) / self.tankOverpressurePLeak
-        self.tankOverpressureMTBFDurDist = d.Uniform({'min': self.tankOverpressureMTBFMinSec,
-                                                     'max': self.tankOverpressureMTBFMaxSec})
-
-        self.tankOverpressureThresholdScfh = 999999 if tankOverpressureThresholdScfh is None else tankOverpressureThresholdScfh
-        self.tankOverpressureThresholdScfs = u.scfPerHourToScfPerSec(self.tankOverpressureThresholdScfh)
-        self.inletFlowAtMaxPrimryFlowScfh = inletFlowAtMaxPrimryFlowScfh
-        self.inletFlowAtMaxPrimryFlowScfs = u.scfPerHourToScfPerSec(self.inletFlowAtMaxPrimryFlowScfh)
-        self.maxPrimaryOutletFlowScfh = maxPrimaryOutletFlowScfh
-        self.maxPrimaryOutletFlowScfs = u.scfPerHourToScfPerSec(self.maxPrimaryOutletFlowScfh)
-        if self.maxPrimaryOutletFlowScfh > self.inletFlowAtMaxPrimryFlowScfh:
-            msg = "Maximum Primary Outlet Flow is greater than Inlet Flow at Max Primary Flow, please check mechanistic columns in tanks"
-            raise NotImplementedError(msg)
-        self.stateMachine = {
-            'OPERATING': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
-            'MECHANISTIC_THIEF_HATCH': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
-            'PRV': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState}
-        }
-        self.consolidatedFlowTable = {}
-        self.consolidatedFlowTableVapor = {}
-        self.consolidatedTankFlash = {}
-        self.opDur = 40
-        self.primaryEqRatio = self.maxPrimaryOutletFlowScfs / self.tankOverpressureThresholdScfs
-        self.currentPrimaryEqRatio = 0
-        self.slope = self.getSlope()
-        self.yIntercept = self.getYIntercept(self.slope)
-        self.currentYIntercept = 0
-        self.sumOfVaporOutletFlows = 0
-        self.prvSwitch = 0
-        self.gasRatio = {}
-        self.volumeGas = {}
-        self.totalGasVolume = 0
-        self.overpressureTimeTracker = 0
-        self.tankMode = tankMode
-        self.tankControlled = tankControlled
-        self.tankVol = 0
-        self.tankCapacity = tankCapacity # convert to scf
-        self.tankCapacityScf = self.tankCapacity * 1000
-        i = 10
-
-    def getSlope(self):
-        return 1
-    
-    def getYIntercept(self, slope):
-        return 0
-
-    def getNextState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
-
-        # to set rateTransform equations, use prvSwitch, currentPrimaryEqRatio, currentYIntercept
-        # m = currentPrimaryEqRatio
-        # x = sumOfVaporOutletFlows
-        # c = currentYIntercept
-        # check when rate changes in inlet flows to keep track of ff driverRates
-        cs = currentStateInfo.stateName
-        # check if we want emission factor emissions or mechanistic
-        if not self.tankMode:
-            self.opDur = u.getSimDuration()
-            self.currentPrimaryEqRatio = 1
-            self.currentYIntercept = 0
-            self.prvSwitch = 0
-            return 'OPERATING'
-
-        self.sumOfVaporOutletFlows = 0
-        # reset sum of outlet flows for next state.
-        # We can use direct ratios here because sep flows come out with change time delay
-        if self.vaporFF in self.inletFluidFlows:
-            # timeToRateChange = min(map(lambda x: x.changeTimeAbsolute,
-            #                            itertools.chain(self.inletFluidFlows[self.vaporFF],
-            #                                            self.inletFluidFlows['Water'],
-            #                                            self.inletFluidFlows['Condensate'])))
-            timeToRateChange = min(map(lambda x: x.changeTimeAbsolute, itertools.chain(self.inletFluidFlows[self.vaporFF],
-                                                                                       self.inletFluidFlows[self.fluid])))
-            rateChangeDelay = timeToRateChange - currentTime
-            self.sumOfVaporOutletFlows = self.sumOfVapors()
-            # self.sumOfVaporOutletFlows = sum(map(lambda x: x.driverRate, itertools.chain(self.inletFluidFlows[self.vaporFF])))
-            i = 10           # sum of inlet vapor plus flashes = sum of outlet vapors
-        else:
-            nextState = 'OPERATING'
-            self.opDur = u.getSimDuration()
-            self.currentPrimaryEqRatio = 1
-            return nextState
-
-        # ThiefHatch/Vent opens randomly based on pLeak/MTTR. Keep a check of this when we check for threshold
-        # if np.random.random() < self.tankOverpressurePLeak:
-        if self.tankControlled:
-            nextState = self.getNextStateControlled(currentStateData, currentStateInfo, currentTime, rateChangeDelay)
-        else:
-            nextState = self.getNextStateUncontrolled(currentStateData, currentStateInfo, currentTime, rateChangeDelay)
-        return nextState
-    
-    def getNextStateUncontrolled(self, currentStateData=None, currentStateInfo=None, currentTime=None, rateChangeDelay=0):
-        # nextState = "OPERATING"
-        # self.tankVol += self.sumOfVaporOutletFlows * rateChangeDelay
-        if self.tankVol > self.tankCapacityScf:
-            self.overpressureDur = rateChangeDelay
-            self.sumOfVaporOutletFlows = 999999   # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
-            # self.tankVol = 0  # reset tank volume to 0 since we are sending all flows to prvs
-            nextState = self.prv(currentStateData, currentStateInfo, currentTime) 
-            i = 10
-
-        else:
-            self.opDur = rateChangeDelay
-            self.tankVol += self.sumOfVaporOutletFlows * rateChangeDelay
-            nextState = self.operatingUncontrolled(currentStateData, currentStateInfo, currentTime)
-        return nextState
-
-    def getNextStateControlled(self, currentStateData=None, currentStateInfo=None, currentTime=None, rateChangeDelay=0):
-        if self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
-            self.overpressureDur = rateChangeDelay
-            nextState = self.prv(currentStateData, currentStateInfo, currentTime)
-        
-        elif self.sumOfVaporOutletFlows < self.tankOverpressureThresholdScfs:
-            self.opDur = rateChangeDelay
-            nextState = self.operating(currentStateData, currentStateInfo, currentTime)
-        return nextState 
-
-    def prv(self, currentStateData=None, currentStateInfo=None, currentTime=None):
-        # this is a state change to prv
-        # the prv is open and we send all flows to prvs
-        nextState = 'PRV'
-        self.currentPrimaryEqRatio = 0
-        self.currentYIntercept = self.tankOverpressureThresholdScfs # = outlet to flares is at max flow
-        self.prvSwitch = 1
-        self.slope = 0  
-        self.yIntercept = self.maxPrimaryOutletFlowScfs
-        # delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-        return nextState
-
-    def operatingUncontrolled(self, currentStateData=None, currentStateInfo=None, currentTime=None):
-        # this is a state change to operating
-        # the prv is closed and accumulate gas in the tank, no flows to flares, 
-        # OP state in uncontrolled mode just accumulates gas.
-        nextState = 'OPERATING'
-        self.currentYIntercept = 0
-        self.currentPrimaryEqRatio = 0 
-        self.prvSwitch = 0  # prv is closed
-        # delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-        return nextState
-
-    def operating(self, currentStateData=None, currentStateInfo=None, currentTime=None):
-        # this is a state change to operating
-        # the prv is closed and we send all flows to flares
-        nextState = 'OPERATING'
-        self.currentPrimaryEqRatio = 1
-        self.currentYIntercept = 0
-        self.prvSwitch = 0
-        self.slope = 1
-        self.yIntercept = 0
-        # delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-        return nextState
-
-    def calcCurrentMultiplier(self, x):
-        # if self.tankOverpressureThresholdScfs < self.sumOfVaporOutletFlows <= self.inletFlowAtMaxPrimryFlowScfs:
-        #     currentMultiplier = self.sumOfVaporOutletFlows
-        # elif self.sumOfVaporOutletFlows > self.inletFlowAtMaxPrimryFlowScfs:
-        #     currentMultiplier = self.sumOfVaporOutletFlows
-        # elif self.sumOfVaporOutletFlows < self.tankOverpressureThresholdScfs:
-        #     currentMultiplier = self.sumOfVaporOutletFlows
-        ret = self.sumOfVaporOutletFlows
-        return ret
-
-    def getTimeForState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
-        cs = currentStateInfo.stateName
-        if cs == 'OPERATING':
-            delay = self.opDur
-            self.overpressureTimeTracker += delay
-        elif cs == 'MECHANISTIC_THIEF_HATCH':
-            delay = int(self.tankOverpressureDurDist.pick())
-            self.overpressureTimeTracker = 0  # reset time tracking to start mtbf tracking after this state
-        elif cs == 'PRV':
-            delay = self.overpressureDur
-            self.overpressureTimeTracker += delay
-        else:
-            raise ValueError(f'No state {cs} for class {self.__class__.__name__}')
-        # self.updateFlowVolumes(delay)
-        return delay
-
-    def getGasFrac(self, distFileName):
-        simdm = sdm.SimDataManager.getSimDataManager()
-        distPath = Path(au.expandFilename(simdm.config['emitterProfileDir'], simdm.config, readonly=True))
-        dist = dp.DistributionProfile.readFile(distPath / distFileName)
-        return dist
-
-    def calcStateTimes(self, **kwargs):
-        stateTimes = {}
-        for state in self.stateMachine:
-            if state == "OPERATING":
-                stateTimes[state] = u.getSimDuration()
-        self.stateTimes = stateTimes
-
-    def sumOfVapors(self):
-        # we use consolidatedTankFlash here to get sumOfVaporOutletFlows
-        sumOfInletVapors = sum(map(lambda x: x.driverRate, itertools.chain(self.inletFluidFlows[self.vaporFF])))
-        sumOfFlashes = sum(self.consolidatedTankFlash[gc].driverRate for gc in self.consolidatedTankFlash)
-        return sumOfInletVapors+sumOfFlashes
-
-    def funcInsideThreshold(self, x):
-        if self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
-            ret = 1
-        return ret
-
-    def sumOfVaporsWaterTank(self):
-        sumOfFlashes = sum(self.consolidatedTankFlash[gc].driverRate for gc in self.consolidatedTankFlash)
-        return sumOfFlashes
-    
-
-    def initialStateTimes(self):
-        # ret = {'OPERATING': self.opDur}  # todo randomize this
-        # to set rateTransform equations, use prvSwitch, currentPrimaryEqRatio, currentYIntercept
-        # m = currentPrimaryEqRatio
-        # x = sumOfVaporOutletFlows
-        # c = currentYIntercept
-        if self.vaporFF in self.inletFluidFlows:
-            self.sumOfVaporOutletFlows = self.sumOfVapors()
-            if self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
-                nextState = self.prv(currentStateData=None, currentStateInfo=None, currentTime=0)
-                delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-                ret = {nextState: delay}
-            elif self.sumOfVaporOutletFlows < self.tankOverpressureThresholdScfs:
-                nextState = self.operating(currentStateData=None, currentStateInfo=None, currentTime=0)
-                delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-                ret = {nextState: delay}
-            else:
-                delay = u.getSimDuration()
-        else:
-            delay = u.getSimDuration()
-            self.sumOfVaporOutletFlows = self.sumOfVaporsWaterTank()
-            self.currentYIntercept = 0
-            self.currentPrimaryEqRatio = 1
-            self.prvSwitch = 0
-            ret = {'OPERATING': delay}
-        self.tankOverpressureInitDist = d.Uniform({'min': 0,
-                                                     'max': self.tankOverpressureMTBFMinSec})
-        self.overpressureTimeTracker = self.tankOverpressureInitDist.pick()
-        return ret
-
-    def safeDivByZero(self, a, b):   # returns 0 if div by 0
-        return a/b if b else 0
-
-    def zeroShift(self, out, val):   # outlet must be 0 if inlet is zero. This is to avoid +- values in FFs
-        return out if val else 0
-    
-    def getSlopeNew(self, x):
-        return 1
-
-    def getXForFF(self, x, inboundGC):
-        if self.tankControlled:
-            # newRateTransform = x
-            newRateTransform = self.sumOfVaporOutletFlows
-        else:
-            newRateTransform = self.safeDivByZero(self.volumeGas[inboundGC], self.totalVolume)
-        return newRateTransform
-
-    def getRatio(self, x):
-        ratio = 1
-        # if self.tankControlled: 
-        #     ratio = 1
-        return ratio
-
-    def updateRateTransform(self, x, inboundGC):
-        # slope = self.getSlopeNew(x)
-        # ratio = self.getRatio(x)
-        newRateTransform = self.getXForFF(x, inboundGC)
-        ret = self.slope*newRateTransform + self.yIntercept
-        return ret
-    
-
-    # def updateFlowVolumes(self, delay):
-    #     for gc in self.volumeCondensate.keys():
-    #         self.volumeCondensate[gc] += sum(map(lambda x: x.driverRate * delay, self.consolidatedFlowTableCondensate[gc].subFlows))
-    #         i = 10
-    #     for gc in self.volumeWater.keys():
-    #         self.volumeWater[gc] += sum(map(lambda x: x.driverRate * delay, self.consolidatedFlowTableWater[gc].subFlows))
-    #     self.totalVolume += self.getTotalFlowRateLiquids(self.inletFluidFlows) * delay
-    #     pass
-
-
-    # self.consolidatedFlowTableCondensate[inboundGC] = ff.CompositeFlow(flow.name, inboundGC, newUnits=flow.driverUnits)
-    # self.volumeCondensate[inboundGC] = 0
-    # self.addOutletFluidFlow(ff.DependentFlowWithIndependentChangeTime.factory(origFlow=self.consolidatedFlowTableCondensate[inboundGC],
-    #                                                                           rateTransform=lambda x: self.safeDivByZero(self.volumeCondensate[inboundGC], self.totalVolume) *
-    #                                                                                                   self.currentOutletDriverMultiplier,
-    #                                                                           gc=flow.gc.derive(gcName),
-    #                                                                           secondaryID='condensate_flow'
-    #                                                                           ))
-    # bool for flare vs prv
-
-    def linkInletFlow(self, outletME, flow):
-        if self.fluid == flow.name:
-            self.addInletFluidFlow(flow)
-            inboundGC = flow.gc
-            outflowGCName = inboundGC
-            outflowFlashGC = genGCName('Tank', inboundGC, process='Flash')
-
-            # define outlet flows based on the inlet flow GC.  If we have seen this GC before, reuse it
-            # otherwise:
-            #   define an Aggregated flow to receive this (and other flows of this GC)
-            #   define an output flow corresponding to the inlet flow
-            #   define a flash flow
-            if inboundGC not in self.consolidatedFlowTable:
-                self.consolidatedFlowTable[inboundGC] = ff.AggregatedFlow(flow.name, inboundGC, newUnits=flow.driverUnits)
-                self.addOutletFluidFlow(self.consolidatedFlowTable[inboundGC])
-                self.gasRatio[inboundGC] = 0   # todo do not assume all flashes go to flares
-                self.volumeGas[inboundGC] = 0
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTable[inboundGC],
-                                                                 rateTransform=lambda x: self.zeroShift(self.updateRateTransform(x, inboundGC) *
-                                                                                         self.safeDivByZero(x,
-                                                                                         self.calcCurrentMultiplier(x)),
-                                                                                         x),
-                                                                 newName='Vapor',
-                                                                 gc=inboundGC.derive(outflowFlashGC, flow='Vapor'),
-                                                                 newUnits='scf',
-                                                                 secondaryID='tank_flash'
-                                                                 ))
-
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTable[inboundGC],
-                                                                 rateTransform=lambda x: self.zeroShift(x - (self.updateRateTransform(x, inboundGC) *
-                                                                                         self.safeDivByZero(x,
-                                                                                         self.calcCurrentMultiplier(x))),
-                                                                                         x) * self.prvSwitch,
-                                                                 newName='Vapor',
-                                                                 gc=inboundGC.derive(outflowFlashGC, flow='Vapor'),
-                                                                 newUnits='scf',
-                                                                 secondaryID='tank_flash_emitted_gas'
-                                                                 ))
-                # add tank flash in Aggregated Flow to use later when we decide what goes to flare and prv
-                tempFlash = ff.DependentFlow.factory(self.consolidatedFlowTable[inboundGC],
-                                                          rateTransform=lambda x: x,
-                                                          newName='Vapor',
-                                                          gc=inboundGC.derive(outflowFlashGC, flow='Vapor'),
-                                                          newUnits='scf',
-                                                          secondaryID='tf'
-                                                          )
-                self.consolidatedTankFlash[inboundGC] = ff.AggregatedFlow(tempFlash.name, tempFlash.gc, newUnits=tempFlash.driverUnits)
-                # use tempFlash/consolidatedTankFlash for storing the tank flash value and use it to determine
-                # self.sumOfVaporOutletFlows in the tank. Ratios are calculated later by x/sumOfVaporOutletFlows
-                self.consolidatedTankFlash[inboundGC].addFlow(tempFlash)
-            self.consolidatedFlowTable[inboundGC].addFlow(flow)
-
-        elif flow.name == 'Vapor':
-            self.addInletFluidFlow(flow)
-            inboundGC = flow.gc
-            outflowGCName = inboundGC
-            outflowFlashGC = flow.gc.fluidFlowID
-            if inboundGC not in self.consolidatedFlowTableVapor:
-                self.consolidatedFlowTableVapor[inboundGC] = ff.AggregatedFlow(flow.name, inboundGC, newUnits=flow.driverUnits)
-                # outletFlows should be zeros for zero inletFlows, since we're adding a y-intercept
-                # multiply by ratio, we can do this since the timing is handled by dumping separator class
-                self.gasRatio[inboundGC] = 0   # set up volume ratios
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTableVapor[inboundGC],
-                                                                 rateTransform=lambda x: self.zeroShift(self.updateRateTransform(x, inboundGC) *
-                                                                                         self.safeDivByZero(x,
-                                                                                         self.calcCurrentMultiplier(x)),
-                                                                                         x),
-                                                                 secondaryID='tank_gas_outlet',
-                                                                 gc=inboundGC,
-                                                                 newUnits='scf'
-                                                                 ))
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTableVapor[inboundGC],
-                                                                 # rateTransform=lambda x: x * (1 - self.currentPrimaryEqRatio) + self.yIntercept,
-                                                                 rateTransform=lambda x: self.zeroShift(x - (self.updateRateTransform(x, inboundGC) *
-                                                                                         self.safeDivByZero(x,
-                                                                                         self.calcCurrentMultiplier(x))),
-                                                                                         x) * self.prvSwitch,
-                                                                 secondaryID='emitted_gas',
-                                                                 gc=inboundGC,
-                                                                 newUnits='scf'
-                                                                 ))
-            self.consolidatedFlowTableVapor[inboundGC].addFlow(flow)
-            i = 10
-        pass
-
-    def calculateOperatingDuration(self, currentTime=None, **kwargs):
-        return u.getSimDuration()
-
-    def instantiateFromTemplate(self, simdm, **kwargs):
-        inst = super().instantiateFromTemplate(simdm, **kwargs)
-        if inst is None:
-            return None
-
-        return inst
-    
-
-
-def getpLeakTank(gasFracDistName, simdm):
-    if isinstance(gasFracDistName, int) or isinstance(gasFracDistName, float):  # put to self if it is int
-        if gasFracDistName > 1:
-            msg = 'Gas Fraction is > 1. Please check "Fraction of Flash Released" column in Separators'
-            raise NotImplementedError(msg)
-        return d.Constant(gasFracDistName)
-    elif isinstance(gasFracDistName, str):  # if str
-        adVal = isNumber(gasFracDistName)
-        if adVal is not None:  # check if it can be converted to float
-            if adVal > 1:
-                msg = 'Gas Fraction is > 1. Please check "Fraction of Flash Released" column in Separators'
-                raise NotImplementedError(msg)
-            return d.Constant(adVal)
-        else:  # distribution if it is dist file
-            dataBasePath = Path(au.expandFilename(simdm.config['emitterProfileDir'], simdm.config, readonly=True))
-            dataPath = dataBasePath / gasFracDistName
-            dist = None if gasFracDistName is None else dp.DistributionProfile.readFile(dataPath)
-            return dist
-
-
 class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
-
-    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'slope', 'yIntercept', 'currentYIntercept',
-                                         'upstreamEquipment', 'sumOfVaporOutletFlows', 'prvSwitch',
-                                         'stateChangeNotificationRecipients', 'gasRatio',
-                                         'consolidatedFlowTable', 'totalGasVolume', 'flowGCTag', 'gcTag',
-                                         'vaporFF', 'consolidatedFlowTableVapor', 'opDur', 'consolidatedTankFlash',
-                                         'tankThiefHatchMTTRMinSec', 'tankThiefHatchMTTRMaxSec', 'tankOverpressurePLeak', 
-                                         'tankThiefHatchDurDist', 'tankThiefHatchGasFrac', 'tankOverpressurePLeakDist',  
-                                         'tankOverpressureMTTRMinSec', 'tankOverpressureMTTRMaxSec',
-                                         'tankOverpressureDurDist', 'tankOverpressureGasFrac', 'currentGasFraction',
-                                         'tankOverpressureThresholdScfs', 'inletFlowAtMaxPrimryFlowScfs',
-                                         'maxPrimaryOutletFlowScfs', 'primaryEqRatio', 'currentPrimaryEqRatio',
-                                         'tankOverpressureMTBFMinSec', 'tankOverpressureMTBFMaxSec',
-                                         'tankOverpressureMTBFDurDist', 'overpressureTimeTracker', 'maxPrimaryOutletFlowScfh',
-                                         'flashDelayCurrent', 'flashLeakTimer']
-
-    def __init__(self,
-                 activityDistribution=None,
-                 fluid=None,
-                 tankOverpressurePLeakFile=None,
-                 tankOverpressureMTTRMinDays=None,
-                 tankOverpressureMTTRMaxDays=None,
-                 tankOverpressureThresholdScfh=None,
-                 tankMode=None,
-                 tankControlled=None,
-                 **kwargs):
-        super().__init__(**kwargs)
-        from scipy.stats import binom
-        self.activityDistribution = activityDistribution
-        self.fluid = fluid
-        self.vaporFF = 'Vapor'
-        self.flowGCTag = 'Tank'
-        self.gcTag = f"{self.flowGCTag}"
-        self.upstreamEquipment = []
-        # self.tankOverpressurePLeak = 0 if tankOverpressurePLeak is None else tankOverpressurePLeak
-        simdm = sdm.SimDataManager.getSimDataManager()
-        self.tankOverpressurePLeakFile = tankOverpressurePLeakFile
-        self.tankOverpressurePLeakDist = getpLeakTank(self.tankOverpressurePLeakFile, simdm)
-        self.tankOverpressurePLeak = self.tankOverpressurePLeakDist.pick()
-        self.tankOverpressureMTTRMinDays = 0 if tankOverpressureMTTRMinDays is None else tankOverpressureMTTRMinDays
-        self.tankOverpressureMTTRMaxDays = 0 if tankOverpressureMTTRMaxDays is None else tankOverpressureMTTRMaxDays
-        self.tankOverpressureMTTRMinSec = u.daysToSecs(self.tankOverpressureMTTRMinDays)
-        self.tankOverpressureMTTRMaxSec = u.daysToSecs(self.tankOverpressureMTTRMaxDays)
-        self.tankOverpressureDurDist = d.Uniform({'min': self.tankOverpressureMTTRMinSec,
-                                                  'max': self.tankOverpressureMTTRMaxSec})
-        # MTBFMinHour = (MTTRMinHour * (1 - pLeak)) / pLeak  # calc mtbf
-        self.tankOverpressureMTBFMinSec = (self.tankOverpressureMTTRMinSec * (1 - self.tankOverpressurePLeak)) / self.tankOverpressurePLeak
-        self.tankOverpressureMTBFMaxSec = (self.tankOverpressureMTTRMaxSec * (1 - self.tankOverpressurePLeak)) / self.tankOverpressurePLeak
-        self.tankOverpressureMTBFDurDist = d.Uniform({'min': self.tankOverpressureMTBFMinSec,
-                                                     'max': self.tankOverpressureMTBFMaxSec})
-
-        self.tankOverpressureThresholdScfh = 999999 if tankOverpressureThresholdScfh is None else tankOverpressureThresholdScfh
-        self.tankOverpressureThresholdScfs = u.scfPerHourToScfPerSec(self.tankOverpressureThresholdScfh)
-        # self.inletFlowAtMaxPrimryFlowScfh = inletFlowAtMaxPrimryFlowScfh
-        # self.inletFlowAtMaxPrimryFlowScfs = u.scfPerHourToScfPerSec(self.inletFlowAtMaxPrimryFlowScfh)
-        self.maxPrimaryOutletFlowScfh = tankOverpressureThresholdScfh 
-        self.maxPrimaryOutletFlowScfs = u.scfPerHourToScfPerSec(self.maxPrimaryOutletFlowScfh)
-        # if self.maxPrimaryOutletFlowScfh > self.inletFlowAtMaxPrimryFlowScfh:
-        #     msg = "Maximum Primary Outlet Flow is greater than Inlet Flow at Max Primary Flow, please check mechanistic columns in tanks"
-        #     raise NotImplementedError(msg)
-        self.stateMachine = {
-            'OPERATING': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
-            'FLASH': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState},
-            'OVERPRESSURE': {'stateDuration': self.getTimeForState, 'nextState': self.getNextState}
-        }
-        # REL = pressure release
-        # FLASH = accidental or uncontrolled
-        self.consolidatedFlowTable = {}
-        self.consolidatedFlowTableVapor = {}
-        self.consolidatedTankFlash = {}
-        self.opDur = 40
-        self.primaryEqRatio = self.maxPrimaryOutletFlowScfs / self.tankOverpressureThresholdScfs
-        self.currentPrimaryEqRatio = 0
-        # self.slope = self.getSlope()
-        self.yIntercept = 0
-        self.currentYIntercept = 0
-        self.sumOfVaporOutletFlows = 0
-        self.prvSwitch = 0
-        self.gasRatio = {}
-        self.totalGasVolume = 0
-        self.overpressureTimeTracker = 0
-        self.tankMode = tankMode
-        self.tankControlled = tankControlled
-        self.flashDelayCurrent = 0
-        self.flashLeakTimer = 0
-
-    def getYIntercept(self, slope):   # eq of line y=mx+c
-        yInt = self.maxPrimaryOutletFlowScfs - slope * self.inletFlowAtMaxPrimryFlowScfs
-        return yInt
-
-    def getSlope(self):  # slope = (y2-y1)/(x2-x1)
-        slope = (self.maxPrimaryOutletFlowScfs - self.tankOverpressureThresholdScfs) \
-                / (self.inletFlowAtMaxPrimryFlowScfs - self.tankOverpressureThresholdScfs)
-        return slope
-
-    def overPressureVars(self, rateChangeDelay):
-        nextState = 'OVERPRESSURE'
-        self.currentPrimaryEqRatio = 0
-        self.currentYIntercept = self.maxPrimaryOutletFlowScfs  # implies outlet to flares is at max flow
-        self.overpressureDur = rateChangeDelay
-        self.prvSwitch = 1  # everything else goes to prv
-        return nextState
-    
-    # someone left that thing open for no reason / malfunction
-    def overPressureVarsAccidental(self, rateChangeDelay):
-        nextState = 'FLASH'
-        self.currentPrimaryEqRatio = 0   # slope = 1. So all input gas goes to output as it is (y=x+c)
-        self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
-        self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
-        self.sumOfVaporOutletFlows = 999999   # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
-        return nextState
-    
-    def operatingState(self, rateChangeDelay):
-        nextState = 'OPERATING'
-        self.currentYIntercept = 0    # all outlet vapor flows go to the flares
-        self.currentPrimaryEqRatio = 1
-        self.prvSwitch = 0   # prv is closed
-        self.opDur = rateChangeDelay
-        return nextState
-
-    def getNextState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
-
-        # check when rate changes in inlet flows to keep track of ff driverRates
-        cs = currentStateInfo.stateName
-        # check if we want emission factor emissions or mechanistic
-        if not self.tankMode:
-            self.opDur = u.getSimDuration()
-            self.currentPrimaryEqRatio = 1
-            self.currentYIntercept = 0
-            self.prvSwitch = 0
-            return 'OPERATING'
-
-        self.sumOfVaporOutletFlows = 0
-        # reset sum of outlet flows for next state.
-        # We can use direct ratios here because sep flows come out with change time delay
-        if self.vaporFF in self.inletFluidFlows:
-            timeToRateChange = min(map(lambda x: x.changeTimeAbsolute, itertools.chain(self.inletFluidFlows[self.vaporFF], self.inletFluidFlows[self.fluid])))
-            rateChangeDelay = timeToRateChange - currentTime
-            self.sumOfVaporOutletFlows = self.sumOfVapors()
-        else:
-            nextState = 'OPERATING'
-            self.opDur = u.getSimDuration()
-            self.currentPrimaryEqRatio = 1
-            return nextState
-
-        if not self.tankControlled:
-            nextState = self.overPressureVarsAccidental(rateChangeDelay)
-            return nextState
-
-        # ThiefHatch/Vent opens randomly based on pLeak/MTTR. Keep a check of this when we check for threshold
-        # if np.random.random() < self.tankOverpressurePLeak:
-        if cs == 'FLASH':
-            if self.flashLeakTimer < self.flashDelayCurrent:
-                nextState = self.overPressureVarsAccidental(rateChangeDelay=rateChangeDelay)
-                return nextState
-            else:
-                self.flashDelay()
-                self.flashLeakTimer = 0
-                newpLeak = self.tankOverpressurePLeakDist.pick()
-                self.tankOverpressureMTBFMinSec = (self.tankOverpressureMTTRMinSec * (1 - newpLeak)) / newpLeak
-                self.tankOverpressureMTBFMaxSec = (self.tankOverpressureMTTRMaxSec * (1 - newpLeak)) / newpLeak
-                self.tankOverpressureMTBFDurDist = d.Uniform({'min': self.tankOverpressureMTBFMinSec,
-                                                              'max': self.tankOverpressureMTBFMaxSec})
-                pass
-            pass
-        
-        if self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
-            nextState = self.overPressureVars(rateChangeDelay)
-            return nextState
-
-        if (self.tankOverpressureMTBFMinSec - self.tankOverpressureMTBFMinSec/10) <= \
-                self.overpressureTimeTracker <= \
-                (self.tankOverpressureMTBFMaxSec + self.tankOverpressureMTBFMaxSec/10):
-            nextState = self.overPressureVarsAccidental(rateChangeDelay)
-        elif self.overpressureTimeTracker > self.tankOverpressureMTBFMaxSec:
-            nextState = self.overPressureVarsAccidental(rateChangeDelay)
-        elif self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
-            nextState = self.overPressureVars(rateChangeDelay)
-        elif self.sumOfVaporOutletFlows < self.tankOverpressureThresholdScfs:
-            nextState = self.operatingState(rateChangeDelay)
-        else:
-            msg = 'Cannot set next State in MEETBattery'
-            raise NotImplementedError(msg)
-        return nextState
-
-    def calcCurrentMultiplier(self, x):
-        if self.sumOfVaporOutletFlows < self.tankOverpressureThresholdScfs:
-            currentMultiplier = self.sumOfVaporOutletFlows
-        else:
-            currentMultiplier = self.sumOfVaporOutletFlows
-        return currentMultiplier
-    
-    def flashDelay(self):
-        self.flashDelayCurrent = int(self.tankOverpressureDurDist.pick())
-        pass
-
-    def getTimeForState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
-        cs = currentStateInfo.stateName
-        if cs == 'OPERATING':
-            delay = self.opDur
-            self.overpressureTimeTracker += delay
-        elif cs == 'FLASH':
-            # self.flashDelay()
-            delay = min(self.flashDelayCurrent, (self.getMinChangeTimeLiquids(self.inletFluidFlows)-currentTime))
-            self.overpressureTimeTracker = 0  # reset time tracking to start mtbf tracking after this state
-            self.flashLeakTimer+=delay
-        elif cs == 'OVERPRESSURE':
-            delay = self.overpressureDur
-            self.overpressureTimeTracker += delay
-        else:
-            raise ValueError(f'No state {cs} for class {self.__class__.__name__}')
-        # self.updateFlowVolumes(delay)
-        return delay
-
-    def getGasFrac(self, distFileName):
-        simdm = sdm.SimDataManager.getSimDataManager()
-        distPath = Path(au.expandFilename(simdm.config['emitterProfileDir'], simdm.config, readonly=True))
-        dist = dp.DistributionProfile.readFile(distPath / distFileName)
-        return dist
-
-    def calcStateTimes(self, **kwargs):
-        stateTimes = {}
-        for state in self.stateMachine:
-            if state == "OPERATING":
-                stateTimes[state] = u.getSimDuration()
-        self.stateTimes = stateTimes
-
-    def sumOfVapors(self):
-        # we use consolidatedTankFlash here to get sumOfVaporOutletFlows
-        sumOfInletVapors = sum(map(lambda x: x.driverRate, itertools.chain(self.inletFluidFlows[self.vaporFF])))
-        sumOfFlashes = sum(self.consolidatedTankFlash[gc].driverRate for gc in self.consolidatedTankFlash)
-        return sumOfInletVapors+sumOfFlashes
-
-    def sumOfVaporsWaterTank(self):
-        sumOfFlashes = sum(self.consolidatedTankFlash[gc].driverRate for gc in self.consolidatedTankFlash)
-        return sumOfFlashes
-
-    def initialStateTimesTrad(self):
-        delay = u.getSimDuration()
-        self.currentYIntercept = 0
-        self.currentPrimaryEqRatio = 1
-        self.prvSwitch = 0
-        ret = {'OPERATING': delay}
-        return ret 
-
-    def initialStateTimes(self):
-        if not self.tankMode:
-            return self.initialStateTimesTrad()
-        if self.vaporFF in self.inletFluidFlows:
-            self.sumOfVaporOutletFlows = self.sumOfVapors()
-
-            if not self.tankControlled:
-                delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-                nextState = self.overPressureVarsAccidental(delay)
-                ret = {nextState: delay}
-            else:
-                if self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
-                    delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-                    nextState = self.overPressureVars(delay)
-                    ret = {nextState: delay}
-                else:
-                    delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
-                    nextState = self.operatingState(delay)
-                    ret = {nextState: delay}
-        else:
-            delay = u.getSimDuration()
-            self.sumOfVaporOutletFlows = self.sumOfVaporsWaterTank()
-            self.currentYIntercept = 0
-            self.currentPrimaryEqRatio = 1
-            self.prvSwitch = 0
-            ret = {'OPERATING': delay}
-        self.tankOverpressureInitDist = d.Uniform({'min': 0,
-                                                     'max': self.tankOverpressureMTBFMinSec})
-        self.overpressureTimeTracker = self.tankOverpressureInitDist.pick()
-        self.flashDelay()
-        return ret
-
-    def safeDivByZero(self, a, b):   # returns 0 if div by 0
-        return a/b if b else 0
-
-    def zeroShift(self, out, val):   # outlet must be 0 if inlet is zero. This is to avoid +- values in FFs
-        return out if val else 0
-
-    def linkInletFlow(self, outletME, flow):
-        if self.fluid == flow.name:
-            self.addInletFluidFlow(flow)
-            inboundGC = flow.gc
-            outflowGCName = inboundGC
-            outflowFlashGC = genGCName('Tank', inboundGC, process='Flash')
-
-            # define outlet flows based on the inlet flow GC.  If we have seen this GC before, reuse it
-            # otherwise:
-            #   define an Aggregated flow to receive this (and other flows of this GC)
-            #   define an output flow corresponding to the inlet flow
-            #   define a flash flow
-            if inboundGC not in self.consolidatedFlowTable:
-                self.consolidatedFlowTable[inboundGC] = ff.AggregatedFlow(flow.name, inboundGC, newUnits=flow.driverUnits)
-                self.addOutletFluidFlow(self.consolidatedFlowTable[inboundGC])
-                self.gasRatio[inboundGC] = 0   # todo do not assume all flashes go to flares
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTable[inboundGC],
-                                                                 rateTransform=lambda x: self.zeroShift((self.sumOfVaporOutletFlows *
-                                                                                         self.currentPrimaryEqRatio +
-                                                                                         self.currentYIntercept) *
-                                                                                         self.safeDivByZero(x,
-                                                                                         self.calcCurrentMultiplier(x)),
-                                                                                         x),
-                                                                 newName='Vapor',
-                                                                 gc=inboundGC.derive(outflowFlashGC, flow='Vapor'),
-                                                                 newUnits='scf',
-                                                                 secondaryID='tank_flash'
-                                                                 ))
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTable[inboundGC],
-                                                                 rateTransform=lambda x: self.zeroShift(x - ((self.sumOfVaporOutletFlows *
-                                                                                         self.currentPrimaryEqRatio +
-                                                                                         self.currentYIntercept) *
-                                                                                         self.safeDivByZero(x,
-                                                                                         self.calcCurrentMultiplier(x))),
-                                                                                         x) * self.prvSwitch,
-                                                                 newName='Vapor',
-                                                                 gc=inboundGC.derive(outflowFlashGC, flow='Vapor'),
-                                                                 newUnits='scf',
-                                                                 secondaryID='tank_flash_emitted_gas'
-                                                                 ))
-                # add tank flash in Aggregated Flow to use later when we decide what goes to flare and prv
-                tempFlash = ff.DependentFlow.factory(self.consolidatedFlowTable[inboundGC],
-                                                          rateTransform=lambda x: x,
-                                                          newName='Vapor',
-                                                          gc=inboundGC.derive(outflowFlashGC, flow='Vapor'),
-                                                          newUnits='scf',
-                                                          secondaryID='tf'
-                                                          )
-                self.consolidatedTankFlash[inboundGC] = ff.AggregatedFlow(tempFlash.name, tempFlash.gc, newUnits=tempFlash.driverUnits)
-                # use tempFlash/consolidatedTankFlash for storing the tank flash value and use it to determine
-                # self.sumOfVaporOutletFlows in the tank. Ratios are calculated later by x/sumOfVaporOutletFlows
-                self.consolidatedTankFlash[inboundGC].addFlow(tempFlash)
-            self.consolidatedFlowTable[inboundGC].addFlow(flow)
-
-        elif flow.name == 'Vapor':
-            self.addInletFluidFlow(flow)
-            inboundGC = flow.gc
-            outflowGCName = inboundGC
-            outflowFlashGC = flow.gc.fluidFlowID
-            if inboundGC not in self.consolidatedFlowTableVapor:
-                self.consolidatedFlowTableVapor[inboundGC] = ff.AggregatedFlow(flow.name, inboundGC, newUnits=flow.driverUnits)
-                # outletFlows should be zeros for zero inletFlows, since we're adding a y-intercept
-                # multiply by ratio, we can do this since the timing is handled by dumping separator class
-                self.gasRatio[inboundGC] = 0   # set up volume ratios
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTableVapor[inboundGC],
-                                                                 rateTransform=lambda x: self.zeroShift((self.sumOfVaporOutletFlows *
-                                                                                         self.currentPrimaryEqRatio +
-                                                                                         self.currentYIntercept) *
-                                                                                         self.safeDivByZero(x,
-                                                                                         self.calcCurrentMultiplier(x)),
-                                                                                         x),
-                                                                 secondaryID='tank_gas_outlet',
-                                                                 gc=inboundGC,
-                                                                 newUnits='scf'
-                                                                 ))
-                self.addOutletFluidFlow(ff.DependentFlow.factory(self.consolidatedFlowTableVapor[inboundGC],
-                                                                 # rateTransform=lambda x: x * (1 - self.currentPrimaryEqRatio) + self.yIntercept,
-                                                                 rateTransform=lambda x: self.zeroShift(x - ((self.sumOfVaporOutletFlows *
-                                                                                         self.currentPrimaryEqRatio +
-                                                                                         self.currentYIntercept) *
-                                                                                         self.safeDivByZero(x,
-                                                                                            self.calcCurrentMultiplier(x))),
-                                                                                         x) * self.prvSwitch,
-                                                                 secondaryID='emitted_gas',
-                                                                 gc=inboundGC,
-                                                                 newUnits='scf'
-                                                                 ))
-            self.consolidatedFlowTableVapor[inboundGC].addFlow(flow)
-            i = 10
-        pass
-
-    def calculateOperatingDuration(self, currentTime=None, **kwargs):
-        return u.getSimDuration()
-
-    def instantiateFromTemplate(self, simdm, **kwargs):
-        inst = super().instantiateFromTemplate(simdm, **kwargs)
-        if inst is None:
-            return None
-
-        return inst
-
-
-class MEETBatteryBKP(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume):
 
     MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'slope', 'yIntercept', 'currentYIntercept',
                                          'upstreamEquipment', 'sumOfVaporOutletFlows', 'prvSwitch',
@@ -4685,19 +3836,18 @@ class MEETBatteryBKP(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVol
             self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
             self.sumOfVaporOutletFlows = 999999   # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
         # check if AggregateFlow (outlets) < threshold at current time. ThiefHatch/Vent opens when AggregatedFlow > threshold
-        elif self.sumOfVaporOutletFlows > self.tankOverpressureThresholdScfs:
-            if self.tankOverpressureThresholdScfs < self.sumOfVaporOutletFlows <= self.inletFlowAtMaxPrimryFlowScfs:
-                nextState = 'PRV'
-                self.overpressureDur = rateChangeDelay
-                self.currentPrimaryEqRatio = self.getSlope()  # set the slope of out/in, flare flow gets slower
-                self.currentYIntercept = self.getYIntercept(self.slope)
-                self.prvSwitch = 1  # prv starts to open, outrate of prv = sum of total vapor flows - flare flow
-            else:  # sumOfVaporOutletFlows > inletFlowAtMaxPrimryFlowScfs
-                nextState = 'PRV'
-                self.currentPrimaryEqRatio = 0
-                self.currentYIntercept = self.maxPrimaryOutletFlowScfs  # implies outlet to flares is at max flow
-                self.overpressureDur = rateChangeDelay
-                self.prvSwitch = 1  # everything else goes to prv
+        elif self.tankOverpressureThresholdScfs < self.sumOfVaporOutletFlows <= self.inletFlowAtMaxPrimryFlowScfs:
+            nextState = 'PRV'
+            self.overpressureDur = rateChangeDelay
+            self.currentPrimaryEqRatio = self.getSlope()  # set the slope of out/in, flare flow gets slower
+            self.currentYIntercept = self.getYIntercept(self.slope)
+            self.prvSwitch = 1  # prv starts to open, outrate of prv = sum of total vapor flows - flare flow
+        elif self.sumOfVaporOutletFlows > self.inletFlowAtMaxPrimryFlowScfs:
+            nextState = 'PRV'
+            self.currentPrimaryEqRatio = 0
+            self.currentYIntercept = self.maxPrimaryOutletFlowScfs  # implies outlet to flares is at max flow
+            self.overpressureDur = rateChangeDelay
+            self.prvSwitch = 1  # everything else goes to prv
         elif self.sumOfVaporOutletFlows < self.tankOverpressureThresholdScfs:
             nextState = 'OPERATING'
             self.currentYIntercept = 0    # all outlet vapor flows go to the flares
@@ -5245,14 +4395,11 @@ class MEETFFEmitter(mc.EmissionManager):
             return
         if stateInfo.stateName not in self.activeStatesList:
             return
-        
-        a = self.majorEquipment.unitID
+
         vaporFlows = self.majorEquipment.outletFluidFlows.get('Vapor', [])
         if not vaporFlows:
             return
         deltat = min(map(lambda x: x.changeTimeAbsolute, vaporFlows)) - currentTime
-        if stateInfo.stateName == 'FLASH':
-            deltat = stateInfo.deltaTimeInState
 
         for singleFlow in vaporFlows:
             # deltat = singleFlow.changeTimeAbsolute - currentTime
