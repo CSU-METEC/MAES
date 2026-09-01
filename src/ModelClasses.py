@@ -3281,12 +3281,34 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
 
 class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
-    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'fuelConsumption', 'opMinSec', 'opMaxSec', 'opDurDist',
+    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'opMinSec', 'opMaxSec', 'opDurDist',
                                          'malfMinSec', 'malfMaxSec', 'malfDurDist', 'totalFF',
                                          'shutInMinSec', 'shutInMaxSec', 'shutInDurDist']
 
+    @staticmethod
+    def _normalizeSheetValue(val):
+        """
+        Normalize a value that may have come from a dynamically-loaded study sheet
+        column, so downstream code only ever sees a real scalar or None. Handles:
+          - column absent from the sheet entirely -> arg not passed -> default None (handled by caller)
+          - column present but left blank          -> NaN, possibly list-wrapped
+          - column present and filled              -> scalar, possibly list-wrapped
+        """
+        if isinstance(val, (list, tuple)):
+            val = val[0] if len(val) > 0 else None
+        if val is None:
+            return None
+        try:
+            if pd.isna(val):
+                return None
+        except (TypeError, ValueError):
+            pass  # val isn't NaN-checkable (e.g. a string) -- leave it as is
+        return val
+
     def __init__(self,
                  heaterPowerKW=None,
+                 lhv=None,
+                 fuelConsumption=None,
                  opDE=None,
                  opMinDays=None,
                  opMaxDays=None,
@@ -3301,7 +3323,8 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
                  ):
         super().__init__(**kwargs)
         self.heaterPowerKW = heaterPowerKW
-        self.fuelConsumption = 0  # initialize
+        self.lhv = self._normalizeSheetValue(lhv)
+        self.fuelConsumption = self._normalizeSheetValue(fuelConsumption)
 
         self.opDE = opDE
         self.opMinDays = opMinDays
@@ -3335,7 +3358,8 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
             'SHUT_IN': {'stateDuration': self.getTimeForState,
                         'nextState': 'OPERATING'}
         }
-        
+
+
     def getTimeForState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
         cs = currentStateInfo.stateName
         self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))  # assume no mixing of gcs
@@ -3379,23 +3403,42 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
         return a/b if b else 0
 
+    # def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState=None):
+    #     destGC = gc.DestructionGC.destructionEfficiencyFactory(inSpec=destructionEfficiency, origGC=flow.gc)
+    #     lhv = destGC.getLhvVals()
+    #     # lhv = float(flow.gc.gcMetadata['LHV - Stage 1 (kJ/scf)'])
+    #     fuelConsumption = self.heaterPowerKW / lhv    # fuel consumption not in self because we can have multiple gcs
+    #     if flow.driverRate == 0:
+    #         fuelConsumption = 0
+    #     fc = fuelConsumption * self.safeDivByZero(flow.driverRate, self.totalFF)
+    #     flowToEmit = ff.FluidFlow('Vapor', fuelConsumption, 'scf', destGC)
+    #     newFlow = StateDependentFluidFlow(flowToEmit,
+    #                                       gc=destGC,
+    #                                       majorEquipment=self,
+    #                                       activeState=activeState,
+    #                                       rateTransform=lambda x: x * self.safeDivByZero(flow.driverRate, self.totalFF),
+    #                                       secondaryID=tag)
+    #     return newFlow
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState=None):
         destGC = gc.DestructionGC.destructionEfficiencyFactory(inSpec=destructionEfficiency, origGC=flow.gc)
-        lhv = destGC.getLhvVals()
+        lhv = self.lhv if self.lhv is not None else destGC.getLhvVals()
         # lhv = float(flow.gc.gcMetadata['LHV - Stage 1 (kJ/scf)'])
-        fuelConsumption = self.heaterPowerKW / lhv    # fuel consumption not in self because we can have multiple gcs
+        SECONDS_PER_YEAR = 365.25 * 24 * 3600
+        if self.fuelConsumption is not None:
+            fuelConsumption = self.fuelConsumption * 1e6 / SECONDS_PER_YEAR   # MMscf/yr -> scf/s
+        else:
+            fuelConsumption = self.heaterPowerKW / lhv  # fuel consumption not in self because we can have multiple gcs
         if flow.driverRate == 0:
             fuelConsumption = 0
         fc = fuelConsumption * self.safeDivByZero(flow.driverRate, self.totalFF)
         flowToEmit = ff.FluidFlow('Vapor', fuelConsumption, 'scf', destGC)
         newFlow = StateDependentFluidFlow(flowToEmit,
-                                          gc=destGC,
-                                          majorEquipment=self,
-                                          activeState=activeState,
-                                          rateTransform=lambda x: x * self.safeDivByZero(flow.driverRate, self.totalFF),
-                                          secondaryID=tag)
+                                              gc=destGC,
+                                              majorEquipment=self,
+                                              activeState=activeState,
+                                              rateTransform=lambda x: x * self.safeDivByZero(flow.driverRate, self.totalFF),
+                                              secondaryID=tag)
         return newFlow
-
     def linkInletFlow(self, outletME, flow):
         self.addInletFluidFlow(flow)
         if flow.name == 'Vapor':
