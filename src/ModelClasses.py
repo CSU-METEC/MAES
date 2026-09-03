@@ -3411,15 +3411,8 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
         if self.fuelConsumption is not None:
             ss_weighted_time = self.opDurDist.mean() + self.pMalf * self.malfDurDist.mean() + self.pShutIn * self.shutInDurDist.mean()
-            opState_timePerYear = u.daysToSecs(
-                365 * (self.opDurDist.mean() / ss_weighted_time))  # expected portion of time in operating state
-            malState_timePerYear = u.daysToSecs(365 * (
-                        self.pMalf * self.malfDurDist.mean() / ss_weighted_time))  # expected portion of time in malfunction state
             consuming_timePerYear = 365 * 24 * 60 * 60* (self.opDurDist.mean() + self.pMalf * self.malfDurDist.mean()) / ss_weighted_time
-            if activeState == 'OPERATING':
-                fuelConsumption = self.fuelConsumption * 1e6 * (1-malState_timePerYear/opState_timePerYear) / consuming_timePerYear  # MMscf/yr -> scf/s for operating states
-            else:
-                fuelConsumption = self.fuelConsumption * 1e6 * (malState_timePerYear/opState_timePerYear) / consuming_timePerYear  # MMscf/yr -> scf/s for malfunction states
+            fuelConsumption = self.fuelConsumption * 1e6 / consuming_timePerYear  # MMscf/yr -> scf/s
         else:
             fuelConsumption = self.heaterPowerKW / lhv  # fuel consumption not in self because we can have multiple gcs
         if flow.driverRate == 0:
