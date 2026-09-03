@@ -3403,29 +3403,23 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
         return a/b if b else 0
 
-    # def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState=None):
-    #     destGC = gc.DestructionGC.destructionEfficiencyFactory(inSpec=destructionEfficiency, origGC=flow.gc)
-    #     lhv = destGC.getLhvVals()
-    #     # lhv = float(flow.gc.gcMetadata['LHV - Stage 1 (kJ/scf)'])
-    #     fuelConsumption = self.heaterPowerKW / lhv    # fuel consumption not in self because we can have multiple gcs
-    #     if flow.driverRate == 0:
-    #         fuelConsumption = 0
-    #     fc = fuelConsumption * self.safeDivByZero(flow.driverRate, self.totalFF)
-    #     flowToEmit = ff.FluidFlow('Vapor', fuelConsumption, 'scf', destGC)
-    #     newFlow = StateDependentFluidFlow(flowToEmit,
-    #                                       gc=destGC,
-    #                                       majorEquipment=self,
-    #                                       activeState=activeState,
-    #                                       rateTransform=lambda x: x * self.safeDivByZero(flow.driverRate, self.totalFF),
-    #                                       secondaryID=tag)
-    #     return newFlow
+
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState=None):
         destGC = gc.DestructionGC.destructionEfficiencyFactory(inSpec=destructionEfficiency, origGC=flow.gc)
         lhv = self.lhv if self.lhv is not None else destGC.getLhvVals()
         # lhv = float(flow.gc.gcMetadata['LHV - Stage 1 (kJ/scf)'])
-        SECONDS_PER_YEAR = 365.25 * 24 * 3600
+
         if self.fuelConsumption is not None:
-            fuelConsumption = self.fuelConsumption * 1e6 / SECONDS_PER_YEAR   # MMscf/yr -> scf/s
+            ss_weighted_time = self.opDurDist.mean() + self.pMalf * self.malfDurDist.mean() + self.pShutIn * self.shutInDurDist.mean()
+            opState_timePerYear = u.daysToSecs(
+                365 * (self.opDurDist.mean() / ss_weighted_time))  # expected portion of time in operating state
+            malState_timePerYear = u.daysToSecs(365 * (
+                        self.pMalf * self.malfDurDist.mean() / ss_weighted_time))  # expected portion of time in malfunction state
+            consuming_timePerYear = 365 * 24 * 60 * 60* (self.opDurDist.mean() + self.pMalf * self.malfDurDist.mean()) / ss_weighted_time
+            if activeState == 'OPERATING':
+                fuelConsumption = self.fuelConsumption * 1e6 * (1-malState_timePerYear/opState_timePerYear) / consuming_timePerYear  # MMscf/yr -> scf/s for operating states
+            else:
+                fuelConsumption = self.fuelConsumption * 1e6 * (malState_timePerYear/opState_timePerYear) / consuming_timePerYear  # MMscf/yr -> scf/s for malfunction states
         else:
             fuelConsumption = self.heaterPowerKW / lhv  # fuel consumption not in self because we can have multiple gcs
         if flow.driverRate == 0:
