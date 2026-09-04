@@ -1650,16 +1650,10 @@ def createSimPDF(config):
     _saveSummaryDS(config, pdfDF, 'SimPDF')
     logger.info(f"SimPDF: {len(pdfDF)} rows")
 
-def computeSimSummary(config):
-    """Compute cross-site simulation summary statistics and write SimSummary parquet.
-
-    Reads SiteSummary parquet, aggregates per-MC-run cross-site totals for each emission
-    grouping (modelEmissionCategory, modelReadableName, unitID, METype, pneumatics,
-    simulation), computes C2/C1 ratios, and writes SimSummary. No PDF/CDF dependency.
-    Depends on site-level summarize having been run first.
-    """
+def summarizeSimulation(config):
+    # this method depends on site-level simulations (aka 'summarize' function) being performed prior to this call.
     summaryDirs = config.get('allSiteSummaryDirs') or [config['parquetNewSummary']]
-    logger.info(f"computeSimSummary: aggregating {len(summaryDirs)} site summary dir(s)")
+    logger.info(f"summarizeSimulation: aggregating {len(summaryDirs)} site summary dir(s)")
     with Timer("Read summaries") as t0:
         logging.info("Read summary parquet files")
         fullSummaryDF = _readSummaryAcrossSites(config, 'allSiteSummaryDirs', 'parquetNewSummary')
@@ -1706,12 +1700,7 @@ def computeSimSummary(config):
     fullSimSummaryDF = fullSimSummaryDF.assign(simDurationDays=config['simDurationDays'])
     _saveSummaryDS(config, fullSimSummaryDF, 'SimSummary')
 
-
-def summarizeSimulation(config):
-    """Run computeSimSummary then createSimPDF.
-
-    Preserved for backward compatibility with external callers. New code should call
-    computeSimSummary and createSimPDF directly as separate phases.
-    """
-    computeSimSummary(config)
-    createSimPDF(config)
+    if config.get('noPDF'):
+        logger.info("noPDF set: skipping SimPDF generation")
+    else:
+        createSimPDF(config)

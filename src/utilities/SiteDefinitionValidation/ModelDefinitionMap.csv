@@ -174,7 +174,6 @@ Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitte
 Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Large Emitter,,valsForInstantiation,Constant,False,False,False,True
 Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent Component Count,activityDistribution,Sheet,False,False,False,True
 Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent pLeak,pLeak,Sheet,False,False,False,True
-Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-unit Vent(Large Emitter) pLeak,pLeak,Sheet,False,False,False,True
 Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent MTTR Min,MTTRMinDays,Sheet,False,False,False,True
 Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Common Single-Unit Vent MTTR Max,MTTRMaxDays,Sheet,False,False,False,True
 Compressor.json,SpecificLeaksProduction,Compressor Single-Unit Vent Leak,Leak GC Name,gasComposition,Sheet,False,False,False,True
@@ -466,6 +465,9 @@ Heater.json,MEETHeater,Heaters,Malfunction Destruction Efficiency,malfDE,Sheet,F
 Heater.json,MEETHeater,Heaters,pShutIn,pShutIn,Sheet,False,False,False,True
 Heater.json,MEETHeater,Heaters,Shut In Duration min,shutInMinDays,Sheet,False,False,False,True
 Heater.json,MEETHeater,Heaters,Shut In Duration max,shutInMaxDays,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Shut In Duration max,shutInMaxDays,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,LHV,lhv,Sheet,False,False,False,True
+Heater.json,MEETHeater,Heaters,Fuel Consumption,fuelConsumption,Sheet,False,False,False,True
 Heater.json,CombustedEmitterFF,Heater operating,,fluid,Constant,False,False,False,True
 Heater.json,CombustedEmitterFF,Heater operating,,secondaryID,Constant,False,False,False,True
 Heater.json,CombustedEmitterFF,Heater operating,,statesActive,Constant,False,False,False,True
@@ -629,17 +631,31 @@ TankBattery.json,MEETBattery,Tank Battery,Tank Inlet Flow at Max Downstream Equi
 TankBattery.json,MEETBattery,Tank Battery,Max Downstream Equipment Capacity,maxPrimaryOutletFlowScfh,Sheet,False,False,False,True
 TankBattery.json,MEETBattery,Tank Battery,Mechanistic Emissions Flag,tankMode,Sheet,False,False,False,True
 TankBattery.json,MEETBattery,Tank Battery,Tank Controlled,tankControlled,Sheet,False,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents PRV,,statesActive,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents PRV,,instanceFormat,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents PRV,,secondaryID,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,statesActive,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,instanceFormat,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch,,secondaryID,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,statesActive,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,instanceFormat,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,secondaryID,Constant,False,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,Tank Controlled,instantiationVal,Sheet,False,False,False,True
-TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV Mechanistic,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV Mechanistic,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV Mechanistic,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV Mechanistic,Tank Controlled,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents PRV Mechanistic,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch Mechanistic,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch Mechanistic,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch Mechanistic,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch Mechanistic,Tank Controlled,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,MEETFFEmitter,Tank Vents Thief Hatch Mechanistic,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Large Emissions Mechanistic,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Large Emissions Mechanistic,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Large Emissions Mechanistic,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Large Emissions Mechanistic,Tank Controlled,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Large Emissions Mechanistic,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions Mechanistic OP STATE,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions Mechanistic OP STATE,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions Mechanistic OP STATE,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions Mechanistic OP STATE,Tank Controlled,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Emissions Mechanistic OP STATE,,valsForInstantiation,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Flash Emissions Mechanistic,,statesActive,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Flash Emissions Mechanistic,,instanceFormat,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Flash Emissions Mechanistic,,secondaryID,Constant,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Flash Emissions Mechanistic,Tank Controlled,instantiationVal,Sheet,False,False,False,True
+TankBattery.json,MEETFFEmitter,Uncontrolled Tank Flash Emissions Mechanistic,,valsForInstantiation,Constant,False,False,False,True
 TankBattery.json,LeakProduction,Tank Battery Component Leak,,modelSubcategory,Constant,False,False,False,True
 TankBattery.json,LeakProduction,Tank Battery Component Leak,Component Leak Survey Frequency,surveyFrequency,Sheet,False,False,False,True
 TankBattery.json,LeakProduction,Tank Battery Component Leak,Component Count,activityDistribution,Sheet,False,False,False,True

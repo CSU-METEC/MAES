@@ -27,7 +27,7 @@ import datetime as dt
 import Summaries2 as sum
 import pyarrow.parquet as pq
 
-ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDFCache', 'computeSimSummary', 'createSimPDF']
+ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarize', 'createPDFCache', 'simSummary']
 
 logger = logging.getLogger(__name__)
 
@@ -137,21 +137,10 @@ def summarizeSimulation(config, simdm):
         sum.summarizeSimulation(config)
     return t0.deltat.total_seconds()
 
-def computeSimSummary(config, simdm):
-    with Timer("SimSummary") as t0:
-        sum.computeSimSummary(config)
-    return t0.deltat.total_seconds()
-
 def createPDFCache(config, simdm):
     with Timer("Create PDF Cache") as t0:
         statsDF = sum.createPDFCache(config)
     return t0.deltat.total_seconds(), statsDF
-
-def createSimPDF(config: dict, simdm: 'sdm.SimDataManager') -> float:
-    """Run cross-simulation PDF/CDF generation; writes Summary/SimPDF parquet."""
-    with Timer("Create Sim PDF") as t0:
-        sum.createSimPDF(config)
-    return t0.deltat.total_seconds()
 
 def runWorkitem(workitem):
     with sdm.SimDataManager(workitem) as simdm:
@@ -175,10 +164,6 @@ def runWorkitem(workitem):
             runtime, statsDF = createPDFCache(workitem, simdm)
         elif worktype == 'simSummary':
             runtime = summarizeSimulation(workitem, simdm)
-        elif worktype == 'computeSimSummary':
-            runtime = computeSimSummary(workitem, simdm)
-        elif worktype == 'createSimPDF':
-            runtime = createSimPDF(workitem, simdm)
         else:
             logger.error(f"Unknown worktype: {worktype}")
 
@@ -222,23 +207,26 @@ def getFileList(cm):
     else:
         yield (cm.getConfigVar("studyFilename"), cm.getConfigVar("studyDefinitionFile"), cm.getConfigVar('studyName'))
 
-PDF_PHASES = {'createPDFCache', 'createSimPDF'}
-
-
-def generateWorkitems(cm, phasesToInclude=None):
-    if phasesToInclude is None:
-        if cm.getConfigVar('noPDF'):
-            phasesToInclude = list(filter(lambda p: p not in PDF_PHASES, ALL_PHASES))
-        else:
-            phasesToInclude = list(ALL_PHASES)
+def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
+    # --noPDF drops the per-site PDF cache phase here; summarizeSimulation skips SimPDF
+    # for the same flag. Build a local copy so the ALL_PHASES default is never mutated.
+    if cm.getConfigVar('noPDF'):
+        phasesToInclude = list(filter(lambda phase: phase != 'createPDFCache', phasesToInclude))
     initWorkitems = []
     simWorkitems = []
     parquetWorkitems = []
     summaryWorkitems = []
     createPDFCacheWorkitems = []
     simSummaryWorkitems = []
-    computeSimSummaryWorkitems = []
-    createSimPDFWorkitems = []
+
+    # The SiteSummary/PDF datasets are single shared, hive-partitioned-by-site
+    # directories (their config paths carry no {site} component), so every site in
+    # the loop resolves the SAME path. Add each distinct directory exactly once; the
+    # simSummary workitem then reads each shared dataset once and recovers `site` from
+    # the partition. Appending per-site would read the whole dataset N times and inflate
+    # every SimSummary/SimPDF level by the site count (issue #114).
+    allSiteSummaryDirs = []
+    allSitePDFDirs = []
 
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
@@ -262,10 +250,17 @@ def generateWorkitems(cm, phasesToInclude=None):
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
         createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCache'))
-    # simulation-level summaries happen once per simulation
-    simSummaryWorkitems.append(generateSingleWorkitem(cm, 'simSummary'))
-    computeSimSummaryWorkitems.append(generateSingleWorkitem(cm, 'computeSimSummary'))
-    createSimPDFWorkitems.append(generateSingleWorkitem(cm, 'createSimPDF'))
+        summaryDir = cm.getConfigVar('parquetNewSummary')
+        if summaryDir not in allSiteSummaryDirs:
+            allSiteSummaryDirs.append(summaryDir)
+        pdfDir = cm.getConfigVar('parquetNewPDF')
+        if pdfDir not in allSitePDFDirs:
+            allSitePDFDirs.append(pdfDir)
+    # simSummary happens once per simulation, aggregating every site's summaries
+    simSummaryWI = generateSingleWorkitem(cm, 'simSummary')
+    simSummaryWI['allSiteSummaryDirs'] = allSiteSummaryDirs
+    simSummaryWI['allSitePDFDirs'] = allSitePDFDirs
+    simSummaryWorkitems.append(simSummaryWI)
 
     retWorkitems = []
     if 'initialization' in phasesToInclude:
@@ -280,10 +275,6 @@ def generateWorkitems(cm, phasesToInclude=None):
         retWorkitems.append(createPDFCacheWorkitems)
     if 'simSummary' in phasesToInclude:
         retWorkitems.append(simSummaryWorkitems)
-    if 'computeSimSummary' in phasesToInclude:
-        retWorkitems.append(computeSimSummaryWorkitems)
-    if 'createSimPDF' in phasesToInclude:
-        retWorkitems.append(createSimPDFWorkitems)
 
     return retWorkitems
 
