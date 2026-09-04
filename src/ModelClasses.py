@@ -1158,7 +1158,7 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
         MTBFMaxHour = (MTTRMaxHour * (1 - pLeak)) / pLeak
         MTTRHourDist = d.Uniform({'min': MTTRMinHour, 'max': MTTRMaxHour})  # uniform distribution for mttr max and min
         MTBFHourDist = d.Uniform({'min': MTBFMinHour, 'max': MTBFMaxHour})
-        newArgs = {**kwargs, 'pLeak': pLeak, 'MTBF': MTBFHourDist.pick(), 'MTTR': MTTRHourDist.pick()}
+        newArgs = {**kwargs, 'pLeak': pLeak, 'MTBF': MTBFHourDist.mean(), 'MTTR': MTTRHourDist.mean()}
         super().__init__(**newArgs)  # do this to pick up default value for componentCount
         self.MTTRMinDays = MTTRMinDays
         self.MTTRMaxDays = MTTRMaxDays
@@ -1167,8 +1167,8 @@ class SpecificLeaksProduction(mc.FactorManager, mcl.ComponentLeaks):  # Fugitive
     def activityPick(self, simdm, mcRunNum=-1):
         return 1, None, None
     
-    def pickFromMTTR(self, num):
-        return num
+    # def pickFromMTTR(self, num):
+    #     return num
 
     def overrideLeaks(self, leakList, simdm,
                       mcRunNum):  # MM edit: new function to adjust current leaks based on any previous emitters that should override them
@@ -3281,12 +3281,34 @@ class MEETIntermittentPneumatics(mc.MajorEquipment, mc.StateEnabledVolume):
 
 class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
-    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'fuelConsumption', 'opMinSec', 'opMaxSec', 'opDurDist',
+    MEET_SERIALIZER_FIELDS_TO_EXCLUDE = ['stateMachine', 'opMinSec', 'opMaxSec', 'opDurDist',
                                          'malfMinSec', 'malfMaxSec', 'malfDurDist', 'totalFF',
                                          'shutInMinSec', 'shutInMaxSec', 'shutInDurDist']
 
+    @staticmethod
+    def _normalizeSheetValue(val):
+        """
+        Normalize a value that may have come from a dynamically-loaded study sheet
+        column, so downstream code only ever sees a real scalar or None. Handles:
+          - column absent from the sheet entirely -> arg not passed -> default None (handled by caller)
+          - column present but left blank          -> NaN, possibly list-wrapped
+          - column present and filled              -> scalar, possibly list-wrapped
+        """
+        if isinstance(val, (list, tuple)):
+            val = val[0] if len(val) > 0 else None
+        if val is None:
+            return None
+        try:
+            if pd.isna(val):
+                return None
+        except (TypeError, ValueError):
+            pass  # val isn't NaN-checkable (e.g. a string) -- leave it as is
+        return val
+
     def __init__(self,
                  heaterPowerKW=None,
+                 lhv=None,
+                 fuelConsumption=None,
                  opDE=None,
                  opMinDays=None,
                  opMaxDays=None,
@@ -3301,7 +3323,8 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
                  ):
         super().__init__(**kwargs)
         self.heaterPowerKW = heaterPowerKW
-        self.fuelConsumption = 0  # initialize
+        self.lhv = self._normalizeSheetValue(lhv)
+        self.fuelConsumption = self._normalizeSheetValue(fuelConsumption)
 
         self.opDE = opDE
         self.opMinDays = opMinDays
@@ -3335,7 +3358,8 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
             'SHUT_IN': {'stateDuration': self.getTimeForState,
                         'nextState': 'OPERATING'}
         }
-        
+
+
     def getTimeForState(self, currentStateData=None, currentStateInfo=None, currentTime=None):
         cs = currentStateInfo.stateName
         self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))  # assume no mixing of gcs
@@ -3349,31 +3373,59 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
     def initialStateTimes(self, **kwargs):
         self.totalFF = sum(map(lambda x: x.driverRate, self.inletFluidFlows.get('Vapor', [])))
-        ret = {'OPERATING': int(self.opDurDist.pick()),
-               'MALFUNCTIONING': int(self.malfDurDist.pick()),
-               'SHUT_IN': int(self.shutInDurDist.pick())}
+        ret = {
+            'OPERATING': self.opDurDist.mean(),
+            'MALFUNCTIONING': self.pMalf * self.malfDurDist.mean(),
+            'SHUT_IN': self.pShutIn * self.shutInDurDist.mean()
+        }
+        return ret
+
+    def initialStateUpdate(self, randomState, randomStateDelay, currentTime):
+        if randomState == 'OPERATING':
+            durDist = self.opDurDist
+        elif randomState == 'MALFUNCTIONING':
+            durDist = self.malfDurDist
+        elif randomState == 'SHUT_IN':
+            durDist = self.shutInDurDist
+        m = durDist.low
+        M = durDist.high
+        if M - m <= 1:
+            initial_duration = SimRNG.randrange(1, M)
+        else:
+            p = SimRNG.uniform(0, 1)
+            if p < 2 * m / (m + M):
+                initial_duration = math.ceil((m + M) * p / 2)
+            else:
+                initial_duration = math.ceil(M - math.sqrt((M - m) ** 2 - (M ** 2 - m ** 2) * (p - 2 * m / (m + M))))
+        ret = super().initialStateUpdate(randomState, initial_duration, currentTime)
         return ret
 
     def safeDivByZero(self, a, b):   # returns 0 if div by 0
         return a/b if b else 0
 
+
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState=None):
         destGC = gc.DestructionGC.destructionEfficiencyFactory(inSpec=destructionEfficiency, origGC=flow.gc)
-        lhv = destGC.getLhvVals()
+        lhv = self.lhv if self.lhv is not None else destGC.getLhvVals()
         # lhv = float(flow.gc.gcMetadata['LHV - Stage 1 (kJ/scf)'])
-        fuelConsumption = self.heaterPowerKW / lhv    # fuel consumption not in self because we can have multiple gcs
+
+        if self.fuelConsumption is not None:
+            ss_weighted_time = self.opDurDist.mean() + self.pMalf * self.malfDurDist.mean() + self.pShutIn * self.shutInDurDist.mean()
+            consuming_timePerYear = 365 * 24 * 60 * 60* (self.opDurDist.mean() + self.pMalf * self.malfDurDist.mean()) / ss_weighted_time
+            fuelConsumption = self.fuelConsumption * 1e6 / consuming_timePerYear  # MMscf/yr -> scf/s
+        else:
+            fuelConsumption = self.heaterPowerKW / lhv  # fuel consumption not in self because we can have multiple gcs
         if flow.driverRate == 0:
             fuelConsumption = 0
         fc = fuelConsumption * self.safeDivByZero(flow.driverRate, self.totalFF)
         flowToEmit = ff.FluidFlow('Vapor', fuelConsumption, 'scf', destGC)
         newFlow = StateDependentFluidFlow(flowToEmit,
-                                          gc=destGC,
-                                          majorEquipment=self,
-                                          activeState=activeState,
-                                          rateTransform=lambda x: x * self.safeDivByZero(flow.driverRate, self.totalFF),
-                                          secondaryID=tag)
+                                              gc=destGC,
+                                              majorEquipment=self,
+                                              activeState=activeState,
+                                              rateTransform=lambda x: x * self.safeDivByZero(flow.driverRate, self.totalFF),
+                                              secondaryID=tag)
         return newFlow
-
     def linkInletFlow(self, outletME, flow):
         self.addInletFluidFlow(flow)
         if flow.name == 'Vapor':
@@ -3578,16 +3630,26 @@ class MEETFlare(mc.MajorEquipment, ff.Volume, SimpleUpstreamFlowStateEnabled, mc
 
     def initialStateTimes(self):
         stateTimes = {
-            'OPERATING':      u.daysToSecs(self.opDurMax),
-            'UNLIT':          u.daysToSecs(self.unlitDurMax),
-            'MALFUNCTIONING': u.daysToSecs(self.malfDurMax)
+            'OPERATING':      self.opDurDist.mean(),
+            'UNLIT':          self.pUnlit*self.unlitDurDist.mean(),
+            'MALFUNCTIONING': self.pMalfunction*self.malfDurDist.mean()
         }
         return stateTimes
 
     def initialStateUpdate(self, randomState, randomStateDelay, currentTime):
-        self.transitionTimeForCurrentState = randomStateDelay
-        calcStateDuration = self.stateDuration(None, None, currentTime)
-        ret = super().initialStateUpdate(randomState, calcStateDuration, currentTime)
+        durDist = self.stateMachine[randomState]['durationForState']
+        m = durDist.low
+        M = durDist.high
+        if M-m<=1:
+            initial_duration = SimRNG.randrange(1, M)
+        else:
+            p = SimRNG.uniform(0, 1)
+            if p<2*m/(m+M):
+                initial_duration = math.ceil((m+M)*p/2)
+            else:
+                initial_duration = math.ceil(M - math.sqrt((M-m)**2-(M**2-m**2)*(p-2*m/(m+M))))
+        ret = super().initialStateUpdate(randomState, initial_duration, currentTime)
+        self.transitionTimeForCurrentState = initial_duration
         return ret
 
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState='OPERATING'):
@@ -3792,12 +3854,12 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
         # check when rate changes in inlet flows to keep track of ff driverRates
         cs = currentStateInfo.stateName
         # check if we want emission factor emissions or mechanistic
-        if not self.tankMode:
-            self.opDur = u.getSimDuration()
-            self.currentPrimaryEqRatio = 1
-            self.currentYIntercept = 0
-            self.prvSwitch = 0
-            return 'OPERATING'
+        # if not self.tankMode:
+        #     self.opDur = u.getSimDuration()
+        #     self.currentPrimaryEqRatio = 1
+        #     self.currentYIntercept = 0
+        #     self.prvSwitch = 0
+        #     return 'OPERATING'
 
         self.sumOfVaporOutletFlows = 0
         # reset sum of outlet flows for next state.
@@ -3814,9 +3876,32 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             # self.sumOfVaporOutletFlows = sum(map(lambda x: x.driverRate, itertools.chain(self.inletFluidFlows[self.vaporFF])))
             i = 10           # sum of inlet vapor plus flashes = sum of outlet vapors
         else:
+            timeToRateChange = min(map(lambda x: x.changeTimeAbsolute, self.inletFluidFlows[self.fluid]))
+            rateChangeDelay = timeToRateChange - currentTime
+            self.sumOfVaporOutletFlows = self.sumOfVaporsWaterTank()
             nextState = 'OPERATING'
-            self.opDur = u.getSimDuration()
+            self.currentYIntercept = 0  # all outlet vapor flows go to the flares
             self.currentPrimaryEqRatio = 1
+            self.prvSwitch = 0  # prv is closed
+            self.opDur = rateChangeDelay
+            # self.opDur = rateChangeDelay
+            return nextState
+
+        if not self.tankMode and self.tankControlled:
+            nextState = 'OPERATING'
+            self.currentYIntercept = 0  # all outlet vapor flows go to the flares
+            self.currentPrimaryEqRatio = 1
+            self.prvSwitch = 0  # prv is closed
+            self.opDur = rateChangeDelay
+            return nextState
+
+        if not self.tankMode:
+            nextState = 'OPERATING'
+            self.currentPrimaryEqRatio = 0
+            self.prvSwitch = 1  # prv is malfunctioning so we keep the prv open
+            self.currentYIntercept = 0  # no y intercept since all input is going to prvs and not flares (y=x)
+            self.sumOfVaporOutletFlows = 999999  # implies very little will go to flares, most flows will go to prvs (1/total<<0.1)
+            self.opDur = rateChangeDelay
             return nextState
 
         # ThiefHatch/Vent opens randomly based on pLeak/MTTR. Keep a check of this when we check for threshold
@@ -3935,11 +4020,12 @@ class MEETBattery(mc.MajorEquipment, mc.LinkedEquipmentMixin, mc.FFLoggingVolume
             else:
                 delay = u.getSimDuration()
         else:
-            delay = u.getSimDuration()
+            delay = self.getMinChangeTimeLiquids(self.inletFluidFlows)
             self.sumOfVaporOutletFlows = self.sumOfVaporsWaterTank()
             self.currentYIntercept = 0
             self.currentPrimaryEqRatio = 1
             self.prvSwitch = 0
+            self.opDur = delay
             ret = {'OPERATING': delay}
         self.tankOverpressureInitDist = d.Uniform({'min': 0,
                                                      'max': self.tankOverpressureMTBFMinSec})
