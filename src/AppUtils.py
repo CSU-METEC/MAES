@@ -62,7 +62,6 @@ def getParser(defaultConfig):
 
     parser.add_argument('-w',  '--workers', type=int, help="Number of parallel python images (experimental)")
     parser.add_argument('-nea', '--noEventArrays', action='store_true', default=False, help="Skip storing raw event arrays in EventSummary parquet (reduces per-worker memory)")
-    parser.add_argument('-npdf', '--noPDF', action='store_true', default=False, help="Skip PDF/CDF generation phases (createPDFCache, createSimPDF) — saves substantial time and memory")
 
     parser.add_argument('-noPDF', '--noPDF', help="Skip PDF generation (the per-site createPDFCache phase and the simulation-level SimPDF) while keeping all other summaries", action='store_true', default=False)
 
