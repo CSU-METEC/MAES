@@ -149,7 +149,8 @@ def toParquet(config):
 
     emissionOnlyDF = coalescedEventDF[coalescedEventDF['command'] == 'EMISSION'].copy()
     del coalescedEventDF, eventListDF, summaryDF, eventDF
-    mergedEmissionDF = buildMergedEmissionDF(emissionOnlyDF, tsTable, gascomp, metadata)
+    mergedEmissionDF = buildMergedEmissionDF(emissionOnlyDF, tsTable, gascomp, metadata,
+                                              species=['METHANE', 'ETHANE'])
     del emissionOnlyDF
     return mergedEmissionDF
 
