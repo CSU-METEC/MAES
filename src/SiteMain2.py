@@ -230,10 +230,18 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
 
     fileList = getFileList(cm)
     for (fullFilename, studyFilename, studyName) in fileList:
-        cm.expandPhase("arguments", studyDefinitionFile=studyFilename, studyName=studyName)
+        bundleSummaryParquetDir = cm.getConfigVar('bundleSummaryParquetDir')
+        # studyName is only re-expanded here for bundle runs, where each site is an
+        # independent study and needs its own studyRoot/simulationRoot. Outside bundle
+        # mode (-dr scanning a directory of related sites), re-expanding studyName here
+        # re-templates studyRoot per site, producing a redundant top-level output folder
+        # per site instead of the single shared one -dr is meant to produce.
+        if bundleSummaryParquetDir:
+            cm.expandPhase("arguments", studyDefinitionFile=studyFilename, studyName=studyName)
+        else:
+            cm.expandPhase("arguments", studyDefinitionFile=studyFilename)
         # cm.expandPhase("siteDefinitionParams")
         cm.expandPhase("start", site=studyName, scenarioTimestamp=cm.getConfigVar("scenarioTimestamp"))
-        bundleSummaryParquetDir = cm.getConfigVar('bundleSummaryParquetDir')
         if bundleSummaryParquetDir:
             cm.expandPhase("simulation", summaryParquetDir=bundleSummaryParquetDir)
         else:
