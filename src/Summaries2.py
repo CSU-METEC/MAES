@@ -887,14 +887,23 @@ def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
             )
         )
         qLowerCI, qUpperCI = alpha / 200, 1 - alpha / 200
-        quantilesDF = (
-            runTotalsDF
-            .groupby(groupCols)['readings']
-            .quantile([0.25, 0.75, qLowerCI, qUpperCI])
-            .unstack()
-            .rename(columns={0.25: 'lowerQuartile', 0.75: 'upperQuartile',
-                              qLowerCI: 'lowerCI', qUpperCI: 'upperCI'})
-        )
+        if runTotalsDF.empty:
+            # groupby(...).quantile() on zero rows produces no columns at all to unstack
+            # (unlike .agg(), which keeps its named columns regardless of row count) --
+            # build the same empty-but-correctly-shaped frame directly instead.
+            quantilesDF = pd.DataFrame(
+                columns=['lowerQuartile', 'upperQuartile', 'lowerCI', 'upperCI'],
+                index=aggDF.index,
+            )
+        else:
+            quantilesDF = (
+                runTotalsDF
+                .groupby(groupCols)['readings']
+                .quantile([0.25, 0.75, qLowerCI, qUpperCI])
+                .unstack()
+                .rename(columns={0.25: 'lowerQuartile', 0.75: 'upperQuartile',
+                                  qLowerCI: 'lowerCI', qUpperCI: 'upperCI'})
+            )
         summaryDF = aggDF.join(quantilesDF).reset_index()[
             groupCols + ['total', 'mean', 'min', 'max',
                           'lowerQuartile', 'upperQuartile', 'lowerCI', 'upperCI', 'readings']
