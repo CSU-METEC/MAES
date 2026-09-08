@@ -3307,7 +3307,6 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
     def __init__(self,
                  heaterPowerKW=None,
-                 lhv=None,
                  fuelConsumption=None,
                  opDE=None,
                  opMinDays=None,
@@ -3323,7 +3322,6 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
                  ):
         super().__init__(**kwargs)
         self.heaterPowerKW = heaterPowerKW
-        self.lhv = self._normalizeSheetValue(lhv)
         self.fuelConsumption = self._normalizeSheetValue(fuelConsumption)
 
         self.opDE = opDE
@@ -3406,7 +3404,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState=None):
         destGC = gc.DestructionGC.destructionEfficiencyFactory(inSpec=destructionEfficiency, origGC=flow.gc)
-        lhv = self.lhv if self.lhv is not None else destGC.getLhvVals()
+        lhv = destGC.getLhvVals()
         # lhv = float(flow.gc.gcMetadata['LHV - Stage 1 (kJ/scf)'])
 
         if self.fuelConsumption is not None:

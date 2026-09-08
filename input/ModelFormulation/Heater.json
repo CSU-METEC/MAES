@@ -29,7 +29,6 @@
 	{"Model Parameter": "Shut In Duration min",                  "Python Parameter": "shutInMinDays",     "Parameter Type": "Sheet"},
 	{"Model Parameter": "Shut In Duration max",                  "Python Parameter": "shutInMaxDays",     "Parameter Type": "Sheet"},
 	{"Model Parameter": "Shut In Duration max",                  "Python Parameter": "shutInMaxDays",     "Parameter Type": "Sheet"},
-	{"Model Parameter": "LHV",                                   "Python Parameter": "lhv",               "Parameter Type": "Sheet"},
 	{"Model Parameter": "Fuel Consumption",                      "Python Parameter": "fuelConsumption",   "Parameter Type": "Sheet"}
 	],
   "Emitters": [
