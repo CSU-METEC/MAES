@@ -871,8 +871,11 @@ def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
             .sum()
         )
 
-        # Compute statistics from the distribution of cross-site run totals.
-        summaryDF = (
+        # Compute statistics from the distribution of cross-site run totals. Quantiles are
+        # computed via one vectorized groupby().quantile() call covering every group at once,
+        # instead of 4 separate per-group Python-UDF np.percentile() calls -- same interpolation
+        # method (linear, both functions' default), so results are numerically identical.
+        aggDF = (
             runTotalsDF
             .groupby(groupCols)
             .agg(
@@ -880,14 +883,22 @@ def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
                 mean=('readings', lambda x: x.sum() / mcIterations),
                 min=('readings', 'min'),
                 max=('readings', 'max'),
-                lowerQuartile=('readings', lambda x: np.percentile(x, 25)),
-                upperQuartile=('readings', lambda x: np.percentile(x, 75)),
-                lowerCI=('readings', lambda x: np.percentile(x, alpha / 2)),
-                upperCI=('readings', lambda x: np.percentile(x, 100 - alpha / 2)),
                 readings=('readings', list)
             )
-            .reset_index()
         )
+        qLowerCI, qUpperCI = alpha / 200, 1 - alpha / 200
+        quantilesDF = (
+            runTotalsDF
+            .groupby(groupCols)['readings']
+            .quantile([0.25, 0.75, qLowerCI, qUpperCI])
+            .unstack()
+            .rename(columns={0.25: 'lowerQuartile', 0.75: 'upperQuartile',
+                              qLowerCI: 'lowerCI', qUpperCI: 'upperCI'})
+        )
+        summaryDF = aggDF.join(quantilesDF).reset_index()[
+            groupCols + ['total', 'mean', 'min', 'max',
+                          'lowerQuartile', 'upperQuartile', 'lowerCI', 'upperCI', 'readings']
+        ]
         summaryDF = summaryDF.assign(
             count=mcIterations,
             CICategory=CICategory
