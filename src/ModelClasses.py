@@ -3307,7 +3307,6 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
     def __init__(self,
                  heaterPowerKW=None,
-                 lhv=None,
                  fuelConsumption=None,
                  opDE=None,
                  opMinDays=None,
@@ -3323,7 +3322,6 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
                  ):
         super().__init__(**kwargs)
         self.heaterPowerKW = heaterPowerKW
-        self.lhv = self._normalizeSheetValue(lhv)
         self.fuelConsumption = self._normalizeSheetValue(fuelConsumption)
 
         self.opDE = opDE
