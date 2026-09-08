@@ -62,7 +62,7 @@ def runSim(config, simdm):
     # (issue #106); mcRunNum keeps MC iterations distinct (#69); the optional
     # --randomSeed base keeps the whole simulation reproducible on demand (#96).
     SimRNG.seed(SimRNG.composeSeed(mcRunNum,
-                                   siteName=config.get('siteName'),
+                                   siteName=config.get('seedSiteName') or config.get('siteName'),
                                    baseSeed=config.get('randomSeed')))
     with Timer(f"Run Simulation MC Iteration {mcRunNum}") as t0:
         with Timer("  Restore templates") as t1:
@@ -149,8 +149,14 @@ def runWorkitem(workitem):
     }
 
 def generateSingleWorkitem(cm, workType):
+    # 'siteName' stays equal to 'site' unconditionally -- summarize()/parquet-read code uses
+    # config['siteName'] as the literal on-disk partition key (must match whatever 'site' was
+    # when the data was written), not just an RNG input. 'seedSiteName' (set via -ssn) is passed
+    # through separately and consumed only by composeSeed() in runSim(), below, so an explicit
+    # RNG seed identity never has to match the on-disk partition name.
     scenarioConfig = {
         'siteName': cm.getConfigVar('site'),
+        'seedSiteName': cm.getConfigVar('seedSiteName'),
         'studyFilename': cm.getConfigVar('studyFilename'),
         'MCScenario': cm.getConfigVar('MCIteration'),
         'workType': workType,

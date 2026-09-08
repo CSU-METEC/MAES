@@ -71,6 +71,9 @@ def getParser(defaultConfig):
     parser.add_argument("-dr", "--directory", help="Study definition folder. Will run every study sheet in directory"),
 
     parser.add_argument("-sn", "--studyName", help="Name of study")
+    parser.add_argument("-ssn", "--seedSiteName", help="Explicit site identity used for RNG "
+                         "seeding only -- decoupled from -sn, which also drives output-path "
+                         "nesting. Falls back to studyName/site if not given.")
 
     parser.add_argument("-fs", "--fullSummaries", help="Generate all summaries (annual, instantaneous, PDFs, and Average Emission Rates and Durations)", default=False)
     parser.add_argument("-as", "--annualSummaries", help="Generate annual emissions summaries", default=False)
