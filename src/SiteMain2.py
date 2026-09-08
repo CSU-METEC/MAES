@@ -1,3 +1,8 @@
+import os
+for _envVar in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+                "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+    os.environ.setdefault(_envVar, "1")
+
 import AppUtils as au
 import ModelFormulation as mf
 import logging
@@ -11,7 +16,6 @@ import functools
 import utilities.EmissionsCSVGenerator as eg
 import Units as u
 import ParquetLib as pl
-import os
 import pandas as pd
 import datetime as dt
 import Summaries2 as sum
@@ -276,7 +280,7 @@ def runMultiprocessing(workQueue, workers):
         workType = workQueue[0].get('workType', 'UNKNOWN')
     logger.info(f"multiprocessing w/ work type: {workType}, workers: {workers}")
     with Timer(f"{workType}") as t0:
-        with mp.Pool(workers) as p:
+        with mp.Pool(workers, maxtasksperchild=1) as p:
             res = list(p.imap_unordered(runWorkitem, workQueue))
         t0.setCount(len(res))
         return res
