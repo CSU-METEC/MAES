@@ -3406,7 +3406,7 @@ class MEETHeater(mc.MajorEquipment, mc.StateEnabledVolume):
 
     def createEmitterFlow(self, tag, flow, destructionEfficiency, activeState=None):
         destGC = gc.DestructionGC.destructionEfficiencyFactory(inSpec=destructionEfficiency, origGC=flow.gc)
-        lhv = self.lhv if self.lhv is not None else destGC.getLhvVals()
+        lhv = destGC.getLhvVals()
         # lhv = float(flow.gc.gcMetadata['LHV - Stage 1 (kJ/scf)'])
 
         if self.fuelConsumption is not None:
