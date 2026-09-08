@@ -328,15 +328,49 @@ class EquipmentTable(ABC):
 class JsonEquipmentTable(EquipmentTable):
 
     def __init__(self, eqAttributes=None, eqMap=None):
+        self._pendingRows = []
         if eqAttributes is not None:
-            self.equipmentAttributes = eqAttributes
+            self._equipmentAttributes = eqAttributes
         else:
-            self.equipmentAttributes = pd.DataFrame(columns=EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS)
+            self._equipmentAttributes = pd.DataFrame(columns=EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS)
 
         if eqMap is not None:
             self.equipmentMap = eqMap
         else:
             self.equipmentMap = {}  # we want this to be name -> EquipmentTableEntry
+
+    # equipmentAttributes is read by many callers (getMetadata, getEquipment,
+    # tablesForMCRun). Per-row appends are buffered in self._pendingRows and the
+    # DataFrame is built only when something reads, turning the previous O(N^2)
+    # per-row concat into O(N).
+    @property
+    def equipmentAttributes(self):
+        if self._pendingRows:
+            # dtype=object keeps each value's original Python type. Without it, a
+            # key column mixing ints with None is coerced to float64, turning
+            # 12345 into 12345.0 -- a silent formatting change that can break any
+            # downstream merge/lookup keyed on that column's exact string form.
+            new = pd.DataFrame(
+                self._pendingRows,
+                columns=EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS,
+                dtype=object,
+            )
+            self._pendingRows = []
+            # Defense-in-depth: a blank study-sheet cell read as NaN would break
+            # equipmentMap tuple-key lookups (NaN != NaN).
+            for col in ('facilityID', 'unitID', 'emitterID', 'mcRunNum'):
+                if new[col].isna().any():
+                    new = new.assign(**{col: new[col].where(new[col].notna(), None)})
+            if self._equipmentAttributes.empty:
+                self._equipmentAttributes = new
+            else:
+                self._equipmentAttributes = pd.concat([self._equipmentAttributes, new], ignore_index=True)
+        return self._equipmentAttributes
+
+    @equipmentAttributes.setter
+    def equipmentAttributes(self, value):
+        self._pendingRows = []
+        self._equipmentAttributes = value
 
     class FakeInstance:
         def __init__(self, facilityID, unitID, emitterID, mcRunNum):
@@ -374,7 +408,7 @@ class JsonEquipmentTable(EquipmentTable):
 
     def addEquipment(self, instance):
         instDict = filterDict(instance.__dict__, EquipmentTableEntry.EQUIPMENT_TABLE_FIELDS)
-        self.equipmentAttributes = pd.concat([self.equipmentAttributes, pd.DataFrame(instDict, index=[0])])
+        self._pendingRows.append(instDict)
         key = self._instanceKey(instance)
         if key in self.equipmentMap:
             prevInstance = self.equipmentMap[key]
