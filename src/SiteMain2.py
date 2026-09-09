@@ -1,4 +1,6 @@
 import os
+import time
+import json
 for _envVar in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
                 "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
     os.environ.setdefault(_envVar, "1")
@@ -523,33 +525,47 @@ def main(cm, workitemQueues=None):
     resList = []
     workers = cm.getConfigVar("workers")
     parallel = workers and (workers > 0)
+    # Per-phase wall-clock breakdown (see runDurations.json below). One entry per outer-loop
+    # iteration, keyed by that phase's canonical name (createPDFCacheMCRun's/summarizeMCRun's
+    # wall-clock is attributed to 'createPDFCache'/'summarize', matching ALL_PHASES -- their
+    # own CPU-time still shows up as separate rows below since that comes from resList's own
+    # worktype tags, not this dict).
+    phaseWallClock = {}
     # if parallel:
     #     db = initializeDask(cm)
     with Timer("Run simulations") as t0:
         for singleWorkitemQueue in listOfWorkitemQueues:
-            workType = singleWorkitemQueue[0]['workType'] if singleWorkitemQueue else None
-            if workType == 'createPDFCacheMCRun':
-                if parallel:
-                    queueResults, finalizeResults = runCreatePDFCacheIncremental(singleWorkitemQueue, workers)
-                    resList.extend(queueResults)
-                    resList.extend(finalizeResults)
-                    continue
-                else:
-                    queueResults = finalizeAllPDFCaches(runLocal(singleWorkitemQueue))
-            elif workType == 'summarizeMCRun':
-                if parallel:
-                    queueResults, finalizeResults = runSummarizeIncremental(singleWorkitemQueue, workers)
-                    resList.extend(queueResults)
-                    resList.extend(finalizeResults)
-                    continue
-                else:
-                    queueResults = finalizeAllSummaries(runLocal(singleWorkitemQueue))
+            # Checked before dispatch (not on queueResults) since an empty queue would
+            # otherwise silently skip the finalize step below.
+            isPDFCacheMCRunQueue = bool(singleWorkitemQueue) and singleWorkitemQueue[0]['workType'] == 'createPDFCacheMCRun'
+            isSummarizeMCRunQueue = bool(singleWorkitemQueue) and singleWorkitemQueue[0]['workType'] == 'summarizeMCRun'
+            phaseName = singleWorkitemQueue[0]['workType'] if singleWorkitemQueue else None
+            if phaseName == 'createPDFCacheMCRun':
+                phaseName = 'createPDFCache'
+            elif phaseName == 'summarizeMCRun':
+                phaseName = 'summarize'
+            phaseStart = time.time()
+            if parallel and isPDFCacheMCRunQueue:
+                queueResults, finalizeResults = runCreatePDFCacheIncremental(singleWorkitemQueue, workers)
+                resList.extend(queueResults)
+                resList.extend(finalizeResults)
+            elif parallel and isSummarizeMCRunQueue:
+                queueResults, finalizeResults = runSummarizeIncremental(singleWorkitemQueue, workers)
+                resList.extend(queueResults)
+                resList.extend(finalizeResults)
             elif parallel:
                 # queueResults = runDask(singleWorkitemQueue, db)
                 queueResults = runMultiprocessing(singleWorkitemQueue, workers)
+                resList.extend(queueResults)
             else:
                 queueResults = runLocal(singleWorkitemQueue)
-            resList.extend(queueResults)
+                resList.extend(queueResults)
+                if isPDFCacheMCRunQueue:
+                    resList.extend(finalizeAllPDFCaches(queueResults))
+                elif isSummarizeMCRunQueue:
+                    resList.extend(finalizeAllSummaries(queueResults))
+            if phaseName is not None:
+                phaseWallClock[phaseName] = phaseWallClock.get(phaseName, 0.0) + (time.time() - phaseStart)
         t0.count = len(resList)
     totalRuntime = functools.reduce(lambda cumulative, incr: cumulative + incr, map(lambda x: x['runtime'], resList))
     clocktime = t0.deltat.total_seconds()
@@ -561,6 +577,30 @@ def main(cm, workitemQueues=None):
             statsFilename = f"{prefix}_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
             pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
             logger.info(f"Wrote {statsFilename}")
+
+    # Per-phase CPU-time breakdown (runtime summed across every workitem of a given
+    # worktype -- single-core-equivalent cost) plus the wall-clock timing captured above,
+    # written alongside the existing summary fields. The per-mcRun dispatch phases
+    # ('createPDFCacheMCRun'/'summarizeMCRun') and their per-site finalize steps
+    # ('createPDFCache'/'summarize') show as separate CPU-time rows here, since they're
+    # tracked independently in resList -- wall-clock for the MCRun rows isn't independently
+    # meaningful (the two steps overlap for -dr multi-site runs under the incremental
+    # finalizer), so they're deliberately left out of phaseWallClock.
+    phaseDurations = {}
+    for r in resList:
+        phaseDurations[r['worktype']] = phaseDurations.get(r['worktype'], 0.0) + r['runtime']
+    simulationRoot = cm.getConfigVar('simulationRoot')
+    if simulationRoot:
+        durationsPath = Path(simulationRoot) / "runDurations.json"
+        durationsPath.parent.mkdir(parents=True, exist_ok=True)
+        durationsPath.write_text(json.dumps({
+            'clockTimeSeconds': clocktime,
+            'totalRuntimeSeconds': totalRuntime,
+            'monteCarloIterations': totalMCIterations,
+            'phaseDurationsSeconds': phaseDurations,
+            'phaseWallClockSeconds': phaseWallClock,
+        }))
+        logger.info(f"Wrote {durationsPath}")
 
     resDF = pd.DataFrame(resList).drop(columns=['statsDF', 'siteName', 'config', 'cacheDF', 'groupCount', 'summaryPieces'])
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
