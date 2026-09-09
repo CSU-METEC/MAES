@@ -135,9 +135,13 @@ DATASET_PARAMS = {
     'SimPDF':        {'configKey': 'parquetNewSimPDF',        'partition_cols': []},
 }
 
-def _saveSummaryDS(config, df, dataset):
+def _saveSummaryDS(config, df, dataset, basename=None, existingDataBehavior=None):
     params = DATASET_PARAMS[dataset]
-    pl.toBaseParquetFullConfig(config, df, params['configKey'], partition_cols=params['partition_cols'], basename=dataset)
+    kwargs = {}
+    if existingDataBehavior is not None:
+        kwargs['existing_data_behavior'] = existingDataBehavior
+    pl.toBaseParquetFullConfig(config, df, params['configKey'], partition_cols=params['partition_cols'],
+                                basename=basename or dataset, **kwargs)
 
 def _doAgg(df, groupbyCols, aggFieldList, varCol):
     summaryDFByMCRun = (
@@ -628,6 +632,42 @@ def finalizePDFCache(config, sliceResults):
         'groupCount': sum(groupCount for _, groupCount in sliceResults),
         'intervalRows': len(fineCacheDF),
     }]
+
+    totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
+    with Timer("Build PDFs") as tPDF:
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
+        fullPDFDF = fullPDFDF.assign(includeFugitive=True)
+        noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
+        pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
+        tPDF.setCount(len(pdfDF))
+    _saveSummaryDS(config, pdfDF, 'PDF')
+    logger.info(f"PDF: {len(pdfDF)} rows for site {config['siteName']}")
+
+    cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
+    pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
+    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True)
+
+def _writeCacheSlice(config, cacheDF, sliceIndex):
+    """Write one MC run's PDF cache slice directly to its own small parquet file instead of
+    holding it in memory for a later combined write (finalizePDFCache, above) -- frees each
+    slice as soon as it's on disk, so a site's full MC set is never held in memory at once."""
+    _saveSummaryDS(config, cacheDF, 'PDFCache', basename=f"PDFCache-{sliceIndex}",
+                   existingDataBehavior='overwrite_or_ignore')
+
+def finalizePDFCacheFromDisk(config, groupCount):
+    """Finalize a site's PDF cache after all its per-MC-run slices have already been streamed
+    to disk via _writeCacheSlice. Re-reads the full combined cache once via a single efficient
+    pyarrow multi-file dataset scan instead of pandas-concatenating already-materialized
+    per-MC-run DataFrames. Otherwise identical to finalizePDFCache's own Build-PDFs tail."""
+    cacheDF = _read_parquet_site(config['parquetNewPDFCache'], config['siteName'])
+    if cacheDF.empty:
+        logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
+        return pd.DataFrame()
+
+    fineCacheDF = cacheDF[cacheDF['cacheLevel'] == 'modelReadableName']
+    logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
+    statsRows = [{'cacheLevel': 'modelReadableName', 'groupCount': groupCount,
+                  'intervalRows': len(fineCacheDF)}]
 
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:

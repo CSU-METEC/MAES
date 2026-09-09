@@ -351,30 +351,58 @@ def runCreatePDFCacheIncremental(workQueue, workers):
     completes, instead of collecting every site's results first. Bounds memory to roughly
     pool-size-plus-a-few-sites'-in-flight rather than the full cross-site total -- a real
     risk for a -dr batch spanning many sites, where every site's raw cache slices would
-    otherwise sit in memory simultaneously until the last site's last MC run finishes."""
+    otherwise sit in memory simultaneously until the last site's last MC run finishes.
+
+    Each MC run's cache slice is now written straight to its own small parquet file as soon
+    as it arrives (sum._writeCacheSlice) instead of being held in a per-site list for a later
+    pd.concat -- only a per-site slice counter and running groupCount are kept in memory, not
+    the DataFrames themselves. Returns (lightResults, finalizeResults): lightResults drops
+    each raw result's cacheDF (already on disk, no longer needed) so the long-lived result
+    list doesn't hold every slice's data for the rest of the run; finalizeResults is the
+    small number of per-site finalize summaries. Caller extends its own list with both."""
     import multiprocessing as mp
     logger.info(f"multiprocessing w/ work type: createPDFCacheMCRun, workers: {workers}")
     expectedCountBySite = {}
     for item in workQueue:
         expectedCountBySite[item['siteName']] = expectedCountBySite.get(item['siteName'], 0) + 1
 
-    sliceResultsBySite = {}
+    sliceCountBySite = {}
+    groupCountBySite = {}
     configBySite = {}
-    resList = []
+    lightResults = []
+    finalizeResults = []
     with Timer("createPDFCacheMCRun") as t0:
         with mp.Pool(workers, maxtasksperchild=1) as p:
             for res in p.imap_unordered(runWorkitem, workQueue):
                 # siteName, not studyShortname -- see the comment in finalizeAllPDFCaches.
                 siteName = res['siteName']
                 configBySite.setdefault(siteName, res['config'])
-                sliceResultsBySite.setdefault(siteName, []).append((res['cacheDF'], res['groupCount']))
-                resList.append(res)
-                if len(sliceResultsBySite[siteName]) >= expectedCountBySite[siteName]:
-                    resList.append(_finalizePDFCacheForSite(siteName, configBySite[siteName], sliceResultsBySite[siteName]))
-                    del sliceResultsBySite[siteName]
+                lightResults.append({k: v for k, v in res.items() if k != 'cacheDF'})
+                cacheDF = res['cacheDF']
+                if cacheDF is not None and not cacheDF.empty:
+                    sliceIndex = sliceCountBySite.get(siteName, 0)
+                    sum._writeCacheSlice(configBySite[siteName], cacheDF, sliceIndex)
+                    sliceCountBySite[siteName] = sliceIndex + 1
+                    groupCountBySite[siteName] = groupCountBySite.get(siteName, 0) + res['groupCount']
+                expectedCountBySite[siteName] -= 1
+                if expectedCountBySite[siteName] <= 0:
+                    with Timer("Create PDF Cache") as t1:
+                        statsDF = sum.finalizePDFCacheFromDisk(configBySite[siteName],
+                                                                groupCountBySite.get(siteName, 0))
+                    finalizeResults.append({
+                        'worktype': 'createPDFCache',
+                        'studyShortname': siteName,
+                        'studyFilename': configBySite[siteName].get('studyFilename'),
+                        'MCScenario': -1,
+                        'runtime': t1.deltat.total_seconds(),
+                        'statsDF': statsDF,
+                        'pid': os.getpid(),
+                    })
                     del configBySite[siteName]
-        t0.setCount(len(resList))
-    return resList
+                    del sliceCountBySite[siteName]
+                    del groupCountBySite[siteName]
+        t0.setCount(len(lightResults))
+    return lightResults, finalizeResults
 
 def defineConvenienceConfigVars(cMgr):
     simDurationDays = cMgr.getConfigVar("simDurationDays")
@@ -399,7 +427,10 @@ def main(cm, workitemQueues=None):
             workType = singleWorkitemQueue[0]['workType'] if singleWorkitemQueue else None
             if workType == 'createPDFCacheMCRun':
                 if parallel:
-                    queueResults = runCreatePDFCacheIncremental(singleWorkitemQueue, workers)
+                    queueResults, finalizeResults = runCreatePDFCacheIncremental(singleWorkitemQueue, workers)
+                    resList.extend(queueResults)
+                    resList.extend(finalizeResults)
+                    continue
                 else:
                     queueResults = finalizeAllPDFCaches(runLocal(singleWorkitemQueue))
             elif parallel:
