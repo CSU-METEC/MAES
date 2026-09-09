@@ -907,6 +907,12 @@ def _makePDFRows(mcRunTSList, identityCols, CICategory, totalSimSecs):
     })
 
 def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
+    # When this group has no FUGITIVE intervals at all, noFug == full by construction --
+    # reuse the already-summed fullTS instead of recomputing an identical
+    # TimeseriesSet(...).sum() call. Safe to share the same object reference across both
+    # lists: downstream (_makePDFRows/TimeseriesSet.toPDF()) only ever reads .df, never
+    # mutates it.
+    hasFugitive = 'FUGITIVE' in groupDF['modelEmissionCategory'].values
     fullMCRunTSList = []
     noFugMCRunTSList = []
     with Timer("build MC run timeseries from coarse cache", loglevel=logging.DEBUG) as t:
@@ -915,14 +921,18 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
             for emCat, catDF in mcRunDF.groupby('modelEmissionCategory'):
                 catTSDict[emCat] = _cacheGroupToTimeseriesRLE(catDF)
             fullTS = ts.TimeseriesSet(list(catTSDict.values())).sum()
-            noFugItems = filter(lambda kv: kv[0] != 'FUGITIVE', catTSDict.items())
-            noFugTS = ts.TimeseriesSet(list(map(lambda kv: kv[1], noFugItems))).sum()
             if not fullTS.isempty():
                 fullTS.df = fullTS.df.assign(**{fullTS.valueColName: _roundForPDF(fullTS.df[fullTS.valueColName].values)})
                 fullMCRunTSList.append(fullTS)
-            if not noFugTS.isempty():
-                noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values)})
-                noFugMCRunTSList.append(noFugTS)
+            if not hasFugitive:
+                if not fullTS.isempty():
+                    noFugMCRunTSList.append(fullTS)
+            else:
+                noFugItems = filter(lambda kv: kv[0] != 'FUGITIVE', catTSDict.items())
+                noFugTS = ts.TimeseriesSet(list(map(lambda kv: kv[1], noFugItems))).sum()
+                if not noFugTS.isempty():
+                    noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values)})
+                    noFugMCRunTSList.append(noFugTS)
         t.setCount(len(fullMCRunTSList))
     stats = {
         'CICategory': CICategory,
