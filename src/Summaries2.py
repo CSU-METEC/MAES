@@ -605,25 +605,38 @@ def _roundForPDF(values, decimals=6):
 
 
 def _buildCoarseCacheLevel(fineDF, groupCols, levelName):
+    # Accumulate raw numpy arrays per group and build exactly one DataFrame at the end
+    # (np.concatenate), instead of building a full pandas DataFrame per group and
+    # pd.concat-ing potentially thousands of them -- avoids repeated small-object
+    # construction inside a Python group loop. sort=False on both groupbys skips an
+    # unnecessary sort pass; nothing downstream depends on group order here.
     aggGroupCols = [*groupCols, 'modelEmissionCategory', 'mcRun']
-    rowsList = []
-    for groupKey, groupDF in fineDF.groupby(aggGroupCols):
+    coarseCols = {col: [] for col in aggGroupCols}
+    coarseStart, coarseEnd, coarseRate, coarseLevel = [], [], [], []
+    for groupKey, groupDF in fineDF.groupby(aggGroupCols, sort=False):
         catTSList = []
-        for _, subDF in groupDF.groupby(CACHE_IDENTITY_COLS):
+        for _, subDF in groupDF.groupby(CACHE_IDENTITY_COLS, sort=False):
             catTSList.append(_cacheGroupToTimeseriesRLE(subDF))
         summedTS = ts.TimeseriesSet(catTSList).sum()
         if summedTS.isempty():
             continue
-        identityDict = dict(zip(aggGroupCols, groupKey))
-        n = len(summedTS.df)
-        rowsList.append(pd.DataFrame({
-            **{col: [val] * n for col, val in identityDict.items()},
-            'startTime_s': summedTS.df[summedTS.startTimeColName].values,
-            'endTime_s': summedTS.df[summedTS.endTimeColName].values,
-            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
-            'cacheLevel': [levelName] * n,
-        }))
-    return pd.concat(rowsList, ignore_index=True) if rowsList else pd.DataFrame()
+        tsDF = summedTS.df
+        n = len(tsDF)
+        for col, val in zip(aggGroupCols, groupKey):
+            coarseCols[col].append(np.full(n, val))
+        coarseStart.append(tsDF[summedTS.startTimeColName].values)
+        coarseEnd.append(tsDF[summedTS.endTimeColName].values)
+        coarseRate.append(_roundForPDF(tsDF[summedTS.valueColName].values))
+        coarseLevel.append(np.full(n, levelName))
+    if not coarseStart:
+        return pd.DataFrame()
+    return pd.DataFrame({
+        **{col: np.concatenate(arrs) for col, arrs in coarseCols.items()},
+        'startTime_s': np.concatenate(coarseStart),
+        'endTime_s': np.concatenate(coarseEnd),
+        'emission_kgPerH': np.concatenate(coarseRate),
+        'cacheLevel': np.concatenate(coarseLevel),
+    })
 
 def createPDFCache(config):
     logger.info(f"Creating PDF cache for site {config['siteName']}")
@@ -710,28 +723,38 @@ def _buildCacheSliceForMCRun(config, mcRun):
     if instEmissionDF.empty:
         return pd.DataFrame(), 0
 
-    cacheRowsList = []
-    for groupKey, groupDF in instEmissionDF.groupby(CACHE_IDENTITY_COLS):
+    # Accumulate raw numpy arrays per group and build exactly one DataFrame at the end,
+    # instead of a full pandas DataFrame per group + pd.concat of potentially thousands of
+    # them -- see _buildCoarseCacheLevel's comment for the full rationale. sort=False skips
+    # an unnecessary sort pass; nothing downstream depends on group order here.
+    cacheCols = {col: [] for col in CACHE_IDENTITY_COLS}
+    cacheStart, cacheEnd, cacheRate = [], [], []
+    groupCount = 0
+    for groupKey, groupDF in instEmissionDF.groupby(CACHE_IDENTITY_COLS, sort=False):
         summedTS = _buildMCRunTimeseries(groupDF)
         if summedTS.isempty():
             continue
-        n = len(summedTS.df)
-        identityDict = dict(zip(CACHE_IDENTITY_COLS, groupKey))
-        cacheRowsList.append(pd.DataFrame({
-            **{col: [val] * n for col, val in identityDict.items()},
-            'mcRun': [mcRun] * n,
-            'startTime_s': summedTS.df[summedTS.startTimeColName].values,
-            'endTime_s': summedTS.df[summedTS.endTimeColName].values,
-            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
-        }))
+        tsDF = summedTS.df
+        n = len(tsDF)
+        for col, val in zip(CACHE_IDENTITY_COLS, groupKey):
+            cacheCols[col].append(np.full(n, val))
+        cacheStart.append(tsDF[summedTS.startTimeColName].values)
+        cacheEnd.append(tsDF[summedTS.endTimeColName].values)
+        cacheRate.append(_roundForPDF(tsDF[summedTS.valueColName].values))
+        groupCount += 1
 
-    if not cacheRowsList:
+    if groupCount == 0:
         return pd.DataFrame(), 0
 
-    fineCacheDF = pd.concat(cacheRowsList, ignore_index=True)
+    fineCacheDF = pd.DataFrame({
+        **{col: np.concatenate(arrs) for col, arrs in cacheCols.items()},
+        'mcRun': mcRun,
+        'startTime_s': np.concatenate(cacheStart),
+        'endTime_s': np.concatenate(cacheEnd),
+        'emission_kgPerH': np.concatenate(cacheRate),
+    })
     fineCacheDF = fineCacheDF.assign(cacheLevel='modelReadableName')
     allLevelDFs = [fineCacheDF]
-    groupCount = len(cacheRowsList)
 
     for levelName, levelGroupCols in PDF_GROUPINGS[:-1]:
         coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName)
@@ -775,7 +798,7 @@ def finalizePDFCache(config, sliceResults):
 
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:
-        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs, workers=config.get('workers') or 1)
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -811,7 +834,7 @@ def finalizePDFCacheFromDisk(config, groupCount):
 
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:
-        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs, workers=config.get('workers') or 1)
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -942,22 +965,67 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
     }
     return _makePDFRows(fullMCRunTSList, identityCols, CICategory, totalSimSecs), _makePDFRows(noFugMCRunTSList, identityCols, CICategory, totalSimSecs), stats
 
-def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, groupings=None):
+def _buildPDFGroupTask(args):
+    """Picklable task wrapper for calculatePDFSummaryFromCache's Pool (top-level, not a
+    closure, so multiprocessing.Pool can pickle it)."""
+    groupDF, identityCols, CICategory, totalSimSecs = args
+    return _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
+
+# Cache levels whose per-outer-group DataFrames are too large to send through multiprocessing
+# IPC efficiently -- these are the coarse aggregate levels where all emitters of a type or the
+# entire site are summed into a handful of groups, each holding a large slice of the cache.
+_SEQUENTIAL_PDF_LEVELS = {'siteTotals', 'METype'}
+
+def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, groupings=None, workers=1):
+    """Parallelizes the finer-grained PDF_GROUPINGS levels (unitID, modelReadableName --
+    many small groups) via a Pool spawned here; the coarse levels (_SEQUENTIAL_PDF_LEVELS)
+    stay sequential since each holds a large slice of the cache, too expensive to pickle
+    through multiprocessing IPC. Safe to spawn a Pool here because this function is only
+    ever called from finalizePDFCache/finalizePDFCacheFromDisk, which by construction always
+    run in the main coordinating process (the loop consuming runCreatePDFCacheIncremental's
+    imap_unordered results, or finalizeAllPDFCaches called after runLocal) -- never inside a
+    worker. The in_daemon guard is kept anyway as cheap defensive parity for any future
+    caller that might run inside one.
+    """
     if groupings is None:
         groupings = PDF_GROUPINGS
     fullResultDFList = []
     noFugResultDFList = []
     statsList = []
+
+    def _collect(result):
+        fullPDFRows, noFugPDFRows, stats = result
+        statsList.append(stats)
+        if fullPDFRows is not None:
+            fullResultDFList.append(fullPDFRows)
+        if noFugPDFRows is not None:
+            noFugResultDFList.append(noFugPDFRows)
+
+    seqTasks = []
+    parTasks = []
     for CICategory, groupCols in groupings:
         levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
-        for _, groupDF in levelDF.groupby(groupCols):
+        for _, groupDF in levelDF.groupby(groupCols, sort=False):
             identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
-            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
-            statsList.append(stats)
-            if fullPDFRows is not None:
-                fullResultDFList.append(fullPDFRows)
-            if noFugPDFRows is not None:
-                noFugResultDFList.append(noFugPDFRows)
+            task = (groupDF, identityCols, CICategory, totalSimSecs)
+            if CICategory in _SEQUENTIAL_PDF_LEVELS:
+                seqTasks.append(task)
+            else:
+                parTasks.append(task)
+
+    for task in seqTasks:
+        _collect(_buildPDFGroupTask(task))
+
+    import multiprocessing as mp
+    inDaemon = mp.current_process().daemon
+    if workers and workers > 1 and parTasks and not inDaemon:
+        with mp.Pool(min(workers, len(parTasks))) as pool:
+            for result in pool.imap_unordered(_buildPDFGroupTask, parTasks):
+                _collect(result)
+    else:
+        for task in parTasks:
+            _collect(_buildPDFGroupTask(task))
+
     fullPDFDF = pd.concat(fullResultDFList) if fullResultDFList else pd.DataFrame()
     noFugPDFDF = pd.concat(noFugResultDFList) if noFugResultDFList else pd.DataFrame()
     statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
