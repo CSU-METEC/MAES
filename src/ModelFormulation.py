@@ -148,10 +148,29 @@ def instantiateElementFromIntake(simdm, modelFormulation, siteSheetRow, classMap
                 if isOptional == 'True':
                     pParam = None
                     usedSheetParms.add(singleParm['Model Parameter'])
+                elif pythonParm == 'instantiationVal':
+                    # 'instantiationVal' is a per-row selector column shared across several
+                    # candidate model formulations for the same physical slot (e.g. multiple
+                    # "SpecificLeaksProduction" variants on one MajorEquipment, each gated on
+                    # a different selector column/value). A row not intended to match THIS
+                    # candidate normally just leaves that candidate's own selector column
+                    # blank -- not a missing-data problem, a normal "this candidate doesn't
+                    # apply" signal already handled correctly below (blank/NaN is normalized
+                    # to '' and compared against valsForInstantiation; no match -> this
+                    # candidate is skipped, not instantiated). Not Optional in the schema (no
+                    # "Optional" key on this field at all), so it falls into this branch, but
+                    # treating it as fatal here would break that established pattern.
+                    pParam = None
                 else:
                     msg = f"Model Parameter {modelParm} not specified for {modelFormulation['Python Class']}"
                     logging.error(msg)
-                    me.UnknownElementError(msg)
+                    # Previously constructed but never raised -- a required (non-Optional)
+                    # parameter left blank silently fell through with pParam still None/NaN
+                    # from the failed sheet lookup above, instead of stopping here with a
+                    # clear, actionable error. That let missing required values propagate
+                    # into downstream arithmetic as a bare None several call-frames removed
+                    # from the real cause.
+                    raise me.UnknownElementError(msg)
             else:
                 usedSheetParms.add(singleParm['Model Parameter'])
         elif parmType == 'Profile':
