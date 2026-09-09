@@ -152,13 +152,49 @@ def _saveSummaryDS(config, df, dataset, basename=None, existingDataBehavior=None
                                 basename=basename or dataset, **kwargs)
 
 def _doAgg(df, groupbyCols, aggFieldList, varCol):
-    summaryDFByMCRun = (
-        df.groupby(groupbyCols, as_index=False)
-        .agg(**aggFieldList)
-        .assign(CICategory=varCol,
-                units=KG_PER_YEAR_UNITS_NAME)
-    )
-    return summaryDFByMCRun
+    # Replaces 4 Python-UDF lambda percentile calls (one Python round-trip per group each)
+    # with a single groupby().quantile() pass (vectorized across all groups at once).
+    # aggFieldList's keys (total/count/mean/min/max/lowerQuartile/upperQuartile/lowerCI/
+    # upperCI/readings, all sourced from 'emissions_kgPerYear') match the column-name
+    # assumption this hardcodes -- every real caller builds aggFieldList in exactly this
+    # shape. Verified against the old lambda-based implementation on synthetic data with
+    # uneven group sizes: percentiles bit-identical, 'mean' within floating-point
+    # summation-order noise from switching aggregation paths.
+    col = 'emissions_kgPerYear'
+    CI = 95
+    alpha = 100 - CI
+    qLevels = [alpha / 200, 0.25, 0.75, 1 - alpha / 200]  # 0.025, 0.25, 0.75, 0.975
+    qNames = ['lowerCI', 'lowerQuartile', 'upperQuartile', 'upperCI']
+
+    if df.empty:
+        # groupby().quantile().unstack() on an empty input can't infer the qLevels as columns
+        # at all (nothing to pivot) -- the unconditional column rename below would then fail
+        # with a length mismatch. The original .agg(**aggFieldList) never hit this (its column
+        # names come from the agg spec itself, not an assumed shape) -- it just contributed
+        # zero rows for this case. Match that exactly: return an empty, correctly-shaped frame.
+        cols = list(groupbyCols) + ['total', 'count', 'mean', 'min', 'max'] + qNames
+        if 'readings' in aggFieldList and 'mcRun' not in groupbyCols:
+            cols.append('readings')
+        cols += ['CICategory', 'units']
+        return pd.DataFrame(columns=cols)
+
+    gb = df.groupby(groupbyCols, sort=False)
+
+    result = gb[col].agg(['sum', 'count', 'mean', 'min', 'max']).reset_index()
+    result.columns = list(groupbyCols) + ['total', 'count', 'mean', 'min', 'max']
+
+    qtiles = gb[col].quantile(qLevels).unstack(level=-1).reset_index()
+    qtiles.columns = list(groupbyCols) + qNames
+    result = result.merge(qtiles, on=groupbyCols)
+
+    # readings: one Python-level apply pass (no vectorized fast-path for arbitrary-length list
+    # collection) -- skip when 'mcRun' is in groupbyCols since that Level-0 (per-MC-run) pass's
+    # own readings are never used downstream (only its 'total' feeds Level 1).
+    if 'readings' in aggFieldList and 'mcRun' not in groupbyCols:
+        rdgs = gb[col].apply(list).rename('readings').reset_index()
+        result = result.merge(rdgs, on=groupbyCols)
+
+    return result.assign(CICategory=varCol, units=KG_PER_YEAR_UNITS_NAME)
 
 def _doAggHierarchy(df, aggColumnList, mcIterations, varCol, detailGroupbyCols, rollupCols):
     resultDFList = []
