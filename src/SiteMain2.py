@@ -121,12 +121,19 @@ def createPDFCache(config, simdm):
         statsDF = sum.createPDFCache(config)
     return t0.deltat.total_seconds(), statsDF
 
+def createPDFCacheMCRun(config, simdm):
+    with Timer("Create PDF Cache Slice", loglevel=logging.DEBUG) as t0:
+        cacheDF, groupCount = sum._buildCacheSliceForMCRun(config, config['MCScenario'])
+    return t0.deltat.total_seconds(), cacheDF, groupCount
+
 def runWorkitem(workitem):
     with sdm.SimDataManager(workitem) as simdm:
         worktype = workitem['workType']
         logger.info(f"runWorkitem: {worktype}, file: {workitem['studyFilename']}, mcIter: {workitem['MCIteration']}, pid: {os.getpid()}")
         runtime = 0
         statsDF = pd.DataFrame()
+        cacheDF = pd.DataFrame()
+        groupCount = 0
         if worktype == 'initialization':
             runtime = initializeSim(workitem, simdm)
         elif worktype == 'simulation':
@@ -137,6 +144,8 @@ def runWorkitem(workitem):
             runtime = summarize(workitem, simdm)
         elif worktype == 'createPDFCache':
             runtime, statsDF = createPDFCache(workitem, simdm)
+        elif worktype == 'createPDFCacheMCRun':
+            runtime, cacheDF, groupCount = createPDFCacheMCRun(workitem, simdm)
         elif worktype == 'simSummary':
             runtime = summarizeSimulation(workitem, simdm)
         else:
@@ -149,7 +158,14 @@ def runWorkitem(workitem):
         'MCScenario': workitem['MCScenario'],
         'runtime': runtime,
         'statsDF': statsDF,
-        'pid': os.getpid()
+        'pid': os.getpid(),
+        # Only meaningfully populated for 'createPDFCacheMCRun' -- consumed by
+        # finalizeAllPDFCaches()/runCreatePDFCacheIncremental(), dropped before
+        # results_*.csv is written (see main()).
+        'siteName': workitem.get('siteName'),
+        'config': workitem,
+        'cacheDF': cacheDF,
+        'groupCount': groupCount,
     }
 
 def generateSingleWorkitem(cm, workType):
@@ -219,10 +235,14 @@ def generateWorkitems(cm, phasesToInclude=ALL_PHASES):
             cm.expandPhase("MCIteration", MCIteration=singleMCIter)
             simWorkitems.append(generateSingleWorkitem(cm, 'simulation'))
             parquetWorkitems.append(generateSingleWorkitem(cm, "parquet"))
+            # One createPDFCacheMCRun item per (site, mcRun) instead of one createPDFCache
+            # item per site -- lets the outer per-work-type dispatch parallelize the PDF
+            # cache build across real worker processes the same way simulation/parquet
+            # already are, instead of one process looping over every MC run sequentially.
+            createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCacheMCRun'))
         # summarization happens at the site level only
         summaryWI = generateSingleWorkitem(cm, 'summarize')
         summaryWorkitems.append(summaryWI)
-        createPDFCacheWorkitems.append(generateSingleWorkitem(cm, 'createPDFCache'))
         summaryDir = cm.getConfigVar('parquetNewSummary')
         if summaryDir not in allSiteSummaryDirs:
             allSiteSummaryDirs.append(summaryDir)
@@ -286,6 +306,76 @@ def runMultiprocessing(workQueue, workers):
         return res
     pass
 
+def _finalizePDFCacheForSite(siteName, config, sliceResults):
+    with Timer("Create PDF Cache") as t1:
+        statsDF = sum.finalizePDFCache(config, sliceResults)
+    return {
+        'worktype': 'createPDFCache',
+        'studyShortname': siteName,
+        'studyFilename': config.get('studyFilename'),
+        'MCScenario': -1,
+        'runtime': t1.deltat.total_seconds(),
+        'statsDF': statsDF,
+        'pid': os.getpid(),
+    }
+
+def finalizeAllPDFCaches(rawResults):
+    """Collect-everything-then-finalize-by-site variant of runCreatePDFCacheIncremental
+    below, used by the non-parallel (-w<=1) path. Groups every site's (cacheDF, groupCount)
+    slices together -- critical for -dr multi-site runs, where results from every site's MC
+    runs land in one combined list, and combining across sites would silently corrupt each
+    site's own PDF/PDFCache -- then finalizes one site at a time. Not memory-bounded the way
+    the incremental parallel path is; acceptable here since nothing at multi-hundred-site
+    scale runs without -w in the first place."""
+    resList = []
+    sliceResultsBySite = {}
+    configBySite = {}
+    for res in rawResults:
+        if res['worktype'] != 'createPDFCacheMCRun':
+            resList.append(res)
+            continue
+        # siteName, not studyShortname: studyShortname (workitem['studyName']) is the -sn
+        # value, which stays fixed at the placeholder study for the whole -dr scan and
+        # never varies per site -- siteName (workitem['siteName'], i.e. cm.getConfigVar
+        # ('site')) is what actually changes per site in the directory-scan loop.
+        siteName = res['siteName']
+        configBySite.setdefault(siteName, res['config'])
+        sliceResultsBySite.setdefault(siteName, []).append((res['cacheDF'], res['groupCount']))
+    for siteName, sliceResults in sliceResultsBySite.items():
+        resList.append(_finalizePDFCacheForSite(siteName, configBySite[siteName], sliceResults))
+    return resList
+
+def runCreatePDFCacheIncremental(workQueue, workers):
+    """createPDFCacheMCRun-specific dispatch: consumes the imap_unordered iterator directly
+    (no list(...) wrapper) and finalizes each site's PDFCache/PDF the moment its own MC set
+    completes, instead of collecting every site's results first. Bounds memory to roughly
+    pool-size-plus-a-few-sites'-in-flight rather than the full cross-site total -- a real
+    risk for a -dr batch spanning many sites, where every site's raw cache slices would
+    otherwise sit in memory simultaneously until the last site's last MC run finishes."""
+    import multiprocessing as mp
+    logger.info(f"multiprocessing w/ work type: createPDFCacheMCRun, workers: {workers}")
+    expectedCountBySite = {}
+    for item in workQueue:
+        expectedCountBySite[item['siteName']] = expectedCountBySite.get(item['siteName'], 0) + 1
+
+    sliceResultsBySite = {}
+    configBySite = {}
+    resList = []
+    with Timer("createPDFCacheMCRun") as t0:
+        with mp.Pool(workers, maxtasksperchild=1) as p:
+            for res in p.imap_unordered(runWorkitem, workQueue):
+                # siteName, not studyShortname -- see the comment in finalizeAllPDFCaches.
+                siteName = res['siteName']
+                configBySite.setdefault(siteName, res['config'])
+                sliceResultsBySite.setdefault(siteName, []).append((res['cacheDF'], res['groupCount']))
+                resList.append(res)
+                if len(sliceResultsBySite[siteName]) >= expectedCountBySite[siteName]:
+                    resList.append(_finalizePDFCacheForSite(siteName, configBySite[siteName], sliceResultsBySite[siteName]))
+                    del sliceResultsBySite[siteName]
+                    del configBySite[siteName]
+        t0.setCount(len(resList))
+    return resList
+
 def defineConvenienceConfigVars(cMgr):
     simDurationDays = cMgr.getConfigVar("simDurationDays")
     simDurationSeconds = u.daysToSecs(simDurationDays)
@@ -306,7 +396,13 @@ def main(cm, workitemQueues=None):
     #     db = initializeDask(cm)
     with Timer("Run simulations") as t0:
         for singleWorkitemQueue in listOfWorkitemQueues:
-            if parallel:
+            workType = singleWorkitemQueue[0]['workType'] if singleWorkitemQueue else None
+            if workType == 'createPDFCacheMCRun':
+                if parallel:
+                    queueResults = runCreatePDFCacheIncremental(singleWorkitemQueue, workers)
+                else:
+                    queueResults = finalizeAllPDFCaches(runLocal(singleWorkitemQueue))
+            elif parallel:
                 # queueResults = runDask(singleWorkitemQueue, db)
                 queueResults = runMultiprocessing(singleWorkitemQueue, workers)
             else:
@@ -324,7 +420,7 @@ def main(cm, workitemQueues=None):
             pd.concat(statsDFs, ignore_index=True).to_csv(statsFilename, index=False)
             logger.info(f"Wrote {statsFilename}")
 
-    resDF = pd.DataFrame(resList).drop(columns=['statsDF'])
+    resDF = pd.DataFrame(resList).drop(columns=['statsDF', 'siteName', 'config', 'cacheDF', 'groupCount'])
     resFileFormat = f"results_{cm.getConfigVar('scenarioTimestampFormat')}.csv"
     resFilename = dt.datetime.now().strftime(resFileFormat)
     resDF = resDF.assign(scenarioTimestamp=cm.getConfigVar('scenarioTimestamp'))

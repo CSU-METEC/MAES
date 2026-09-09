@@ -30,6 +30,22 @@ def _read_parquet_site(path, site_name):
     return table.to_pandas()
 
 
+def _read_parquet_site_mcrun(path, site_name, mcRun):
+    """Read one (site, mcRun)'s rows. InstEmissions is partitioned by site only, with
+    mcRun a native int64 data column, so this pushes both predicates into the read
+    itself instead of reading the whole site and filtering mcRun in pandas after --
+    each concurrent per-mcRun caller only ever materializes its own slice."""
+    if not os.path.exists(str(path)):
+        return pd.DataFrame()
+    partitioning = _ds.partitioning(
+        _pa.schema([('site', _pa.string())]),
+        flavor='hive',
+    )
+    dataset = _ds.dataset(str(path), format='parquet', partitioning=partitioning)
+    filt = (_ds.field('site') == str(site_name)) & (_ds.field('mcRun') == int(mcRun))
+    return dataset.to_table(filter=filt).to_pandas()
+
+
 US_TO_PER_METRIC_TON = 1.10231
 US_TO_PER_HOUR_TO_KG_PER_HOUR = 0.1035
 KG_PER_HOUR_TO_MT_PER_HOUR = .001
@@ -518,6 +534,100 @@ def createPDFCache(config):
     cacheDF = pd.concat(allLevelDFs, ignore_index=True)
     _saveSummaryDS(config, cacheDF, 'PDFCache')
     logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
+
+    totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
+    with Timer("Build PDFs") as tPDF:
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
+        fullPDFDF = fullPDFDF.assign(includeFugitive=True)
+        noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
+        pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
+        tPDF.setCount(len(pdfDF))
+    _saveSummaryDS(config, pdfDF, 'PDF')
+    logger.info(f"PDF: {len(pdfDF)} rows for site {config['siteName']}")
+
+    cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
+    pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
+    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True)
+
+
+def _buildCacheSliceForMCRun(config, mcRun):
+    """Build the fine + all coarse PDF cache levels for a single MC run, reading only that
+    run's own InstEmissions slice. Splitting the site-wide cache build (createPDFCache,
+    above) into one call per MC run lets the outer per-work-type dispatch parallelize this
+    across real worker processes instead of one process looping over every MC run
+    sequentially -- the dominant cost of a large run's PDF cache phase.
+
+    Returns (cacheDF, groupCount); an empty site/MC-run returns (empty DataFrame, 0).
+    """
+    instEmissionDF = _read_parquet_site_mcrun(config['parquetNewInstEmissions'], config['siteName'], mcRun)
+    if instEmissionDF.empty:
+        return pd.DataFrame(), 0
+    instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    if instEmissionDF.empty:
+        return pd.DataFrame(), 0
+
+    cacheRowsList = []
+    for groupKey, groupDF in instEmissionDF.groupby(CACHE_IDENTITY_COLS):
+        summedTS = _buildMCRunTimeseries(groupDF)
+        if summedTS.isempty():
+            continue
+        n = len(summedTS.df)
+        identityDict = dict(zip(CACHE_IDENTITY_COLS, groupKey))
+        cacheRowsList.append(pd.DataFrame({
+            **{col: [val] * n for col, val in identityDict.items()},
+            'mcRun': [mcRun] * n,
+            'startTime_s': summedTS.df[summedTS.startTimeColName].values,
+            'endTime_s': summedTS.df[summedTS.endTimeColName].values,
+            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
+        }))
+
+    if not cacheRowsList:
+        return pd.DataFrame(), 0
+
+    fineCacheDF = pd.concat(cacheRowsList, ignore_index=True)
+    fineCacheDF = fineCacheDF.assign(cacheLevel='modelReadableName')
+    allLevelDFs = [fineCacheDF]
+    groupCount = len(cacheRowsList)
+
+    for levelName, levelGroupCols in PDF_GROUPINGS[:-1]:
+        coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName)
+        if not coarseDF.empty:
+            for col in [*CACHE_IDENTITY_COLS, 'mcRun']:
+                if col not in coarseDF.columns:
+                    coarseDF = coarseDF.assign(**{col: ''})
+            allLevelDFs.append(coarseDF)
+            groupCount += coarseDF.groupby([*levelGroupCols, 'modelEmissionCategory', 'mcRun']).ngroups
+
+    return pd.concat(allLevelDFs, ignore_index=True), groupCount
+
+
+def finalizePDFCache(config, sliceResults):
+    """Concatenate every MC run's cache slice for one site (each built by
+    _buildCacheSliceForMCRun, above), write PDFCache, and build the site's PDF dataset --
+    the same two outputs createPDFCache produces, just fed by parallel per-MC-run compute
+    instead of one big serial groupby over the whole site's InstEmissions."""
+    cacheDFs = [cacheDF for cacheDF, _ in sliceResults if not cacheDF.empty]
+    if not cacheDFs:
+        logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
+        return pd.DataFrame()
+
+    cacheDF = pd.concat(cacheDFs, ignore_index=True)
+    _saveSummaryDS(config, cacheDF, 'PDFCache')
+    logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
+
+    # createPDFCache's own stats export breaks group counts down per cache level; that
+    # breakdown isn't reconstructable here since _buildCacheSliceForMCRun returns one
+    # combined count spanning every level for its own MC run (summing per-MC-run counts
+    # is exact for a combined total -- mcRun partitions groups into non-overlapping
+    # subsets -- but not separable back into per-level totals after the fact). Diagnostic
+    # export only (not science/data output): one summary row (fine-level interval count,
+    # combined group count) instead of one row per level.
+    fineCacheDF = cacheDF[cacheDF['cacheLevel'] == 'modelReadableName']
+    statsRows = [{
+        'cacheLevel': 'modelReadableName',
+        'groupCount': sum(groupCount for _, groupCount in sliceResults),
+        'intervalRows': len(fineCacheDF),
+    }]
 
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:
