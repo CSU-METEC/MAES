@@ -355,7 +355,13 @@ def readParquetSummary(config, site=None, mcRun=None):
 
 def readParquetEvents(config, site=None, mcRun=None, mergeGC=False, species=None, additionalEventFilters=[('command', '=', 'EMISSION')]):
     eventDF = readParquetRawEvents(config, site=site, mcRun=mcRun, additionalFilters=additionalEventFilters)
-    if eventDF.empty:
+    # baseReadParquetFullConfig returns the caught FileNotFoundError itself (not raised, not
+    # an empty DataFrame) when the requested site/mcRun partition doesn't exist on disk --
+    # calling .empty on that would crash with AttributeError instead of the graceful "no
+    # events" path below. Only reachable when a specific mcRun is requested and that run
+    # genuinely recorded zero raw events (no partition ever written for it) -- a site-level
+    # (mcRun=None) caller reads a whole directory and never hits this.
+    if isinstance(eventDF, Exception) or eventDF.empty:
         logging.warning(f"No emissions recorded for site {site} at MC run {mcRun}")
         return None
     tsDF = readParquetTimeseries(config, site=site, mcRun=mcRun)

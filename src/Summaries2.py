@@ -21,6 +21,14 @@ logger = logging.getLogger(__name__)
 
 
 def _read_parquet_site(path, site_name):
+    """Read all rows for a given site from a hive-partitioned parquet dataset.
+
+    A site with zero rows for this dataset (e.g. a zero-emission site's PDFCache/
+    InstEmissions) never gets its dataset directory written at all -- without this guard,
+    callers that expect an empty-but-valid DataFrame back (e.g. finalizePDFCacheFromDisk's
+    own "no cache rows, skip" branch) crash instead of reaching it."""
+    if not os.path.exists(str(path)):
+        return pd.DataFrame()
     partitioning = _ds.partitioning(
         _pa.schema([('site', _pa.string())]),
         flavor='hive',
