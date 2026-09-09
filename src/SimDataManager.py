@@ -55,7 +55,12 @@ class SimDataManager():
         self.gasCompositionsByName = {}
         self.stateDataframe = {}
 
-        self.timeseriesTable = ts.TSTable()
+        # config['MCScenario'] is set for every workitem type (generateSingleWorkitem in
+        # SiteMain2.py), including ones that never call intern() at all (parquet/summarize
+        # workitems construct a TSTable but only ever populate rawTimeseriesTable via
+        # restoreTimeseries's own pd.read_csv, never touching this live table) -- safe to
+        # pass through unconditionally.
+        self.timeseriesTable = ts.TSTable(mcRunNum=config.get('MCScenario'))
         self.gasCompositionTable = gc.GCTable(self)
         self.ffTable = ff.FFTable()
 
