@@ -3518,7 +3518,12 @@ class EmpiricalFlowFromMajorEquipment(EmpiricalFluidFlow):
         super().__init__(**kwargs)
         simdm = sdm.SimDataManager.getSimDataManager()
         self.crankcaseDistrib = crankcaseDistrib
-        self.cceeFlag = strToBool(cceeFlag)
+        # cceeFlag is "Optional":"True" in Compressor.json (Crankcase Emissions Flag) -- a
+        # blank sheet cell reaches here as a bare None (see ModelFormulation.py's
+        # instantiateElementFromIntake), which strToBool never accepted, crashing every
+        # study that leaves this cell blank for a crankcase-emitting equipment row. Absence
+        # of the flag defaults to "not exempt" (False), the conservative/base-case reading.
+        self.cceeFlag = strToBool(cceeFlag) if cceeFlag is not None else False
         self.crankcaseDist = getCrankcaseDist(crankcaseDistrib, simdm)
         i = 10
     
