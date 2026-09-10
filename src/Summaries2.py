@@ -865,7 +865,20 @@ def finalizePDFCacheFromDisk(config, groupCount):
     """Finalize a site's PDF cache after all its per-MC-run slices have already been streamed
     to disk via _writeCacheSlice. Re-reads the full combined cache once via a single efficient
     pyarrow multi-file dataset scan instead of pandas-concatenating already-materialized
-    per-MC-run DataFrames. Otherwise identical to finalizePDFCache's own Build-PDFs tail."""
+    per-MC-run DataFrames. Otherwise identical to finalizePDFCache's own Build-PDFs tail.
+
+    This function runs from inside runCreatePDFCacheIncremental's still-open outer Pool (its
+    other workers are still processing other sites' work items when this fires), so its own
+    Pool here (via calculatePDFSummaryFromCache) must never let a worker exception escape
+    uncaught -- an exception propagating through imap_unordered unwinds the caller's `with
+    mp.Pool(...)` while other workers are genuinely still mid-task, and terminate()'s SIGTERM
+    can catch one of them mid-write, hanging the result-handler thread forever (confirmed
+    live: a real MalformedTimeseriesError from one mcRun's legitimate multi-species data hung
+    an otherwise-healthy 20-worker pool permanently, under two different Pool topologies --
+    the topology was never the actual problem). Both _buildPDFGroupTask (this function's own
+    inner Pool tasks) and runWorkitem (the outer Pool's tasks, in SiteMain2.py) now catch
+    their own exceptions instead, so this call site is safe to run with full parallelism
+    again."""
     cacheDF = _read_parquet_site(config['parquetNewPDFCache'], config['siteName'])
     if cacheDF.empty:
         logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
@@ -1011,9 +1024,25 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
 
 def _buildPDFGroupTask(args):
     """Picklable task wrapper for calculatePDFSummaryFromCache's Pool (top-level, not a
-    closure, so multiprocessing.Pool can pickle it)."""
+    closure, so multiprocessing.Pool can pickle it).
+
+    Catches its own exceptions rather than letting them propagate raw through the Pool --
+    same reasoning as runWorkitem's own try/except in SiteMain2.py: an exception here would
+    otherwise unwind calculatePDFSummaryFromCache's `with mp.Pool(...)` while other groups'
+    tasks are still genuinely in flight, and terminate()'s SIGTERM can catch one of them
+    mid-write, hanging the result-handler thread forever. _cacheGroupToTimeseriesRLE builds
+    a TimeseriesRLE per modelEmissionCategory without splitting by species first, so two
+    legitimate same-timing rows for different species (a normal, expected InstEmissions
+    shape) can trip TimeseriesRLE's overlap check and raise -- confirmed live on real data,
+    not a hypothetical."""
     groupDF, identityCols, CICategory, totalSimSecs = args
-    return _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
+    try:
+        return _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
+    except Exception:
+        logger.error(f"_buildPDFGroupTask: failed for CICategory {CICategory}, "
+                     f"identityCols {identityCols}", exc_info=True)
+        stats = {'CICategory': CICategory, **identityCols, 'mcRunCount': 0, 'buildSeconds': 0.0}
+        return None, None, stats
 
 # Cache levels whose per-outer-group DataFrames are too large to send through multiprocessing
 # IPC efficiently -- these are the coarse aggregate levels where all emitters of a type or the
@@ -1024,13 +1053,13 @@ def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, groupings=None, workers=
     """Parallelizes the finer-grained PDF_GROUPINGS levels (unitID, modelReadableName --
     many small groups) via a Pool spawned here; the coarse levels (_SEQUENTIAL_PDF_LEVELS)
     stay sequential since each holds a large slice of the cache, too expensive to pickle
-    through multiprocessing IPC. Safe to spawn a Pool here because this function is only
-    ever called from finalizePDFCache/finalizePDFCacheFromDisk, which by construction always
-    run in the main coordinating process (the loop consuming runCreatePDFCacheIncremental's
-    imap_unordered results, or finalizeAllPDFCaches called after runLocal) -- never inside a
-    worker. The in_daemon guard is kept anyway as cheap defensive parity for any future
-    caller that might run inside one.
-    """
+    through multiprocessing IPC. Safe to spawn this Pool even when finalizePDFCacheFromDisk
+    calls it from inside runCreatePDFCacheIncremental's own still-open outer Pool: the risk
+    there was never nesting itself, it was an uncaught worker exception forcing an unsafe
+    mid-flight terminate() on the OUTER pool while its other workers were still genuinely
+    busy -- both this Pool's own tasks (_buildPDFGroupTask) and the outer pool's tasks
+    (runWorkitem, in SiteMain2.py) now catch their own exceptions, so neither pool can be
+    torn down mid-flight anymore."""
     if groupings is None:
         groupings = PDF_GROUPINGS
     fullResultDFList = []

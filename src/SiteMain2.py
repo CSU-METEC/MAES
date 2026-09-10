@@ -142,24 +142,43 @@ def runWorkitem(workitem):
         cacheDF = pd.DataFrame()
         groupCount = 0
         summaryPieces = None
-        if worktype == 'initialization':
-            runtime = initializeSim(workitem, simdm)
-        elif worktype == 'simulation':
-            runtime = runSim(workitem, simdm)
-        elif worktype == 'parquet':
-            runtime = toParquet(workitem, simdm)
-        elif worktype == 'summarize':
-            runtime = summarize(workitem, simdm)
-        elif worktype == 'summarizeMCRun':
-            runtime, summaryPieces = summarizeMCRun(workitem, simdm)
-        elif worktype == 'createPDFCache':
-            runtime, statsDF = createPDFCache(workitem, simdm)
-        elif worktype == 'createPDFCacheMCRun':
-            runtime, cacheDF, groupCount = createPDFCacheMCRun(workitem, simdm)
-        elif worktype == 'simSummary':
-            runtime = summarizeSimulation(workitem, simdm)
-        else:
-            logger.error(f"Unknown worktype: {worktype}")
+        failed = False
+        try:
+            if worktype == 'initialization':
+                runtime = initializeSim(workitem, simdm)
+            elif worktype == 'simulation':
+                runtime = runSim(workitem, simdm)
+            elif worktype == 'parquet':
+                runtime = toParquet(workitem, simdm)
+            elif worktype == 'summarize':
+                runtime = summarize(workitem, simdm)
+            elif worktype == 'summarizeMCRun':
+                runtime, summaryPieces = summarizeMCRun(workitem, simdm)
+            elif worktype == 'createPDFCache':
+                runtime, statsDF = createPDFCache(workitem, simdm)
+            elif worktype == 'createPDFCacheMCRun':
+                runtime, cacheDF, groupCount = createPDFCacheMCRun(workitem, simdm)
+            elif worktype == 'simSummary':
+                runtime = summarizeSimulation(workitem, simdm)
+            else:
+                logger.error(f"Unknown worktype: {worktype}")
+        except Exception:
+            # A worker-task exception escaping this function propagates raw through the
+            # Pool's imap_unordered and unwinds the caller's `with mp.Pool(...)` block via
+            # __exit__ -> terminate() -- but other workers can still genuinely be mid-task
+            # at that moment (this is one item among many dispatched to the same pool), and
+            # terminate()'s SIGTERM can catch one of them mid-write of its own unrelated
+            # result, leaving the result-handler thread blocked forever waiting for bytes
+            # that will never arrive (confirmed live: a real MalformedTimeseriesError from
+            # one mcRun's data hung an otherwise-healthy 20-worker pool permanently, twice,
+            # under two different Pool topologies -- the topology was never the problem).
+            # Catching here instead means the pool always tears down only after every task
+            # has genuinely returned, never mid-flight. runtime/statsDF/cacheDF/groupCount/
+            # summaryPieces keep their sane empty defaults above; siteName/config below still
+            # come from workitem itself, so callers that key off them are unaffected.
+            logger.error(f"runWorkitem: {worktype} failed for file {workitem['studyFilename']}, "
+                         f"mcIter {workitem['MCIteration']}, pid {os.getpid()}", exc_info=True)
+            failed = True
 
     return {
         'worktype': worktype,
@@ -178,6 +197,7 @@ def runWorkitem(workitem):
         'cacheDF': cacheDF,
         'groupCount': groupCount,
         'summaryPieces': summaryPieces,
+        'failed': failed,
     }
 
 def generateSingleWorkitem(cm, workType):
