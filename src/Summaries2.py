@@ -854,11 +854,14 @@ def finalizePDFCache(config, sliceResults):
     pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
     return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True)
 
-def _writeCacheSlice(config, cacheDF, sliceIndex):
+def _writeCacheSlice(config, cacheDF, mcRun):
     """Write one MC run's PDF cache slice directly to its own small parquet file instead of
     holding it in memory for a later combined write (finalizePDFCache, above) -- frees each
-    slice as soon as it's on disk, so a site's full MC set is never held in memory at once."""
-    _saveSummaryDS(config, cacheDF, 'PDFCache', basename=f"PDFCache-{sliceIndex}",
+    slice as soon as it's on disk, so a site's full MC set is never held in memory at once.
+    Called from inside the worker itself (SiteMain2.createPDFCacheMCRun), keyed by mcRun --
+    already unique per work item, so cacheDF never has to travel back through the Pool's IPC
+    pipe just to be written by the main process under a separately-tracked counter."""
+    _saveSummaryDS(config, cacheDF, 'PDFCache', basename=f"PDFCache-{mcRun}",
                    existingDataBehavior='overwrite_or_ignore')
 
 def finalizePDFCacheFromDisk(config, groupCount):

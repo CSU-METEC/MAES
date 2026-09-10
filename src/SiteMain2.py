@@ -124,9 +124,16 @@ def createPDFCache(config, simdm):
     return t0.deltat.total_seconds(), statsDF
 
 def createPDFCacheMCRun(config, simdm):
+    # Writes its own slice straight to disk from inside the worker, keyed by mcRun (already
+    # unique per work item, no need for a main-process-side counter), instead of returning
+    # cacheDF through the Pool's IPC pipe -- a single mcRun's cache slice for a dense fixture
+    # can run into the GB range, and with -w N workers that many can be in flight through IPC
+    # simultaneously even though none of it was ever retained long-term on the receiving end.
     with Timer("Create PDF Cache Slice", loglevel=logging.DEBUG) as t0:
         cacheDF, groupCount = sum._buildCacheSliceForMCRun(config, config['MCScenario'])
-    return t0.deltat.total_seconds(), cacheDF, groupCount
+        if cacheDF is not None and not cacheDF.empty:
+            sum._writeCacheSlice(config, cacheDF, config['MCScenario'])
+    return t0.deltat.total_seconds(), groupCount
 
 def summarizeMCRun(config, simdm):
     with Timer("Summarize MC run", loglevel=logging.DEBUG) as t0:
@@ -157,7 +164,7 @@ def runWorkitem(workitem):
             elif worktype == 'createPDFCache':
                 runtime, statsDF = createPDFCache(workitem, simdm)
             elif worktype == 'createPDFCacheMCRun':
-                runtime, cacheDF, groupCount = createPDFCacheMCRun(workitem, simdm)
+                runtime, groupCount = createPDFCacheMCRun(workitem, simdm)
             elif worktype == 'simSummary':
                 runtime = summarizeSimulation(workitem, simdm)
             else:
@@ -395,20 +402,19 @@ def runCreatePDFCacheIncremental(workQueue, workers):
     risk for a -dr batch spanning many sites, where every site's raw cache slices would
     otherwise sit in memory simultaneously until the last site's last MC run finishes.
 
-    Each MC run's cache slice is now written straight to its own small parquet file as soon
-    as it arrives (sum._writeCacheSlice) instead of being held in a per-site list for a later
-    pd.concat -- only a per-site slice counter and running groupCount are kept in memory, not
-    the DataFrames themselves. Returns (lightResults, finalizeResults): lightResults drops
-    each raw result's cacheDF (already on disk, no longer needed) so the long-lived result
-    list doesn't hold every slice's data for the rest of the run; finalizeResults is the
-    small number of per-site finalize summaries. Caller extends its own list with both."""
+    Each MC run's cache slice is written straight to its own small parquet file by the worker
+    itself (createPDFCacheMCRun, keyed by mcRun) before this function ever sees a result --
+    cacheDF never travels back through the Pool's IPC pipe at all, only the small groupCount
+    does, since a single dense fixture's slice can run into the GB range and -w workers'
+    worth of those in flight at once added up to real memory pressure even though none of it
+    was ever retained here. Returns (lightResults, finalizeResults): finalizeResults is the
+    small number of per-site finalize summaries; caller extends its own list with both."""
     import multiprocessing as mp
     logger.info(f"multiprocessing w/ work type: createPDFCacheMCRun, workers: {workers}")
     expectedCountBySite = {}
     for item in workQueue:
         expectedCountBySite[item['siteName']] = expectedCountBySite.get(item['siteName'], 0) + 1
 
-    sliceCountBySite = {}
     groupCountBySite = {}
     configBySite = {}
     lightResults = []
@@ -420,12 +426,7 @@ def runCreatePDFCacheIncremental(workQueue, workers):
                 siteName = res['siteName']
                 configBySite.setdefault(siteName, res['config'])
                 lightResults.append({k: v for k, v in res.items() if k != 'cacheDF'})
-                cacheDF = res['cacheDF']
-                if cacheDF is not None and not cacheDF.empty:
-                    sliceIndex = sliceCountBySite.get(siteName, 0)
-                    sum._writeCacheSlice(configBySite[siteName], cacheDF, sliceIndex)
-                    sliceCountBySite[siteName] = sliceIndex + 1
-                    groupCountBySite[siteName] = groupCountBySite.get(siteName, 0) + res['groupCount']
+                groupCountBySite[siteName] = groupCountBySite.get(siteName, 0) + res['groupCount']
                 expectedCountBySite[siteName] -= 1
                 if expectedCountBySite[siteName] <= 0:
                     with Timer("Create PDF Cache") as t1:
@@ -441,7 +442,6 @@ def runCreatePDFCacheIncremental(workQueue, workers):
                         'pid': os.getpid(),
                     })
                     del configBySite[siteName]
-                    del sliceCountBySite[siteName]
                     del groupCountBySite[siteName]
         t0.setCount(len(lightResults))
     return lightResults, finalizeResults
