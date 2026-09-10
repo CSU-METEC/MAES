@@ -6,6 +6,7 @@ import glob
 import json
 import logging
 import shutil
+import urllib.parse
 import numpy as np
 import Timeseries as ts
 import ParquetLib as pl
@@ -1360,7 +1361,17 @@ def finalizeSummariesForSite(config, piecesList, confidenceLevel=95):
     combinedInstEmissionDF = _read_parquet_site(config['parquetInstEmissionsScratch'], config['siteName'])
     _saveSummaryDS(config, combinedInstEmissionDF, 'InstEmissions')
     del combinedInstEmissionDF
-    scratchSitePath = Path(config['parquetInstEmissionsScratch']) / f"site={config['siteName']}"
+    # pyarrow's hive-partition writer percent-encodes the partition value when it
+    # contains characters outside its safe set (confirmed live: a real site name with
+    # a space wrote to "site=Foo%20Bar" on disk, not "site=Foo Bar") -- constructing
+    # this path from the raw site name silently missed every such directory, with
+    # shutil.rmtree's ignore_errors=True masking the failure completely. Real-world
+    # site names with spaces/punctuation are the norm, not the exception, so this
+    # left scratch data behind on nearly every real multi-site run (confirmed: 86 of
+    # 89 sites on one real job). Matches pyarrow's own encoding (quote with an empty
+    # safe set) rather than guessing at which characters need escaping.
+    encodedSiteName = urllib.parse.quote(str(config['siteName']), safe='')
+    scratchSitePath = Path(config['parquetInstEmissionsScratch']) / f"site={encodedSiteName}"
     shutil.rmtree(scratchSitePath, ignore_errors=True)
 
     additionalConversions = [
