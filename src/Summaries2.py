@@ -5,6 +5,7 @@ import os
 import glob
 import json
 import logging
+import shutil
 import numpy as np
 import Timeseries as ts
 import ParquetLib as pl
@@ -135,6 +136,7 @@ def _createEmissionDF(inDF, simDurationSecs):
 
 DATASET_PARAMS = {
     'InstEmissions': {'configKey': 'parquetNewInstEmissions', 'partition_cols': ['site']},
+    'InstEmissionsScratch': {'configKey': 'parquetInstEmissionsScratch', 'partition_cols': ['site']},
     'SiteSummary':   {'configKey': 'parquetNewSummary',       'partition_cols': ['site']},
     'EventSummary':  {'configKey': 'parquetNewEventSummary',  'partition_cols': ['site']},
     'SimSummary':    {'configKey': 'parquetNewSimSummary',    'partition_cols': []},
@@ -1282,6 +1284,17 @@ def summarize(config):
     with Timer("Process events") as t2:
         summarizeSingleSite(config, eventDF)
 
+def _writeInstEmissionsScratch(config, instEmissionDF, mcRun):
+    """Write one mcRun's raw InstEmissions slice to its own small scratch parquet file
+    instead of returning it through summarizeMCRunPieces for the caller to hold onto --
+    measured at ~540MB for a single mcRun on a dense fixture (~88% of that mcRun's entire
+    accumulator footprint), and piecesBySite (runSummarizeIncremental) holds one of these
+    per mcRun simultaneously for a single-site run until every mcRun finishes. A separate
+    scratch dataset, not the real InstEmissions one (which finalizeSummariesForSite writes
+    once, combined, matching every other engine's single-file-per-site output)."""
+    _saveSummaryDS(config, instEmissionDF, 'InstEmissionsScratch', basename=f"InstEmissions-{mcRun}",
+                   existingDataBehavior='overwrite_or_ignore')
+
 def summarizeMCRunPieces(config, mcRun):
     """Per-mcRun 'Option A' accumulator step. Reads exactly this mcRun's raw events (mcRun
     filter pushed into the pyarrow read, same technique as _buildCacheSliceForMCRun) and
@@ -1289,7 +1302,13 @@ def summarizeMCRunPieces(config, mcRun):
     finalizeSummariesForSite needs to reconstruct the exact SiteSummary/EventSummary/
     InstEmissions output summarizeSingleSite produces monolithically -- or None if this mcRun
     has no qualifying events at all (mirrors summarize()'s own "eventDF is None: return"
-    early-out)."""
+    early-out).
+
+    instEmissionDF itself is written straight to its own scratch file (_writeInstEmissionsScratch)
+    rather than included in the returned dict -- by far the largest of these pieces, and the
+    caller (runSummarizeIncremental) would otherwise hold one per mcRun in memory simultaneously
+    for the whole phase. finalizeSummariesForSite reads the scratch slices back as a combined
+    dataset instead of concatenating them from the in-memory pieces list."""
     eventDF = pl.readParquetEvents(config, site=config['siteName'], mcRun=mcRun, mergeGC=True,
                                     species=SPECIES, additionalEventFilters=[('command', '=', 'EMISSION')])
     if eventDF is None or eventDF.empty:
@@ -1299,8 +1318,7 @@ def summarizeMCRunPieces(config, mcRun):
     instEmissionDF = _createEmissionDF(eventDF, simDurationDays * u.SECONDS_PER_DAY)
     instEmissionNoFugitiveDF = instEmissionDF[instEmissionDF['modelEmissionCategory'] != 'FUGITIVE']
 
-    return {
-        'instEmissionDF': instEmissionDF,
+    pieces = {
         'annualFugitive': aggregateEmittersByRun(instEmissionDF, simDurationDays),
         'annualNoFugitive': aggregateEmittersByRun(instEmissionNoFugitiveDF, simDurationDays),
         'emissionFugitive': aggregateEmissionSummaryByRun(instEmissionDF),
@@ -1308,6 +1326,8 @@ def summarizeMCRunPieces(config, mcRun):
         'eventFugitive': aggregateEventSummaryByRun(instEmissionDF),
         'eventNoFugitive': aggregateEventSummaryByRun(instEmissionNoFugitiveDF),
     }
+    _writeInstEmissionsScratch(config, instEmissionDF, mcRun)
+    return pieces
 
 def finalizeSummariesForSite(config, piecesList, confidenceLevel=95):
     """Combine summarizeMCRunPieces' per-mcRun accumulator pieces (collected across every
@@ -1320,7 +1340,12 @@ def finalizeSummariesForSite(config, piecesList, confidenceLevel=95):
 
     InstEmissions is written here once per site, combining every mcRun's piece into a single
     dataset (matching summarizeSingleSite's own single write and the shared single-file-per-
-    site output convention), rather than as a separate file per mcRun."""
+    site output convention), rather than as a separate file per mcRun. The per-mcRun slices
+    themselves come from disk (_writeInstEmissionsScratch's scratch files), not from
+    piecesList -- summarizeMCRunPieces never puts instEmissionDF in the returned pieces dict
+    at all, since it's by far the largest of them and piecesList already has to hold one
+    entry per mcRun in memory for the whole phase; reading a combined dataset off disk here
+    is a brief, one-time cost instead of a sustained one."""
     validPieces = [p for p in piecesList if p is not None]
     if not validPieces:
         # Matches summarize()'s own "eventDF is None: return" -- a site with zero
@@ -1332,9 +1357,11 @@ def finalizeSummariesForSite(config, piecesList, confidenceLevel=95):
     alpha = 100 - float(confidenceLevel)
     AGG_FIELDS = _annualSummaryAggFields(alpha)
 
-    combinedInstEmissionDF = pd.concat([p['instEmissionDF'] for p in validPieces], ignore_index=True)
+    combinedInstEmissionDF = _read_parquet_site(config['parquetInstEmissionsScratch'], config['siteName'])
     _saveSummaryDS(config, combinedInstEmissionDF, 'InstEmissions')
     del combinedInstEmissionDF
+    scratchSitePath = Path(config['parquetInstEmissionsScratch']) / f"site={config['siteName']}"
+    shutil.rmtree(scratchSitePath, ignore_errors=True)
 
     additionalConversions = [
         {'colName': 'emissions_kgPerYear', 'units': US_TONS_PER_YEAR_UNITS_NAME,     'conversion': _convertKGPerYear2USTonsPerYear},

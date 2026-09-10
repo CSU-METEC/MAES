@@ -75,6 +75,7 @@
       "parquetEventListDS":      "{parquetDir}/eventList",
       "parquetNewSummary":       "{parquetDir}/Summary/SiteSummary",
       "parquetNewInstEmissions": "{parquetDir}/Summary/InstEmissions",
+      "parquetInstEmissionsScratch": "{parquetDir}/Summary/InstEmissionsScratch",
       "parquetNewSimSummary":    "{simulationParquetDir}/Summary/SimSummary",
       "parquetNewEventSummary":  "{parquetDir}/Summary/EventSummary",
       "parquetNewPDF":      "{parquetDir}/Summary/PDF",
