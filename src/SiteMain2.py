@@ -1,6 +1,8 @@
 import os
+import sys
 import time
 import json
+import traceback
 for _envVar in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
                 "BLIS_NUM_THREADS", "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
     os.environ.setdefault(_envVar, "1")
@@ -150,6 +152,7 @@ def runWorkitem(workitem):
         groupCount = 0
         summaryPieces = None
         failed = False
+        failureReason = None
         try:
             if worktype == 'initialization':
                 runtime = initializeSim(workitem, simdm)
@@ -169,7 +172,7 @@ def runWorkitem(workitem):
                 runtime = summarizeSimulation(workitem, simdm)
             else:
                 logger.error(f"Unknown worktype: {worktype}")
-        except Exception:
+        except Exception as e:
             # A worker-task exception escaping this function propagates raw through the
             # Pool's imap_unordered and unwinds the caller's `with mp.Pool(...)` block via
             # __exit__ -> terminate() -- but other workers can still genuinely be mid-task
@@ -183,6 +186,17 @@ def runWorkitem(workitem):
             # has genuinely returned, never mid-flight. runtime/statsDF/cacheDF/groupCount/
             # summaryPieces keep their sane empty defaults above; siteName/config below still
             # come from workitem itself, so callers that key off them are unaffected.
+            #
+            # This must never be mistaken for "the error doesn't matter" -- catching it here
+            # only prevents the *pool* from deadlocking; it does not mean the run actually
+            # succeeded. main()'s own final check inspects every result's 'failed' flag and
+            # exits non-zero (job status FAILED, not DONE) if any task failed, with this
+            # exact failureReason surfaced in the summary -- a real FileNotFoundError for a
+            # required curated-data file once completed a whole -dr batch as "done" with over
+            # half its sites silently producing zero data, which is far worse than a loud
+            # crash would have been.
+            failureType = type(e).__name__
+            failureReason = f"{failureType}: {e}"
             logger.error(f"runWorkitem: {worktype} failed for file {workitem['studyFilename']}, "
                          f"mcIter {workitem['MCIteration']}, pid {os.getpid()}", exc_info=True)
             failed = True
@@ -195,6 +209,13 @@ def runWorkitem(workitem):
         'runtime': runtime,
         'statsDF': statsDF,
         'pid': os.getpid(),
+        'failureReason': failureReason,
+        # Exception class alone (no message) -- used to GROUP the job-level failure
+        # summary. failureReason's full message differs per site/mcIter even for the
+        # exact same underlying cause (e.g. every 'parquet' cascade failure names a
+        # different site's own metadata.csv path), so grouping on the full string
+        # never collapses those into one line; grouping on the type does.
+        'failureType': failureType if failed else None,
         # Only meaningfully populated for 'createPDFCacheMCRun'/'summarizeMCRun' -- consumed
         # by finalizeAllPDFCaches()/runCreatePDFCacheIncremental() and
         # finalizeAllSummaries()/runSummarizeIncremental(), dropped before results_*.csv is
@@ -628,6 +649,57 @@ def main(cm, workitemQueues=None):
     resDF = resDF.assign(scenarioTimestamp=cm.getConfigVar('scenarioTimestamp'))
     resDF.to_csv(resFilename, index=False)
     logger.info(f"Wrote {resFilename}")
+
+    # runWorkitem's own try/except (see its docstring) exists only to stop one task's
+    # exception from deadlocking the Pool it shares with other still-running tasks -- it
+    # was never meant to make a real failure look like success. A missing required
+    # curated-data file once let a whole -dr batch finish as "done" with over half its
+    # sites silently producing zero data; nothing about that run's own status or log
+    # tail said so unless someone happened to grep for it. Check every result here,
+    # after every output file above has already been written (so a failed run still
+    # leaves runDurations.json/results_*.csv behind for whoever investigates), and exit
+    # non-zero if anything failed -- MaesQueueWorker.py maps a non-zero returncode
+    # straight to job status FAILED, so this is what actually makes the queue/web UI
+    # show the run as failed instead of done.
+    failedItems = [r for r in resList if r.get('failed')]
+    if failedItems:
+        logger.error(f"{len(failedItems)} of {len(resList)} work items failed -- this run's "
+                     f"output is incomplete and must not be treated as a successful result.")
+        logger.error("Per-item detail:")
+        for r in failedItems:
+            logger.error(f"  {r['worktype']} failed for {r['studyFilename']} "
+                         f"(mcIter {r['MCScenario']}): {r.get('failureReason')}")
+        # A single root cause (e.g. one missing curated-data file) commonly fails many
+        # work items identically, plus a second wave of *different* cascade failures
+        # once dependent worktypes (e.g. 'parquet') can't find output that an earlier
+        # failed worktype (e.g. 'simulation') never wrote -- confirmed live: a missing
+        # HeaterOperating.csv produced both a direct FileNotFoundError from 'simulation'
+        # AND a distinct downstream FileNotFoundError from 'parquet' for the same sites.
+        # Grouping by (worktype, reason) surfaces every distinct underlying cause with
+        # its count. Printed LAST, after the per-item dump above, not before it -- with
+        # hundreds of items the per-item list can run to hundreds of lines, and anyone
+        # checking a failed run's log first looks at its tail (confirmed: that's exactly
+        # how 'main's own crash traceback reads, since it dies right after printing its
+        # one real exception). Putting this summary first meant that same tail-check
+        # landed on an arbitrary per-item cascade line instead of the actual root cause.
+        # Grouped by (worktype, exception TYPE) -- not the full message -- specifically
+        # because the full message never collapses: a real live run had 224 'parquet'
+        # cascade failures, each naming a different site's own metadata.csv path, so
+        # grouping on the full string still printed 224 near-identical lines and buried
+        # the 2 lines that actually mattered (222x/2x HeaterOperating.csv/HeaterMalfunction.csv
+        # from 'simulation', the real root cause). Grouping on type alone collapses all
+        # 224 into one line; one representative example (the first one seen) is kept
+        # per group so the specific file/path is still visible without re-reading the
+        # per-item dump above.
+        groups: dict[tuple[str, str | None], dict] = {}
+        for r in failedItems:
+            key = (r['worktype'], r.get('failureType'))
+            group = groups.setdefault(key, {'count': 0, 'example': r.get('failureReason')})
+            group['count'] += 1
+        logger.error("Distinct failure reasons (see this section first):")
+        for (worktype, failureType), group in sorted(groups.items(), key=lambda kv: -kv[1]['count']):
+            logger.error(f"  {worktype}: {group['count']}x {failureType} (e.g. {group['example']})")
+        sys.exit(1)
 
 # set this up as preMain so config does not get instantiated as a global variable
 
