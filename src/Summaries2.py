@@ -742,6 +742,13 @@ def createPDFCache(config):
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:
         fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
+        # Raised (not just logged) because this function runs from inside runWorkitem's own
+        # try/except (SiteMain2.py) -- the one place a raise is exactly the right way to mark
+        # this workitem failed, same as any other phase's failure. Raise before writing the
+        # (now known incomplete) PDF dataset below, rather than after.
+        anyFailed, failureReason = _anyPDFGroupFailed(pdfStatsDF)
+        if anyFailed:
+            raise RuntimeError(f"PDF summary build failed for site {config['siteName']}: {failureReason}")
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -819,11 +826,16 @@ def finalizePDFCache(config, sliceResults):
     """Concatenate every MC run's cache slice for one site (each built by
     _buildCacheSliceForMCRun, above), write PDFCache, and build the site's PDF dataset --
     the same two outputs createPDFCache produces, just fed by parallel per-MC-run compute
-    instead of one big serial groupby over the whole site's InstEmissions."""
+    instead of one big serial groupby over the whole site's InstEmissions.
+
+    Returns (statsDF, failed, failureReason) -- see finalizePDFCacheFromDisk's matching
+    docstring for why a failed PDF group must be surfaced here rather than just logged;
+    the caller is responsible for putting 'failed'/'failureReason' on whatever result dict
+    it hands back up to main()'s own failure scan."""
     cacheDFs = [cacheDF for cacheDF, _ in sliceResults if not cacheDF.empty]
     if not cacheDFs:
         logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
-        return pd.DataFrame()
+        return pd.DataFrame(), False, None
 
     cacheDF = pd.concat(cacheDFs, ignore_index=True)
     _saveSummaryDS(config, cacheDF, 'PDFCache')
@@ -846,6 +858,7 @@ def finalizePDFCache(config, sliceResults):
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:
         fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs, workers=config.get('workers') or 1)
+        anyFailed, failureReason = _anyPDFGroupFailed(pdfStatsDF)
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -855,7 +868,7 @@ def finalizePDFCache(config, sliceResults):
 
     cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
     pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
-    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True)
+    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True), anyFailed, failureReason
 
 def _writeCacheSlice(config, cacheDF, mcRun):
     """Write one MC run's PDF cache slice directly to its own small parquet file instead of
@@ -867,7 +880,7 @@ def _writeCacheSlice(config, cacheDF, mcRun):
     _saveSummaryDS(config, cacheDF, 'PDFCache', basename=f"PDFCache-{mcRun}",
                    existingDataBehavior='overwrite_or_ignore')
 
-def finalizePDFCacheFromDisk(config, groupCount):
+def finalizePDFCacheFromDisk(config, groupCount, innerWorkers=None):
     """Finalize a site's PDF cache after all its per-MC-run slices have already been streamed
     to disk via _writeCacheSlice. Re-reads the full combined cache once via a single efficient
     pyarrow multi-file dataset scan instead of pandas-concatenating already-materialized
@@ -884,11 +897,23 @@ def finalizePDFCacheFromDisk(config, groupCount):
     the topology was never the actual problem). Both _buildPDFGroupTask (this function's own
     inner Pool tasks) and runWorkitem (the outer Pool's tasks, in SiteMain2.py) now catch
     their own exceptions instead, so this call site is safe to run with full parallelism
-    again."""
+    again -- but a caught exception is still a real failure, not a shrug: returns
+    (statsDF, failed, failureReason) so the caller can put 'failed' on whatever result dict
+    it hands back up to main()'s own failure scan, instead of the job quietly reporting done
+    with a PDF group missing.
+
+    innerWorkers overrides how many workers calculatePDFSummaryFromCache's own inner Pool may
+    use for THIS call, independent of config['workers']. Pass a small number (e.g. 1) when
+    calling this from inside runCreatePDFCacheIncremental's still-open outer Pool -- that
+    outer pool's own `workers` processes are still busy on other sites at this exact moment,
+    so spawning another full-sized inner Pool here can run up to 2x `workers` processes at
+    once. Left at the default (None -> config['workers']) for callers with no such outer pool
+    in flight (finalizeAllPDFCaches's local-mode path), where the full worker budget really is
+    free to use."""
     cacheDF = _read_parquet_site(config['parquetNewPDFCache'], config['siteName'])
     if cacheDF.empty:
         logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
-        return pd.DataFrame()
+        return pd.DataFrame(), False, None
 
     fineCacheDF = cacheDF[cacheDF['cacheLevel'] == 'modelReadableName']
     logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
@@ -896,8 +921,10 @@ def finalizePDFCacheFromDisk(config, groupCount):
                   'intervalRows': len(fineCacheDF)}]
 
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
+    workers = innerWorkers if innerWorkers is not None else (config.get('workers') or 1)
     with Timer("Build PDFs") as tPDF:
-        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs, workers=config.get('workers') or 1)
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs, workers=workers)
+        anyFailed, failureReason = _anyPDFGroupFailed(pdfStatsDF)
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -907,7 +934,7 @@ def finalizePDFCacheFromDisk(config, groupCount):
 
     cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
     pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
-    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True)
+    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True), anyFailed, failureReason
 
 def _buildMCRunTimeseries(mcRunDF):
     zeroDurationDF = mcRunDF[mcRunDF['duration_s'] <= 0]
@@ -1025,6 +1052,7 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
         **identityCols,
         'mcRunCount': len(fullMCRunTSList),
         'buildSeconds': t.deltat.total_seconds(),
+        'failed': False,
     }
     return _makePDFRows(fullMCRunTSList, identityCols, CICategory, totalSimSecs), _makePDFRows(noFugMCRunTSList, identityCols, CICategory, totalSimSecs), stats
 
@@ -1040,14 +1068,21 @@ def _buildPDFGroupTask(args):
     a TimeseriesRLE per modelEmissionCategory without splitting by species first, so two
     legitimate same-timing rows for different species (a normal, expected InstEmissions
     shape) can trip TimeseriesRLE's overlap check and raise -- confirmed live on real data,
-    not a hypothetical."""
+    not a hypothetical.
+
+    The returned stats dict's 'failed'/'failureReason' are what let calculatePDFSummaryFromCache's
+    caller know a group came back empty because it genuinely failed, not because it legitimately
+    had nothing to build -- catching the exception here (so the Pool itself stays healthy) must
+    never be confused with the failure not mattering; see calculatePDFSummaryFromCache's own
+    docstring for why silently dropping this was a real, confirmed bug."""
     groupDF, identityCols, CICategory, totalSimSecs = args
     try:
         return _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
-    except Exception:
+    except Exception as e:
         logger.error(f"_buildPDFGroupTask: failed for CICategory {CICategory}, "
                      f"identityCols {identityCols}", exc_info=True)
-        stats = {'CICategory': CICategory, **identityCols, 'mcRunCount': 0, 'buildSeconds': 0.0}
+        stats = {'CICategory': CICategory, **identityCols, 'mcRunCount': 0, 'buildSeconds': 0.0,
+                 'failed': True, 'failureReason': f"{type(e).__name__}: {e}"}
         return None, None, stats
 
 # Cache levels whose per-outer-group DataFrames are too large to send through multiprocessing
@@ -1108,7 +1143,24 @@ def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, groupings=None, workers=
     fullPDFDF = pd.concat(fullResultDFList) if fullResultDFList else pd.DataFrame()
     noFugPDFDF = pd.concat(noFugResultDFList) if noFugResultDFList else pd.DataFrame()
     statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
+    # statsDF['failed'] (see _buildPDFGroupTask) tells every caller whether every group here
+    # genuinely succeeded -- a caught-and-continued group failure must never be reported as a
+    # plain empty result; see _anyPDFGroupFailed and its call sites.
     return fullPDFDF, noFugPDFDF, statsDF
+
+def _anyPDFGroupFailed(pdfStatsDF):
+    """(anyFailed, firstReason) from a calculatePDFSummaryFromCache statsDF. A group that
+    raised inside _buildPDFGroupTask is caught there (so the Pool stays healthy) but must
+    still be surfaced as a real failure to whichever caller asked for this site's PDF --
+    confirmed live: without this, a corrupted/incomplete PDF group was silently dropped and
+    the job still reported success."""
+    if pdfStatsDF is None or pdfStatsDF.empty or 'failed' not in pdfStatsDF.columns:
+        return False, None
+    failedRows = pdfStatsDF[pdfStatsDF['failed'] == True]  # noqa: E712 (explicit, not truthiness)
+    if failedRows.empty:
+        return False, None
+    reasons = failedRows['failureReason'].dropna().unique().tolist() if 'failureReason' in failedRows.columns else []
+    return True, f"{len(failedRows)} PDF group(s) failed to build: {'; '.join(reasons) or 'see log for details'}"
 
 def validatePDFCache(config):
     logger.info(f"Validating PDF cache for site {config['siteName']}")

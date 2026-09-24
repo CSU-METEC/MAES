@@ -23,6 +23,7 @@ import ParquetLib as pl
 import pandas as pd
 import datetime as dt
 import Summaries2 as sum
+import DistributionProfile as dpm
 
 ALL_PHASES = ['initialization', 'simulation', 'parquet', 'summarizeMCRun', 'createPDFCache', 'simSummary']
 
@@ -361,6 +362,15 @@ def runLocal(workQueue):
         #     msg = f'MC STOP ERROR: mcRun {singleWorkitem["MCScenario"]} did not exit cleanly, continuing with next MC'
         #     logging.error(f'{msg} Error: {e}')
         #     save this mc for review/debugging
+        # DistributionProfile.py's _READ_FILE_CACHE (and FlashComposition's own copy) are
+        # documented as safe to leave unbounded because "each worker process
+        # (maxtasksperchild=1) exits after its one workitem anyway" -- true for
+        # runMultiprocessing's Pool, but this sequential path runs every workitem in the
+        # same long-lived process, so that boundary never happens here on its own. Enforce
+        # it explicitly, or a -dr batch over many distinct sites/distribution files grows
+        # this cache for the whole run instead of resetting per workitem.
+        dpm.DistributionProfile._READ_FILE_CACHE.clear()
+        dpm.FlashComposition._READ_FILE_CACHE.clear()
     return retList
 
 def runMultiprocessing(workQueue, workers):
@@ -376,9 +386,18 @@ def runMultiprocessing(workQueue, workers):
         return res
     pass
 
-def _finalizePDFCacheForSite(siteName, config, sliceResults):
+def _finalizePDFCacheForSite(siteName, config, groupCount, innerWorkers=None):
+    # createPDFCacheMCRun (the worker-side function) always writes its cache slice straight
+    # to disk via Summaries2._writeCacheSlice, in BOTH parallel and local (-w<=0) mode -- the
+    # 'cacheDF' field on each result is only ever the unused empty default. This must
+    # therefore always read back from disk via finalizePDFCacheFromDisk, the same finalizer
+    # runCreatePDFCacheIncremental already uses -- calling the in-memory finalizePDFCache
+    # here (as this used to) is handed nothing but empty DataFrames, silently produces
+    # neither PDFCache nor PDF for any site, and only logs an easy-to-miss "No cache rows"
+    # INFO line. Confirmed live: every run through this (non-parallel) path lost its PDF
+    # output this way, not just some edge case of it.
     with Timer("Create PDF Cache") as t1:
-        statsDF = sum.finalizePDFCache(config, sliceResults)
+        statsDF, failed, failureReason = sum.finalizePDFCacheFromDisk(config, groupCount, innerWorkers=innerWorkers)
     return {
         'worktype': 'createPDFCache',
         'studyShortname': siteName,
@@ -387,18 +406,25 @@ def _finalizePDFCacheForSite(siteName, config, sliceResults):
         'runtime': t1.deltat.total_seconds(),
         'statsDF': statsDF,
         'pid': os.getpid(),
+        # Picked up by main()'s existing failedItems scan below, same 'failed' key every
+        # runWorkitem result already carries -- see finalizePDFCacheFromDisk's own docstring
+        # for why a failed PDF group must surface here instead of just being logged.
+        'failed': failed,
+        'failureReason': failureReason,
     }
 
 def finalizeAllPDFCaches(rawResults):
     """Collect-everything-then-finalize-by-site variant of runCreatePDFCacheIncremental
-    below, used by the non-parallel (-w<=1) path. Groups every site's (cacheDF, groupCount)
-    slices together -- critical for -dr multi-site runs, where results from every site's MC
-    runs land in one combined list, and combining across sites would silently corrupt each
-    site's own PDF/PDFCache -- then finalizes one site at a time. Not memory-bounded the way
-    the incremental parallel path is; acceptable here since nothing at multi-hundred-site
-    scale runs without -w in the first place."""
+    below, used by the non-parallel (-w<=1) path. Groups every site's groupCount together --
+    critical for -dr multi-site runs, where results from every site's MC runs land in one
+    combined list, and combining across sites would silently corrupt each site's own
+    PDF/PDFCache -- then finalizes one site at a time. Not memory-bounded the way the
+    incremental parallel path is; acceptable here since nothing at multi-hundred-site scale
+    runs without -w in the first place. No outer pool is running concurrently in this
+    (non-parallel) path, so each site's finalize gets the full configured worker count for
+    its own inner PDF-group Pool (innerWorkers left at its default)."""
     resList = []
-    sliceResultsBySite = {}
+    groupCountBySite = {}
     configBySite = {}
     for res in rawResults:
         if res['worktype'] != 'createPDFCacheMCRun':
@@ -410,9 +436,9 @@ def finalizeAllPDFCaches(rawResults):
         # ('site')) is what actually changes per site in the directory-scan loop.
         siteName = res['siteName']
         configBySite.setdefault(siteName, res['config'])
-        sliceResultsBySite.setdefault(siteName, []).append((res['cacheDF'], res['groupCount']))
-    for siteName, sliceResults in sliceResultsBySite.items():
-        resList.append(_finalizePDFCacheForSite(siteName, configBySite[siteName], sliceResults))
+        groupCountBySite[siteName] = groupCountBySite.get(siteName, 0) + res['groupCount']
+    for siteName, groupCount in groupCountBySite.items():
+        resList.append(_finalizePDFCacheForSite(siteName, configBySite[siteName], groupCount))
     return resList
 
 def runCreatePDFCacheIncremental(workQueue, workers):
@@ -451,8 +477,16 @@ def runCreatePDFCacheIncremental(workQueue, workers):
                 expectedCountBySite[siteName] -= 1
                 if expectedCountBySite[siteName] <= 0:
                     with Timer("Create PDF Cache") as t1:
-                        statsDF = sum.finalizePDFCacheFromDisk(configBySite[siteName],
-                                                                groupCountBySite.get(siteName, 0))
+                        # innerWorkers=1: this finalize call runs in the parent process while
+                        # the outer Pool's own `workers` worker processes are still busy on
+                        # OTHER sites in the background (that's the whole point of
+                        # imap_unordered) -- letting calculatePDFSummaryFromCache spawn its
+                        # own full-sized Pool here as well can run up to 2x `workers`
+                        # processes at once, oversubscribing the machine. There are no spare
+                        # cores to give this call anyway at that moment, so building this
+                        # site's PDF groups sequentially costs nothing real in practice.
+                        statsDF, failed, failureReason = sum.finalizePDFCacheFromDisk(
+                            configBySite[siteName], groupCountBySite.get(siteName, 0), innerWorkers=1)
                     finalizeResults.append({
                         'worktype': 'createPDFCache',
                         'studyShortname': siteName,
@@ -461,6 +495,8 @@ def runCreatePDFCacheIncremental(workQueue, workers):
                         'runtime': t1.deltat.total_seconds(),
                         'statsDF': statsDF,
                         'pid': os.getpid(),
+                        'failed': failed,
+                        'failureReason': failureReason,
                     })
                     del configBySite[siteName]
                     del groupCountBySite[siteName]
