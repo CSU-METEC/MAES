@@ -165,24 +165,38 @@ def test_create_simpdf_mixes_all_sites(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 4. Write location is deterministic & job-level (no per-site component).
+# 4. Write location is deterministic & job-level (no per-site component), and lives
+#    alongside every other dataset the same run writes.
 # ---------------------------------------------------------------------------
 
 def test_simsummary_write_path_is_job_level():
     with open(CONFIG_PATH) as f:
         cfg = json.load(f)
+    start_phase = cfg['phaseValues']['start']
     sim_phase = cfg['phaseValues']['simulation']
 
     assert sim_phase['parquetNewSimSummary'] == '{simulationParquetDir}/Summary/SimSummary'
     assert sim_phase['parquetNewSimPDF'] == '{simulationParquetDir}/Summary/SimPDF'
 
-    # The job-level dir resolves from job-wide vars ONLY — referencing the
-    # per-site {parquetDir}/{studyName}/{site} would make format_map raise here.
-    resolved = sim_phase['simulationParquetDir'].format_map({
-        'outputRoot': '/out',
+    # simulationParquetDir now resolves through simulationRoot/studyRoot -- the same chain
+    # parquetDir (SiteSummary's own dir, asserted below) already resolves through -- rather
+    # than a separate, job-level-only {outputRoot}/MC_{scenarioTimestamp} of its own. This
+    # moves SimSummary/SimPDF one level down, alongside SiteSummary/PDF/PDFCache/etc. for the
+    # same run, instead of sitting in a sibling folder above them. That is a real, deliberate
+    # output-location change -- confirm any external consumer of the old top-level path is
+    # updated to match before this lands.
+    #
+    # Chained by hand here (three phases' worth of raw templates), since this test loads the
+    # config as plain JSON rather than driving a real ConfigManager/expandPhase pipeline.
+    study_root = start_phase['studyRoot'].format_map({'outputRoot': '/out', 'studyName': 'run'})
+    simulation_root = sim_phase['simulationRoot'].format_map({
+        'studyRoot': study_root,
         'scenarioTimestamp': 'TS',
     })
-    assert resolved == '/out/MC_TS/parquet'
+    resolved = sim_phase['simulationParquetDir'].format_map({'simulationRoot': simulation_root})
+    assert resolved == '/out/run/MC_TS/parquet'
 
-    # Per-site SiteSummary stays per-site (unchanged).
+    # Per-site SiteSummary resolves through the same simulationRoot/studyRoot chain, so it
+    # lands in the same {studyName}/MC_{scenarioTimestamp} folder as SimSummary/SimPDF above.
     assert sim_phase['parquetNewSummary'] == '{parquetDir}/Summary/SiteSummary'
+    assert sim_phase['parquetDir'] == '{simulationRoot}/parquet'
