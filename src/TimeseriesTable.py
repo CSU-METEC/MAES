@@ -89,6 +89,22 @@ class TSTable():
         spillDF.to_csv(path, index=False)
         self._spillPaths.append(path)
 
+    def cleanupSpillFiles(self):
+        """Best-effort removal of any spill files _spillOldest wrote that serialize() never
+        got to consume -- e.g. a simulation that raised after spilling (now caught and
+        continued by runWorkitem, SiteMain2.py, rather than crashing the job) used to leave
+        these behind in the system temp directory permanently, since serialize()'s own
+        os.remove(path) calls (below) were the only place anything cleaned them up. Safe to
+        call unconditionally: a no-op when serialize() already ran (self._spillPaths is
+        already empty) or nothing ever spilled. Called from SimDataManager.__exit__, which
+        runs for every workitem regardless of success or failure."""
+        for path in self._spillPaths:
+            try:
+                os.remove(path)
+            except OSError:
+                logging.warning(f"TSTable.cleanupSpillFiles: could not remove {path}", exc_info=True)
+        self._spillPaths = []
+
     def serialize(self, oStream, mcRunNum=None):
         # Reassembles in the same oldest-to-newest order the pre-spill code already
         # produced (dict iteration order = insertion order), so the combined output is

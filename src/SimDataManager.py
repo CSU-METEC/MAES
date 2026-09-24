@@ -36,6 +36,14 @@ class SimDataManager():
     def __exit__(self, *args):
         for singleCache in self.caches:
             singleCache.resetCache()
+        # Runs for every workitem regardless of success or failure (this is a plain
+        # with-block __exit__), which is exactly the guarantee TSTable.cleanupSpillFiles
+        # needs: a simulation that fails after TSTable has already spilled to disk (now
+        # caught and continued by runWorkitem rather than crashing the job) would otherwise
+        # leave those temp files behind forever, since serialize() -- the only other place
+        # anything cleaned them up -- is never reached on that path. self.timeseriesTable is
+        # set unconditionally in __init__ for every workitem, so no None-check needed.
+        self.timeseriesTable.cleanupSpillFiles()
         SimDataManager.SIM_DATA_MANAGER_SINGLETON = None
 
     def registerCache(self, cache):
