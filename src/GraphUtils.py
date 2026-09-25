@@ -63,19 +63,28 @@ def mergeEmissionRecords(eventDF, tsTable, gascomp, debugEventList=False):
         'emissionUnits'
     ]
 
-    emPT = emEmTsDF.pivot_table(index=EMISSION_EVENT_PIVOT_LIST,
-                                values=['emission', 'eventID'],
-                                aggfunc={'emission': 'sum', 'eventID': 'first'})
     if debugEventList:
         eventAggFunc = lambda x: list(x.unique())
     else:
         eventAggFunc = 'count'
 
-    emPT2 = emEmTsDF.pivot_table(index=EMISSION_EVENT_PIVOT_LIST,
-                                 values='eventID',
-                                 aggfunc=eventAggFunc).rename(columns={'eventID': 'eventList'})
+    # Single groupby().agg() pass computing all three aggregations at once, instead of two
+    # separate pivot_table calls (each its own full grouping/hashing/reshaping pass) merged
+    # back together on their shared index. Mathematically identical -- same groupby key
+    # (EMISSION_EVENT_PIVOT_LIST), same three aggregations (emission sum, eventID first,
+    # eventID count/list) -- verified byte-identical against the two-pivot_table version on
+    # synthetic data before this change. Matters when this function is called many times
+    # instead of once (PERFORMANCE_MIGRATION_LOG.md Entry 21's per-mcRun summarize
+    # flattening): each pivot_table call has real fixed setup cost independent of row count,
+    # so halving the number of grouping passes per call matters more than it would for a
+    # single one-off call.
+    grouped = emEmTsDF.groupby(EMISSION_EVENT_PIVOT_LIST).agg(
+        emission=('emission', 'sum'),
+        eventID=('eventID', 'first'),
+        eventList=('eventID', eventAggFunc),
+    )
 
-    emPTRet = (emPT.merge(emPT2, left_index=True, right_index=True)
+    emPTRet = (grouped
                .reset_index()
                .sort_values(['mcRun', 'eventID'])
                # set the tsValue & gcValue fields to nan -- they are no longer valid if there were any aggregations

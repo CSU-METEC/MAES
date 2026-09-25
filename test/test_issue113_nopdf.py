@@ -3,8 +3,8 @@
 ``--noPDF`` skips PDF generation while keeping every other summary. It touches two
 places, both covered here:
 
-- ``SiteMain2.generateWorkitems`` drops the per-site ``createPDFCache`` phase from the
-  workitem plan (and must not mutate the shared ``ALL_PHASES`` default it filters).
+- ``SiteMain2.generateWorkitems`` drops the per-(site, mcRun) ``createPDFCacheMCRun`` phase
+  from the workitem plan (and must not mutate the shared ``ALL_PHASES`` default it filters).
 - ``Summaries2.summarizeSimulation`` skips the simulation-level ``createSimPDF``.
 
 The flag was added as a debugging / performance aid for #113: PDF generation is the
@@ -73,9 +73,9 @@ def test_nopdf_drops_createpdfcache_phase(tmp_path, monkeypatch):
     cm = _setupConfigManager(tmp_path, noPDF=True)
     groups = _workitemGroups(cm, monkeypatch, SITES)
     worktypes = _worktypes(groups)
-    assert 'createPDFCache' not in worktypes, (
-        f"--noPDF must drop the createPDFCache phase; got worktypes {sorted(worktypes)}")
-    assert {'initialization', 'simulation', 'parquet', 'summarize', 'simSummary'} <= worktypes, (
+    assert 'createPDFCacheMCRun' not in worktypes, (
+        f"--noPDF must drop the createPDFCacheMCRun phase; got worktypes {sorted(worktypes)}")
+    assert {'initialization', 'simulation', 'parquet', 'summarizeMCRun', 'simSummary'} <= worktypes, (
         f"--noPDF must keep every non-PDF phase; got {sorted(worktypes)}")
 
 
@@ -85,10 +85,18 @@ def test_pdf_on_includes_createpdfcache_phase(tmp_path, monkeypatch):
     allItems = []
     for group in groups:
         allItems.extend(group)
-    createPdfItems = list(filter(lambda wi: wi['workType'] == 'createPDFCache', allItems))
-    assert len(createPdfItems) == len(SITES), (
-        f"without --noPDF the createPDFCache phase must be planned once per site; "
-        f"got {len(createPdfItems)} for {len(SITES)} sites")
+    createPdfItems = list(filter(lambda wi: wi['workType'] == 'createPDFCacheMCRun', allItems))
+    # One item per (site, mcRun) now, not one per site -- see the createPDFCacheWorkitems
+    # comment in generateWorkitems. Read the real configured mcIterations from cm rather than
+    # the module-level MC_ITERATIONS constant above (used by a different, unrelated test
+    # further down this file) -- _setupConfigManager's own monteCarloIterations=1 is what
+    # actually governs this test's config, and duplicating that number here would silently
+    # drift out of sync with it again the next time either one changes.
+    mcIterations = int(cm.getConfigVar('monteCarloIterations'))
+    expectedCount = len(SITES) * mcIterations
+    assert len(createPdfItems) == expectedCount, (
+        f"without --noPDF the createPDFCacheMCRun phase must be planned once per "
+        f"(site, mcRun); got {len(createPdfItems)} for {len(SITES)} sites x {mcIterations} MC")
 
 
 def test_nopdf_does_not_mutate_all_phases_default(tmp_path, monkeypatch):

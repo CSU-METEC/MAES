@@ -71,14 +71,89 @@ class GCTable():
         return gc.serialNum
 
     def serialize(self, oStream, mcRunNum=None):
-        gcDF = pd.DataFrame(columns=GCTABLE_COLS)
+        # Vectorized port of MAES_NEW's Fix 2/Fix 14 (HIGH_PROFILE_FIXES.md /
+        # PERFORMANCE_MIGRATION_LOG.md Entry 10) -- pristine SR's original loop called
+        # pd.concat([gcDF, singleGCDF]) once per interned GC (O(n^2) in len(GCbyKey)), and
+        # each singleGC.serialForm() call did its own individual pd.melt() (~21K individual
+        # Python->pandas->C transitions on a full Antelope-scale run). Pure FluidFlowGC
+        # instances (not DestructionGC/EngineGC subclasses, which override serialForm) are
+        # grouped by GC file and serialized with a single merge+melt per file instead.
+        # Subclasses with overridden serialForm and other GC types use the per-object path
+        # unchanged -- output rows are identical, only within-file row order may differ
+        # (inconsequential, downstream parquet readers sort independently).
+        from collections import defaultdict
+        by_file = defaultdict(list)  # gcFile -> [(gcKey, gc), ...]
+        frames = []
+
         for gcKey, singleGC in self.GCbyKey.items():
-            singleGCDF = singleGC.serialForm().copy()
-            if singleGCDF.empty:
+            if type(singleGC) is FluidFlowGC and singleGC.fluidFlowID is not None:
+                by_file[singleGC.fluidFlowGCFilename].append((gcKey, singleGC))
+            else:
+                singleGCDF = singleGC.serialForm().copy()
+                if not singleGCDF.empty:
+                    singleGCDF['gcKey'] = gcKey
+                    singleGCDF['mcRun'] = mcRunNum
+                    frames.append(singleGCDF)
+
+        for gcFile, gc_list in by_file.items():
+            fComp = dp.FlashComposition.readFile(gcFile)
+            fCompDF = fComp.flashComp
+
+            # Build a selector mapping (FluidFlow, Name, GCUnits) -> gcKey so we
+            # can filter all GCs from this file in one vectorized merge.
+            selector = pd.DataFrame([
+                {
+                    'FluidFlow': gc.flow,
+                    'Name':      gc.fluidFlowID,
+                    'GCUnits':   f"kg/{gc.gcUnits}",
+                    'gcKey':     gcKey,
+                }
+                for gcKey, gc in gc_list
+            ])
+
+            # Find species columns (from CARBON_DIOXIDE onwards) before adding
+            # metadata so they are not accidentally included in value_vars.
+            co2Idx = next(
+                (i for i, c in enumerate(fCompDF.columns) if c == 'CARBON_DIOXIDE'),
+                None
+            )
+            if co2Idx is None:
                 continue
-            singleGCDF['gcKey'] = gcKey
-            singleGCDF['mcRun'] = mcRunNum
-            gcDF = pd.concat([gcDF, singleGCDF])
+            value_vars = list(fCompDF.columns[co2Idx:])
+
+            matched = fCompDF.merge(selector, on=['FluidFlow', 'Name', 'GCUnits'], how='inner')
+
+            # Preserve the Vapor-flow error from the original per-object path.
+            if len(matched) < len(selector):
+                matched_keys = set(matched['gcKey'].unique())
+                for gcKey, gc in gc_list:
+                    if gcKey not in matched_keys and gc.flow == 'Vapor':
+                        fcUnits = f"kg/{gc.gcUnits}"
+                        msg = (f"Unknown GC -- Fluid: {gc.flow}, GCUnits: {fcUnits} "
+                               f"name: {gc.fluidFlowID} in {gc.fluidFlowGCFilename}, "
+                               f"gcSerialNum: {gc.serialNum}")
+                        logger.error(msg)
+                        raise me.IllegalArgumentError(msg)
+
+            if matched.empty:
+                continue
+
+            meltedDF = pd.melt(
+                matched,
+                id_vars=['FluidFlow', 'Name', 'GCUnits', 'gcKey'],
+                value_vars=value_vars,
+                var_name='species', value_name='gcValue'
+            )
+            meltedDF = meltedDF.rename(columns={
+                'FluidFlow': 'flow', 'Name': 'flowName', 'GCUnits': 'gcUnits'
+            })
+            meltedDF['gcType'] = 'FluidFlowGC'
+            meltedDF['gcID']   = gcFile
+            meltedDF['origGC'] = ''
+            meltedDF['mcRun']  = mcRunNum
+            frames.append(meltedDF)
+
+        gcDF = pd.concat(frames) if frames else pd.DataFrame(columns=GCTABLE_COLS)
         gcDF[GCTABLE_COLS].to_csv(oStream, index=False)
 
     def deserialize(self, iStream):
@@ -169,6 +244,11 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
         self.fluidFlowID = fluidFlowID
         self.gcUnits = gcUnits
         self._fCompDF = None
+        # Fix 1/Fix 3 port (HIGH_PROFILE_FIXES.md / PERFORMANCE_MIGRATION_LOG.md Entry 10):
+        # stages never changes after equipment initialization, so the whole getDeltaH return
+        # value is invariant for the lifetime of this instance -- cache it instead of
+        # recomputing the pandas boolean-mask filter on every simulated event.
+        self._deltaHCache = {}
         super().__init__()
 
     # define __hash__ and __eq__ so we can use GCs as keys in dictionaries -- see, for example, AggregatedFluidFlow
@@ -280,10 +360,18 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
         return newGC, converter
 
     def getDeltaH(self, stages):
+        # Fix 1/Fix 3 port (HIGH_PROFILE_FIXES.md / PERFORMANCE_MIGRATION_LOG.md Entry 10):
+        # np.unique(arr)[-1] == max(arr) for this 1-5 element list of strings -- mathematically
+        # identical, but avoids numpy array construction/dtype-inference/sort on every call
+        # (py-spy showed ~94-95% of single-core CPU time in this one line). Also memoized:
+        # stages never changes after equipment initialization, so the whole return value is
+        # invariant for the lifetime of this instance.
+        cacheKey = tuple(stages)
+        if cacheKey in self._deltaHCache:
+            return self._deltaHCache[cacheKey]
+
         fCompDF = self._getGCEntries()
-        stage = np.array(stages)
-        stage = np.unique(stage)
-        currentStage = stage[-1]
+        currentStage = max(stages)
         # if currentStage in ['Tank', 'Well']:
         #     currentStage = stage[-2]
         #     if currentStage == 'Tank':
@@ -299,7 +387,7 @@ class FluidFlowGC(GasComposition, sdmc.SDMCache):
         # else:
         deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage {currentStage[-1]} Pressure to Pipeline Pressure (kJ/scf)'].iloc[0])
         # deltaH = float(fCompDF[fCompDF['DriveFactorUnits'] == driveFactorUnits][f'DeltaH - Stage 1 Pressure to Pipeline Pressure (kJ/scf)'])
-        i = 10
+        self._deltaHCache[cacheKey] = deltaH
         return deltaH
 
     def getLhvVals(self):

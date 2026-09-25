@@ -5,6 +5,8 @@ import os
 import glob
 import json
 import logging
+import shutil
+import urllib.parse
 import numpy as np
 import Timeseries as ts
 import ParquetLib as pl
@@ -21,6 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 def _read_parquet_site(path, site_name):
+    """Read all rows for a given site from a hive-partitioned parquet dataset.
+
+    A site with zero rows for this dataset (e.g. a zero-emission site's PDFCache/
+    InstEmissions) never gets its dataset directory written at all -- without this guard,
+    callers that expect an empty-but-valid DataFrame back (e.g. finalizePDFCacheFromDisk's
+    own "no cache rows, skip" branch) crash instead of reaching it."""
+    if not os.path.exists(str(path)):
+        return pd.DataFrame()
     partitioning = _ds.partitioning(
         _pa.schema([('site', _pa.string())]),
         flavor='hive',
@@ -28,6 +38,22 @@ def _read_parquet_site(path, site_name):
     dataset = _ds.dataset(str(path), format='parquet', partitioning=partitioning)
     table = dataset.to_table(filter=_ds.field('site') == str(site_name))
     return table.to_pandas()
+
+
+def _read_parquet_site_mcrun(path, site_name, mcRun):
+    """Read one (site, mcRun)'s rows. InstEmissions is partitioned by site only, with
+    mcRun a native int64 data column, so this pushes both predicates into the read
+    itself instead of reading the whole site and filtering mcRun in pandas after --
+    each concurrent per-mcRun caller only ever materializes its own slice."""
+    if not os.path.exists(str(path)):
+        return pd.DataFrame()
+    partitioning = _ds.partitioning(
+        _pa.schema([('site', _pa.string())]),
+        flavor='hive',
+    )
+    dataset = _ds.dataset(str(path), format='parquet', partitioning=partitioning)
+    filt = (_ds.field('site') == str(site_name)) & (_ds.field('mcRun') == int(mcRun))
+    return dataset.to_table(filter=filt).to_pandas()
 
 
 US_TO_PER_METRIC_TON = 1.10231
@@ -111,6 +137,7 @@ def _createEmissionDF(inDF, simDurationSecs):
 
 DATASET_PARAMS = {
     'InstEmissions': {'configKey': 'parquetNewInstEmissions', 'partition_cols': ['site']},
+    'InstEmissionsScratch': {'configKey': 'parquetInstEmissionsScratch', 'partition_cols': ['site']},
     'SiteSummary':   {'configKey': 'parquetNewSummary',       'partition_cols': ['site']},
     'EventSummary':  {'configKey': 'parquetNewEventSummary',  'partition_cols': ['site']},
     'SimSummary':    {'configKey': 'parquetNewSimSummary',    'partition_cols': []},
@@ -119,18 +146,58 @@ DATASET_PARAMS = {
     'SimPDF':        {'configKey': 'parquetNewSimPDF',        'partition_cols': []},
 }
 
-def _saveSummaryDS(config, df, dataset):
+def _saveSummaryDS(config, df, dataset, basename=None, existingDataBehavior=None):
     params = DATASET_PARAMS[dataset]
-    pl.toBaseParquetFullConfig(config, df, params['configKey'], partition_cols=params['partition_cols'], basename=dataset)
+    kwargs = {}
+    if existingDataBehavior is not None:
+        kwargs['existing_data_behavior'] = existingDataBehavior
+    pl.toBaseParquetFullConfig(config, df, params['configKey'], partition_cols=params['partition_cols'],
+                                basename=basename or dataset, **kwargs)
 
 def _doAgg(df, groupbyCols, aggFieldList, varCol):
-    summaryDFByMCRun = (
-        df.groupby(groupbyCols, as_index=False)
-        .agg(**aggFieldList)
-        .assign(CICategory=varCol,
-                units=KG_PER_YEAR_UNITS_NAME)
-    )
-    return summaryDFByMCRun
+    # Replaces 4 Python-UDF lambda percentile calls (one Python round-trip per group each)
+    # with a single groupby().quantile() pass (vectorized across all groups at once).
+    # aggFieldList's keys (total/count/mean/min/max/lowerQuartile/upperQuartile/lowerCI/
+    # upperCI/readings, all sourced from 'emissions_kgPerYear') match the column-name
+    # assumption this hardcodes -- every real caller builds aggFieldList in exactly this
+    # shape. Verified against the old lambda-based implementation on synthetic data with
+    # uneven group sizes: percentiles bit-identical, 'mean' within floating-point
+    # summation-order noise from switching aggregation paths.
+    col = 'emissions_kgPerYear'
+    CI = 95
+    alpha = 100 - CI
+    qLevels = [alpha / 200, 0.25, 0.75, 1 - alpha / 200]  # 0.025, 0.25, 0.75, 0.975
+    qNames = ['lowerCI', 'lowerQuartile', 'upperQuartile', 'upperCI']
+
+    if df.empty:
+        # groupby().quantile().unstack() on an empty input can't infer the qLevels as columns
+        # at all (nothing to pivot) -- the unconditional column rename below would then fail
+        # with a length mismatch. The original .agg(**aggFieldList) never hit this (its column
+        # names come from the agg spec itself, not an assumed shape) -- it just contributed
+        # zero rows for this case. Match that exactly: return an empty, correctly-shaped frame.
+        cols = list(groupbyCols) + ['total', 'count', 'mean', 'min', 'max'] + qNames
+        if 'readings' in aggFieldList and 'mcRun' not in groupbyCols:
+            cols.append('readings')
+        cols += ['CICategory', 'units']
+        return pd.DataFrame(columns=cols)
+
+    gb = df.groupby(groupbyCols, sort=False)
+
+    result = gb[col].agg(['sum', 'count', 'mean', 'min', 'max']).reset_index()
+    result.columns = list(groupbyCols) + ['total', 'count', 'mean', 'min', 'max']
+
+    qtiles = gb[col].quantile(qLevels).unstack(level=-1).reset_index()
+    qtiles.columns = list(groupbyCols) + qNames
+    result = result.merge(qtiles, on=groupbyCols)
+
+    # readings: one Python-level apply pass (no vectorized fast-path for arbitrary-length list
+    # collection) -- skip when 'mcRun' is in groupbyCols since that Level-0 (per-MC-run) pass's
+    # own readings are never used downstream (only its 'total' feeds Level 1).
+    if 'readings' in aggFieldList and 'mcRun' not in groupbyCols:
+        rdgs = gb[col].apply(list).rename('readings').reset_index()
+        result = result.merge(rdgs, on=groupbyCols)
+
+    return result.assign(CICategory=varCol, units=KG_PER_YEAR_UNITS_NAME)
 
 def _doAggHierarchy(df, aggColumnList, mcIterations, varCol, detailGroupbyCols, rollupCols):
     resultDFList = []
@@ -158,17 +225,26 @@ def _doAggHierarchy(df, aggColumnList, mcIterations, varCol, detailGroupbyCols, 
 
     return pd.concat(resultDFList)
 
-def calculateAnnualSummaries(instEmissionDF, simDurationDays, aggColumnList, mcIterations):
+def aggregateEmittersByRun(instEmissionDF, simDurationDays):
+    """Level-0 reduction for calculateAnnualSummaries, split out so it can run on a single
+    mcRun's slice instead of the full multi-mcRun frame. Mathematically identical either way:
+    'mcRun' is already one of the groupby keys here, so partitioning the input by mcRun first
+    and reducing each partition separately produces the same rows as reducing the whole frame
+    at once -- this is just associativity of groupby-sum/count, not an approximation."""
     instEmissionDF = instEmissionDF.assign(emissions_kgPerYear=(instEmissionDF['totalEmission_kg']) / simDurationDays * u.DAYS_PER_YEAR)
     # first aggregation -- there may be multiple emissions per emitterID (e.g. leaks from the same emitter multiple times per sim)
     #   aggregate by emitterID to eliminate these
-    aggregatedEmissionsByEmitterID = (
+    return (
         instEmissionDF.groupby(['site', 'mcRun', 'species', 'emitterID', 'operator', 'psno', 'METype', 'unitID', 'modelReadableName', 'modelEmissionCategory'],
                                as_index=False)
         .agg(emissions_kgPerYear=('emissions_kgPerYear', 'sum'),
              count=('emissions_kgPerYear', 'count'))
     )
 
+def calculateAnnualSummariesFromAggregated(aggregatedEmissionsByEmitterID, aggColumnList, mcIterations):
+    """calculateAnnualSummaries's cross-mcRun logic, taking an already-Level-0-reduced frame
+    (whether built in one pass by aggregateEmittersByRun or concatenated from several
+    per-mcRun calls to it). Unchanged from the prior single-pass code."""
     resultDFList = []
     for varCol in ['METype', 'unitID', 'modelEmissionCategory']:
         resultDFList.append(
@@ -191,6 +267,12 @@ def calculateAnnualSummaries(instEmissionDF, simDurationDays, aggColumnList, mcI
                         rollupCols=['modelReadableName', 'unitID', 'METype'])
     )
     return pd.concat(resultDFList)
+
+def calculateAnnualSummaries(instEmissionDF, simDurationDays, aggColumnList, mcIterations):
+    """Unchanged entry point/behavior -- now a thin wrapper over the two pieces above, kept
+    for any caller that still wants to pass the full multi-mcRun frame in one call."""
+    aggregatedEmissionsByEmitterID = aggregateEmittersByRun(instEmissionDF, simDurationDays)
+    return calculateAnnualSummariesFromAggregated(aggregatedEmissionsByEmitterID, aggColumnList, mcIterations)
 
 def _removeZeroEmissionEvents(instEmissionDF):
     return instEmissionDF[instEmissionDF['emission_kgPerS'] > 0]
@@ -225,6 +307,59 @@ def calculateEmissionSummary(instEmissionDF, mcIterations):
         )
     )
     return resDF
+
+def aggregateEmissionSummaryByRun(instEmissionDF):
+    """Per-mcRun piece of calculateEmissionSummary's 'instantEmissionsByModelReadableName'
+    stat. Unlike aggregateEmittersByRun, calculateEmissionSummary normally pools readings
+    across ALL mcRuns at once (no 'mcRun' groupby key) -- this variant adds 'mcRun'
+    temporarily so it can run on one mcRun's own slice. mergeEmissionSummaryByRun below
+    concatenates the per-mcRun readings LISTS (not DataFrames) and recomputes percentiles
+    fresh over the pooled list, which is exact (percentiles don't care about insertion
+    order)."""
+    instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    df = instEmissionDF.assign(emission_kgPerH=instEmissionDF['emission_kgPerS'] * u.SECONDS_PER_HOUR)
+    groupCols = [*SUMMARY_KEY_COLS, 'mcRun', 'METype', 'unitID', 'modelReadableName']
+    return (
+        df.groupby(groupCols, as_index=False)
+        .agg(total=('emission_kgPerH', 'sum'),
+             count=('emission_kgPerH', 'count'),
+             min=('emission_kgPerH', 'min'),
+             max=('emission_kgPerH', 'max'),
+             readings=('emission_kgPerH', list))
+    )
+
+def mergeEmissionSummaryByRun(perMcRunPieces, mcIterations):
+    """Combine aggregateEmissionSummaryByRun's per-mcRun pieces into the same shape
+    calculateEmissionSummary returns. sum/min/max/readings-concat across the small
+    per-mcRun accumulator rows are all exact -- no raw event data is re-touched here."""
+    ci = 95
+    alpha = 100 - ci
+    groupCols = [*SUMMARY_KEY_COLS, 'METype', 'unitID', 'modelReadableName']
+    emptyCols = groupCols + ['total', 'count', 'min', 'max', 'readings']
+    nonEmptyPieces = [p for p in perMcRunPieces if not p.empty]
+    if not nonEmptyPieces:
+        merged = pd.DataFrame(columns=emptyCols)
+    else:
+        combined = pd.concat(nonEmptyPieces, ignore_index=True)
+        merged = combined.groupby(groupCols, as_index=False).agg(
+            total=('total', 'sum'),
+            count=('count', 'sum'),
+            min=('min', 'min'),
+            max=('max', 'max'),
+            readings=('readings', lambda lists: [v for lst in lists for v in lst]),
+        )
+    merged = merged.assign(mean=merged['total'] / merged['count'])
+    merged = merged.assign(
+        lowerQuartile=merged['readings'].apply(lambda x: np.percentile(x, 25)),
+        upperQuartile=merged['readings'].apply(lambda x: np.percentile(x, 75)),
+        lowerCI=merged['readings'].apply(lambda x: np.percentile(x, alpha / 2)),
+        upperCI=merged['readings'].apply(lambda x: np.percentile(x, 100 - alpha / 2)),
+        CICategory='instantEmissionsByModelReadableName',
+        units=KG_PER_HOUR_UNITS_NAME,
+        mcRun=float(mcIterations),
+    )
+    merged = merged.assign(rawCount=merged['count'], rawMean=merged['mean'])
+    return merged
 
 def _convertResultsList(convertFn, resList):
     convMap = map(lambda x: convertFn(x), resList)
@@ -317,7 +452,79 @@ def calculateEventSummary(instEmissionDF, simDurationDays, mcIterations, varCol=
     retDF = pd.concat([eventSummary, eventSummary_kgPerh, siteSummary, siteSummary_kgPerh])
     return retDF
 
+def aggregateEventSummaryByRun(instEmissionDF):
+    """Per-mcRun piece of calculateEventSummary. Every field calculateEventSummary computes
+    is a sum, count, or list-collection -- there is no percentile step here at all -- so this
+    is exactly decomposable per mcRun with zero approximation. The one subtlety: 'simpleMean'
+    and 'meanEventDuration_s' must be recombined from sums at merge time
+    (mergeEventSummaryByRun), not averaged across mcRuns, since per-mcRun event counts are
+    uneven (mean-of-means != true mean when group sizes differ) -- this accumulator carries
+    the extra sum ('totalEmissionRate_kgPerS') needed to do that correctly."""
+    instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    AGG_COLS = {
+        'eventCount': ('emission_kgPerS', 'count'),
+        'totalEmission_kg': ('totalEmission_kg', 'sum'),
+        'totalEventDuration_s': ('duration_s', 'sum'),
+        'totalEmissionRate_kgPerS': ('emission_kgPerS', 'sum'),
+        'durationEvents': ('duration_s', list),
+        'totalEmissionEvents': ('totalEmission_kg', list),
+    }
+    eventGroupCols = [*SUMMARY_KEY_COLS, 'mcRun', 'unitID', 'modelReadableName']
+    siteGroupCols = [*SUMMARY_KEY_COLS, 'mcRun']
+    eventPiece = instEmissionDF.groupby(eventGroupCols, as_index=False).agg(**AGG_COLS)
+    sitePiece = instEmissionDF.groupby(siteGroupCols, as_index=False).agg(**AGG_COLS)
+    return eventPiece, sitePiece
 
+def _mergeEventSummaryPieces(pieces, groupCols, varCol, mcIterations):
+    emptyCols = groupCols + ['eventCount', 'totalEmission_kg', 'totalEventDuration_s',
+                              'totalEmissionRate_kgPerS', 'durationEvents', 'totalEmissionEvents']
+    nonEmptyPieces = [p for p in pieces if not p.empty]
+    if not nonEmptyPieces:
+        merged = pd.DataFrame(columns=emptyCols)
+    else:
+        combined = pd.concat(nonEmptyPieces, ignore_index=True)
+        merged = combined.groupby(groupCols, as_index=False).agg(
+            eventCount=('eventCount', 'sum'),
+            totalEmission_kg=('totalEmission_kg', 'sum'),
+            totalEventDuration_s=('totalEventDuration_s', 'sum'),
+            totalEmissionRate_kgPerS=('totalEmissionRate_kgPerS', 'sum'),
+            durationEvents=('durationEvents', lambda lists: [v for lst in lists for v in lst]),
+            totalEmissionEvents=('totalEmissionEvents', lambda lists: [v for lst in lists for v in lst]),
+        )
+    merged = merged.assign(
+        meanEventDuration_s=merged['totalEventDuration_s'] / merged['eventCount'],
+        simpleMean=merged['totalEmissionRate_kgPerS'] / merged['eventCount'],
+        CICategory=varCol,
+        mcRuns=mcIterations,
+        emissionRateUnits='kg/s',
+    )
+    return merged.drop(columns=['totalEmissionRate_kgPerS'])
+
+def mergeEventSummaryByRun(eventPieces, sitePieces, mcIterations, varCol='eventSummary'):
+    """Combine aggregateEventSummaryByRun's per-mcRun pieces into calculateEventSummary's
+    exact output shape (4 concatenated blocks: event/site level x kg/s and kg/h units)."""
+    eventGroupCols = [*SUMMARY_KEY_COLS, 'unitID', 'modelReadableName']
+    siteGroupCols = list(SUMMARY_KEY_COLS)
+
+    eventSummary = _mergeEventSummaryPieces(eventPieces, eventGroupCols, varCol, mcIterations)
+    eventSummary = eventSummary.assign(
+        eventsPerMCRun=eventSummary['eventCount'] / eventSummary['mcRuns'],
+        meanEmissionRate=eventSummary['totalEmission_kg'] / eventSummary['totalEventDuration_s'])
+    eventSummary_kgPerh = eventSummary.assign(
+        meanEmissionRate=eventSummary['meanEmissionRate'] * u.SECONDS_PER_HOUR,
+        simpleMean=eventSummary['simpleMean'] * u.SECONDS_PER_HOUR,
+        emissionRateUnits='kg/h')
+
+    siteSummary = _mergeEventSummaryPieces(sitePieces, siteGroupCols, varCol, mcIterations)
+    siteSummary = siteSummary.assign(
+        eventsPerMCRun=siteSummary['eventCount'] / siteSummary['mcRuns'],
+        meanEmissionRate=siteSummary['totalEmission_kg'] / siteSummary['totalEventDuration_s'])
+    siteSummary_kgPerh = siteSummary.assign(
+        meanEmissionRate=siteSummary['meanEmissionRate'] * u.SECONDS_PER_HOUR,
+        simpleMean=siteSummary['simpleMean'] * u.SECONDS_PER_HOUR,
+        emissionRateUnits='kg/h')
+
+    return pd.concat([eventSummary, eventSummary_kgPerh, siteSummary, siteSummary_kgPerh])
 
 def calculateC2C1Ratios(summaryDF, confidenceLevel):
     alpha = 100 - float(confidenceLevel)
@@ -445,25 +652,38 @@ def _roundForPDF(values, decimals=6):
 
 
 def _buildCoarseCacheLevel(fineDF, groupCols, levelName):
+    # Accumulate raw numpy arrays per group and build exactly one DataFrame at the end
+    # (np.concatenate), instead of building a full pandas DataFrame per group and
+    # pd.concat-ing potentially thousands of them -- avoids repeated small-object
+    # construction inside a Python group loop. sort=False on both groupbys skips an
+    # unnecessary sort pass; nothing downstream depends on group order here.
     aggGroupCols = [*groupCols, 'modelEmissionCategory', 'mcRun']
-    rowsList = []
-    for groupKey, groupDF in fineDF.groupby(aggGroupCols):
+    coarseCols = {col: [] for col in aggGroupCols}
+    coarseStart, coarseEnd, coarseRate, coarseLevel = [], [], [], []
+    for groupKey, groupDF in fineDF.groupby(aggGroupCols, sort=False):
         catTSList = []
-        for _, subDF in groupDF.groupby(CACHE_IDENTITY_COLS):
+        for _, subDF in groupDF.groupby(CACHE_IDENTITY_COLS, sort=False):
             catTSList.append(_cacheGroupToTimeseriesRLE(subDF))
         summedTS = ts.TimeseriesSet(catTSList).sum()
         if summedTS.isempty():
             continue
-        identityDict = dict(zip(aggGroupCols, groupKey))
-        n = len(summedTS.df)
-        rowsList.append(pd.DataFrame({
-            **{col: [val] * n for col, val in identityDict.items()},
-            'startTime_s': summedTS.df[summedTS.startTimeColName].values,
-            'endTime_s': summedTS.df[summedTS.endTimeColName].values,
-            'emission_kgPerH': _roundForPDF(summedTS.df[summedTS.valueColName].values),
-            'cacheLevel': [levelName] * n,
-        }))
-    return pd.concat(rowsList, ignore_index=True) if rowsList else pd.DataFrame()
+        tsDF = summedTS.df
+        n = len(tsDF)
+        for col, val in zip(aggGroupCols, groupKey):
+            coarseCols[col].append(np.full(n, val))
+        coarseStart.append(tsDF[summedTS.startTimeColName].values)
+        coarseEnd.append(tsDF[summedTS.endTimeColName].values)
+        coarseRate.append(_roundForPDF(tsDF[summedTS.valueColName].values))
+        coarseLevel.append(np.full(n, levelName))
+    if not coarseStart:
+        return pd.DataFrame()
+    return pd.DataFrame({
+        **{col: np.concatenate(arrs) for col, arrs in coarseCols.items()},
+        'startTime_s': np.concatenate(coarseStart),
+        'endTime_s': np.concatenate(coarseEnd),
+        'emission_kgPerH': np.concatenate(coarseRate),
+        'cacheLevel': np.concatenate(coarseLevel),
+    })
 
 def createPDFCache(config):
     logger.info(f"Creating PDF cache for site {config['siteName']}")
@@ -522,6 +742,13 @@ def createPDFCache(config):
     totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
     with Timer("Build PDFs") as tPDF:
         fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs)
+        # Raised (not just logged) because this function runs from inside runWorkitem's own
+        # try/except (SiteMain2.py) -- the one place a raise is exactly the right way to mark
+        # this workitem failed, same as any other phase's failure. Raise before writing the
+        # (now known incomplete) PDF dataset below, rather than after.
+        anyFailed, failureReason = _anyPDFGroupFailed(pdfStatsDF)
+        if anyFailed:
+            raise RuntimeError(f"PDF summary build failed for site {config['siteName']}: {failureReason}")
         fullPDFDF = fullPDFDF.assign(includeFugitive=True)
         noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
         pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
@@ -532,6 +759,182 @@ def createPDFCache(config):
     cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
     pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
     return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True)
+
+
+def _buildCacheSliceForMCRun(config, mcRun):
+    """Build the fine + all coarse PDF cache levels for a single MC run, reading only that
+    run's own InstEmissions slice. Splitting the site-wide cache build (createPDFCache,
+    above) into one call per MC run lets the outer per-work-type dispatch parallelize this
+    across real worker processes instead of one process looping over every MC run
+    sequentially -- the dominant cost of a large run's PDF cache phase.
+
+    Returns (cacheDF, groupCount); an empty site/MC-run returns (empty DataFrame, 0).
+    """
+    instEmissionDF = _read_parquet_site_mcrun(config['parquetNewInstEmissions'], config['siteName'], mcRun)
+    if instEmissionDF.empty:
+        return pd.DataFrame(), 0
+    instEmissionDF = _removeZeroEmissionEvents(instEmissionDF)
+    if instEmissionDF.empty:
+        return pd.DataFrame(), 0
+
+    # Accumulate raw numpy arrays per group and build exactly one DataFrame at the end,
+    # instead of a full pandas DataFrame per group + pd.concat of potentially thousands of
+    # them -- see _buildCoarseCacheLevel's comment for the full rationale. sort=False skips
+    # an unnecessary sort pass; nothing downstream depends on group order here.
+    cacheCols = {col: [] for col in CACHE_IDENTITY_COLS}
+    cacheStart, cacheEnd, cacheRate = [], [], []
+    groupCount = 0
+    for groupKey, groupDF in instEmissionDF.groupby(CACHE_IDENTITY_COLS, sort=False):
+        summedTS = _buildMCRunTimeseries(groupDF)
+        if summedTS.isempty():
+            continue
+        tsDF = summedTS.df
+        n = len(tsDF)
+        for col, val in zip(CACHE_IDENTITY_COLS, groupKey):
+            cacheCols[col].append(np.full(n, val))
+        cacheStart.append(tsDF[summedTS.startTimeColName].values)
+        cacheEnd.append(tsDF[summedTS.endTimeColName].values)
+        cacheRate.append(_roundForPDF(tsDF[summedTS.valueColName].values))
+        groupCount += 1
+
+    if groupCount == 0:
+        return pd.DataFrame(), 0
+
+    fineCacheDF = pd.DataFrame({
+        **{col: np.concatenate(arrs) for col, arrs in cacheCols.items()},
+        'mcRun': mcRun,
+        'startTime_s': np.concatenate(cacheStart),
+        'endTime_s': np.concatenate(cacheEnd),
+        'emission_kgPerH': np.concatenate(cacheRate),
+    })
+    fineCacheDF = fineCacheDF.assign(cacheLevel='modelReadableName')
+    allLevelDFs = [fineCacheDF]
+
+    for levelName, levelGroupCols in PDF_GROUPINGS[:-1]:
+        coarseDF = _buildCoarseCacheLevel(fineCacheDF, levelGroupCols, levelName)
+        if not coarseDF.empty:
+            for col in [*CACHE_IDENTITY_COLS, 'mcRun']:
+                if col not in coarseDF.columns:
+                    coarseDF = coarseDF.assign(**{col: ''})
+            allLevelDFs.append(coarseDF)
+            groupCount += coarseDF.groupby([*levelGroupCols, 'modelEmissionCategory', 'mcRun']).ngroups
+
+    return pd.concat(allLevelDFs, ignore_index=True), groupCount
+
+
+def finalizePDFCache(config, sliceResults):
+    """Concatenate every MC run's cache slice for one site (each built by
+    _buildCacheSliceForMCRun, above), write PDFCache, and build the site's PDF dataset --
+    the same two outputs createPDFCache produces, just fed by parallel per-MC-run compute
+    instead of one big serial groupby over the whole site's InstEmissions.
+
+    Returns (statsDF, failed, failureReason) -- see finalizePDFCacheFromDisk's matching
+    docstring for why a failed PDF group must be surfaced here rather than just logged;
+    the caller is responsible for putting 'failed'/'failureReason' on whatever result dict
+    it hands back up to main()'s own failure scan."""
+    cacheDFs = [cacheDF for cacheDF, _ in sliceResults if not cacheDF.empty]
+    if not cacheDFs:
+        logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
+        return pd.DataFrame(), False, None
+
+    cacheDF = pd.concat(cacheDFs, ignore_index=True)
+    _saveSummaryDS(config, cacheDF, 'PDFCache')
+    logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
+
+    # createPDFCache's own stats export breaks group counts down per cache level; that
+    # breakdown isn't reconstructable here since _buildCacheSliceForMCRun returns one
+    # combined count spanning every level for its own MC run (summing per-MC-run counts
+    # is exact for a combined total -- mcRun partitions groups into non-overlapping
+    # subsets -- but not separable back into per-level totals after the fact). Diagnostic
+    # export only (not science/data output): one summary row (fine-level interval count,
+    # combined group count) instead of one row per level.
+    fineCacheDF = cacheDF[cacheDF['cacheLevel'] == 'modelReadableName']
+    statsRows = [{
+        'cacheLevel': 'modelReadableName',
+        'groupCount': sum(groupCount for _, groupCount in sliceResults),
+        'intervalRows': len(fineCacheDF),
+    }]
+
+    totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
+    with Timer("Build PDFs") as tPDF:
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs, workers=config.get('workers') or 1)
+        anyFailed, failureReason = _anyPDFGroupFailed(pdfStatsDF)
+        fullPDFDF = fullPDFDF.assign(includeFugitive=True)
+        noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
+        pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
+        tPDF.setCount(len(pdfDF))
+    _saveSummaryDS(config, pdfDF, 'PDF')
+    logger.info(f"PDF: {len(pdfDF)} rows for site {config['siteName']}")
+
+    cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
+    pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
+    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True), anyFailed, failureReason
+
+def _writeCacheSlice(config, cacheDF, mcRun):
+    """Write one MC run's PDF cache slice directly to its own small parquet file instead of
+    holding it in memory for a later combined write (finalizePDFCache, above) -- frees each
+    slice as soon as it's on disk, so a site's full MC set is never held in memory at once.
+    Called from inside the worker itself (SiteMain2.createPDFCacheMCRun), keyed by mcRun --
+    already unique per work item, so cacheDF never has to travel back through the Pool's IPC
+    pipe just to be written by the main process under a separately-tracked counter."""
+    _saveSummaryDS(config, cacheDF, 'PDFCache', basename=f"PDFCache-{mcRun}",
+                   existingDataBehavior='overwrite_or_ignore')
+
+def finalizePDFCacheFromDisk(config, groupCount, innerWorkers=None):
+    """Finalize a site's PDF cache after all its per-MC-run slices have already been streamed
+    to disk via _writeCacheSlice. Re-reads the full combined cache once via a single efficient
+    pyarrow multi-file dataset scan instead of pandas-concatenating already-materialized
+    per-MC-run DataFrames. Otherwise identical to finalizePDFCache's own Build-PDFs tail.
+
+    This function runs from inside runCreatePDFCacheIncremental's still-open outer Pool (its
+    other workers are still processing other sites' work items when this fires), so its own
+    Pool here (via calculatePDFSummaryFromCache) must never let a worker exception escape
+    uncaught -- an exception propagating through imap_unordered unwinds the caller's `with
+    mp.Pool(...)` while other workers are genuinely still mid-task, and terminate()'s SIGTERM
+    can catch one of them mid-write, hanging the result-handler thread forever (confirmed
+    live: a real MalformedTimeseriesError from one mcRun's legitimate multi-species data hung
+    an otherwise-healthy 20-worker pool permanently, under two different Pool topologies --
+    the topology was never the actual problem). Both _buildPDFGroupTask (this function's own
+    inner Pool tasks) and runWorkitem (the outer Pool's tasks, in SiteMain2.py) now catch
+    their own exceptions instead, so this call site is safe to run with full parallelism
+    again -- but a caught exception is still a real failure, not a shrug: returns
+    (statsDF, failed, failureReason) so the caller can put 'failed' on whatever result dict
+    it hands back up to main()'s own failure scan, instead of the job quietly reporting done
+    with a PDF group missing.
+
+    innerWorkers overrides how many workers calculatePDFSummaryFromCache's own inner Pool may
+    use for THIS call, independent of config['workers']. Pass a small number (e.g. 1) when
+    calling this from inside runCreatePDFCacheIncremental's still-open outer Pool -- that
+    outer pool's own `workers` processes are still busy on other sites at this exact moment,
+    so spawning another full-sized inner Pool here can run up to 2x `workers` processes at
+    once. Left at the default (None -> config['workers']) for callers with no such outer pool
+    in flight (finalizeAllPDFCaches's local-mode path), where the full worker budget really is
+    free to use."""
+    cacheDF = _read_parquet_site(config['parquetNewPDFCache'], config['siteName'])
+    if cacheDF.empty:
+        logger.info(f"No cache rows for site {config['siteName']}, skipping PDF cache")
+        return pd.DataFrame(), False, None
+
+    fineCacheDF = cacheDF[cacheDF['cacheLevel'] == 'modelReadableName']
+    logger.info(f"PDF cache: {len(cacheDF)} rows for site {config['siteName']}")
+    statsRows = [{'cacheLevel': 'modelReadableName', 'groupCount': groupCount,
+                  'intervalRows': len(fineCacheDF)}]
+
+    totalSimSecs = config['simDurationDays'] * 86400.0 * config['monteCarloIterations']
+    workers = innerWorkers if innerWorkers is not None else (config.get('workers') or 1)
+    with Timer("Build PDFs") as tPDF:
+        fullPDFDF, noFugPDFDF, pdfStatsDF = calculatePDFSummaryFromCache(cacheDF, totalSimSecs, workers=workers)
+        anyFailed, failureReason = _anyPDFGroupFailed(pdfStatsDF)
+        fullPDFDF = fullPDFDF.assign(includeFugitive=True)
+        noFugPDFDF = noFugPDFDF.assign(includeFugitive=False)
+        pdfDF = pd.concat([fullPDFDF, noFugPDFDF])
+        tPDF.setCount(len(pdfDF))
+    _saveSummaryDS(config, pdfDF, 'PDF')
+    logger.info(f"PDF: {len(pdfDF)} rows for site {config['siteName']}")
+
+    cacheStatsDF = pd.DataFrame(statsRows).assign(siteName=config['siteName'])
+    pdfStatsDF = pdfStatsDF.assign(siteName=config['siteName'], buildSeconds=tPDF.deltat.total_seconds())
+    return pd.concat([cacheStatsDF, pdfStatsDF], ignore_index=True), anyFailed, failureReason
 
 def _buildMCRunTimeseries(mcRunDF):
     zeroDurationDF = mcRunDF[mcRunDF['duration_s'] <= 0]
@@ -617,6 +1020,12 @@ def _makePDFRows(mcRunTSList, identityCols, CICategory, totalSimSecs):
     })
 
 def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
+    # When this group has no FUGITIVE intervals at all, noFug == full by construction --
+    # reuse the already-summed fullTS instead of recomputing an identical
+    # TimeseriesSet(...).sum() call. Safe to share the same object reference across both
+    # lists: downstream (_makePDFRows/TimeseriesSet.toPDF()) only ever reads .df, never
+    # mutates it.
+    hasFugitive = 'FUGITIVE' in groupDF['modelEmissionCategory'].values
     fullMCRunTSList = []
     noFugMCRunTSList = []
     with Timer("build MC run timeseries from coarse cache", loglevel=logging.DEBUG) as t:
@@ -625,43 +1034,133 @@ def _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs):
             for emCat, catDF in mcRunDF.groupby('modelEmissionCategory'):
                 catTSDict[emCat] = _cacheGroupToTimeseriesRLE(catDF)
             fullTS = ts.TimeseriesSet(list(catTSDict.values())).sum()
-            noFugItems = filter(lambda kv: kv[0] != 'FUGITIVE', catTSDict.items())
-            noFugTS = ts.TimeseriesSet(list(map(lambda kv: kv[1], noFugItems))).sum()
             if not fullTS.isempty():
                 fullTS.df = fullTS.df.assign(**{fullTS.valueColName: _roundForPDF(fullTS.df[fullTS.valueColName].values)})
                 fullMCRunTSList.append(fullTS)
-            if not noFugTS.isempty():
-                noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values)})
-                noFugMCRunTSList.append(noFugTS)
+            if not hasFugitive:
+                if not fullTS.isempty():
+                    noFugMCRunTSList.append(fullTS)
+            else:
+                noFugItems = filter(lambda kv: kv[0] != 'FUGITIVE', catTSDict.items())
+                noFugTS = ts.TimeseriesSet(list(map(lambda kv: kv[1], noFugItems))).sum()
+                if not noFugTS.isempty():
+                    noFugTS.df = noFugTS.df.assign(**{noFugTS.valueColName: _roundForPDF(noFugTS.df[noFugTS.valueColName].values)})
+                    noFugMCRunTSList.append(noFugTS)
         t.setCount(len(fullMCRunTSList))
     stats = {
         'CICategory': CICategory,
         **identityCols,
         'mcRunCount': len(fullMCRunTSList),
         'buildSeconds': t.deltat.total_seconds(),
+        'failed': False,
     }
     return _makePDFRows(fullMCRunTSList, identityCols, CICategory, totalSimSecs), _makePDFRows(noFugMCRunTSList, identityCols, CICategory, totalSimSecs), stats
 
-def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, groupings=None):
+def _buildPDFGroupTask(args):
+    """Picklable task wrapper for calculatePDFSummaryFromCache's Pool (top-level, not a
+    closure, so multiprocessing.Pool can pickle it).
+
+    Catches its own exceptions rather than letting them propagate raw through the Pool --
+    same reasoning as runWorkitem's own try/except in SiteMain2.py: an exception here would
+    otherwise unwind calculatePDFSummaryFromCache's `with mp.Pool(...)` while other groups'
+    tasks are still genuinely in flight, and terminate()'s SIGTERM can catch one of them
+    mid-write, hanging the result-handler thread forever. _cacheGroupToTimeseriesRLE builds
+    a TimeseriesRLE per modelEmissionCategory without splitting by species first, so two
+    legitimate same-timing rows for different species (a normal, expected InstEmissions
+    shape) can trip TimeseriesRLE's overlap check and raise -- confirmed live on real data,
+    not a hypothetical.
+
+    The returned stats dict's 'failed'/'failureReason' are what let calculatePDFSummaryFromCache's
+    caller know a group came back empty because it genuinely failed, not because it legitimately
+    had nothing to build -- catching the exception here (so the Pool itself stays healthy) must
+    never be confused with the failure not mattering; see calculatePDFSummaryFromCache's own
+    docstring for why silently dropping this was a real, confirmed bug."""
+    groupDF, identityCols, CICategory, totalSimSecs = args
+    try:
+        return _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
+    except Exception as e:
+        logger.error(f"_buildPDFGroupTask: failed for CICategory {CICategory}, "
+                     f"identityCols {identityCols}", exc_info=True)
+        stats = {'CICategory': CICategory, **identityCols, 'mcRunCount': 0, 'buildSeconds': 0.0,
+                 'failed': True, 'failureReason': f"{type(e).__name__}: {e}"}
+        return None, None, stats
+
+# Cache levels whose per-outer-group DataFrames are too large to send through multiprocessing
+# IPC efficiently -- these are the coarse aggregate levels where all emitters of a type or the
+# entire site are summed into a handful of groups, each holding a large slice of the cache.
+_SEQUENTIAL_PDF_LEVELS = {'siteTotals', 'METype'}
+
+def calculatePDFSummaryFromCache(cacheDF, totalSimSecs, groupings=None, workers=1):
+    """Parallelizes the finer-grained PDF_GROUPINGS levels (unitID, modelReadableName --
+    many small groups) via a Pool spawned here; the coarse levels (_SEQUENTIAL_PDF_LEVELS)
+    stay sequential since each holds a large slice of the cache, too expensive to pickle
+    through multiprocessing IPC. Safe to spawn this Pool even when finalizePDFCacheFromDisk
+    calls it from inside runCreatePDFCacheIncremental's own still-open outer Pool: the risk
+    there was never nesting itself, it was an uncaught worker exception forcing an unsafe
+    mid-flight terminate() on the OUTER pool while its other workers were still genuinely
+    busy -- both this Pool's own tasks (_buildPDFGroupTask) and the outer pool's tasks
+    (runWorkitem, in SiteMain2.py) now catch their own exceptions, so neither pool can be
+    torn down mid-flight anymore."""
     if groupings is None:
         groupings = PDF_GROUPINGS
     fullResultDFList = []
     noFugResultDFList = []
     statsList = []
+
+    def _collect(result):
+        fullPDFRows, noFugPDFRows, stats = result
+        statsList.append(stats)
+        if fullPDFRows is not None:
+            fullResultDFList.append(fullPDFRows)
+        if noFugPDFRows is not None:
+            noFugResultDFList.append(noFugPDFRows)
+
+    seqTasks = []
+    parTasks = []
     for CICategory, groupCols in groupings:
         levelDF = cacheDF[cacheDF['cacheLevel'] == CICategory]
-        for _, groupDF in levelDF.groupby(groupCols):
+        for _, groupDF in levelDF.groupby(groupCols, sort=False):
             identityCols = {col: groupDF[col].iloc[0] for col in groupCols}
-            fullPDFRows, noFugPDFRows, stats = _buildPDFForGroupFromCache(groupDF, identityCols, CICategory, totalSimSecs)
-            statsList.append(stats)
-            if fullPDFRows is not None:
-                fullResultDFList.append(fullPDFRows)
-            if noFugPDFRows is not None:
-                noFugResultDFList.append(noFugPDFRows)
+            task = (groupDF, identityCols, CICategory, totalSimSecs)
+            if CICategory in _SEQUENTIAL_PDF_LEVELS:
+                seqTasks.append(task)
+            else:
+                parTasks.append(task)
+
+    for task in seqTasks:
+        _collect(_buildPDFGroupTask(task))
+
+    import multiprocessing as mp
+    inDaemon = mp.current_process().daemon
+    if workers and workers > 1 and parTasks and not inDaemon:
+        with mp.Pool(min(workers, len(parTasks))) as pool:
+            for result in pool.imap_unordered(_buildPDFGroupTask, parTasks):
+                _collect(result)
+    else:
+        for task in parTasks:
+            _collect(_buildPDFGroupTask(task))
+
     fullPDFDF = pd.concat(fullResultDFList) if fullResultDFList else pd.DataFrame()
     noFugPDFDF = pd.concat(noFugResultDFList) if noFugResultDFList else pd.DataFrame()
     statsDF = pd.DataFrame(statsList) if statsList else pd.DataFrame()
+    # statsDF['failed'] (see _buildPDFGroupTask) tells every caller whether every group here
+    # genuinely succeeded -- a caught-and-continued group failure must never be reported as a
+    # plain empty result; see _anyPDFGroupFailed and its call sites.
     return fullPDFDF, noFugPDFDF, statsDF
+
+def _anyPDFGroupFailed(pdfStatsDF):
+    """(anyFailed, firstReason) from a calculatePDFSummaryFromCache statsDF. A group that
+    raised inside _buildPDFGroupTask is caught there (so the Pool stays healthy) but must
+    still be surfaced as a real failure to whichever caller asked for this site's PDF --
+    confirmed live: without this, a corrupted/incomplete PDF group was silently dropped and
+    the job still reported success."""
+    if pdfStatsDF is None or pdfStatsDF.empty or 'failed' not in pdfStatsDF.columns:
+        return False, None
+    failedRows = pdfStatsDF[pdfStatsDF['failed'] == True]  # noqa: E712 (explicit, not truthiness)
+    if failedRows.empty:
+        return False, None
+    reasons = failedRows['failureReason'].dropna().unique().tolist() if 'failureReason' in failedRows.columns else []
+    return True, f"{len(failedRows)} PDF group(s) failed to build: {'; '.join(reasons) or 'see log for details'}"
 
 def validatePDFCache(config):
     logger.info(f"Validating PDF cache for site {config['siteName']}")
@@ -729,9 +1228,12 @@ def _sampleCDFAtQuantiles(cdfDF, joinCols):
             rows.append({**identityDict, 'quantile': q, 'emissionRate_kgPerH': v})
     return pd.DataFrame(rows)
 
-def summarizeSingleSite(config, instEmissionDF):
-    CONFIDENCE_LEVEL = 95
-    AGG_FIELDS = {
+def _annualSummaryAggFields(alpha):
+    """Extracted from summarizeSingleSite so finalizeSummariesForSite can build the identical
+    AGG_FIELDS dict without duplicating the literal -- both
+    calculateAnnualSummariesFromAggregated (needs the 'readings' key check) and
+    applyConversions (needs .keys()) consume this same shape."""
+    return {
         'total': ('emissions_kgPerYear', 'sum'),
         'count': ('emissions_kgPerYear', 'count'),
         'mean': ('emissions_kgPerYear', 'mean'),
@@ -743,7 +1245,11 @@ def summarizeSingleSite(config, instEmissionDF):
         'upperCI': ('emissions_kgPerYear', lambda x: np.percentile(x, (100 - alpha / 2))),
         'readings': ('emissions_kgPerYear', list)
     }
+
+def summarizeSingleSite(config, instEmissionDF):
+    CONFIDENCE_LEVEL = 95
     alpha = 100 - float(CONFIDENCE_LEVEL)
+    AGG_FIELDS = _annualSummaryAggFields(alpha)
 
     mcIterations = config['monteCarloIterations']
     with Timer("summarize") as t0:
@@ -831,6 +1337,140 @@ def summarize(config):
     with Timer("Process events") as t2:
         summarizeSingleSite(config, eventDF)
 
+def _writeInstEmissionsScratch(config, instEmissionDF, mcRun):
+    """Write one mcRun's raw InstEmissions slice to its own small scratch parquet file
+    instead of returning it through summarizeMCRunPieces for the caller to hold onto --
+    measured at ~540MB for a single mcRun on a dense fixture (~88% of that mcRun's entire
+    accumulator footprint), and piecesBySite (runSummarizeIncremental) holds one of these
+    per mcRun simultaneously for a single-site run until every mcRun finishes. A separate
+    scratch dataset, not the real InstEmissions one (which finalizeSummariesForSite writes
+    once, combined, matching every other engine's single-file-per-site output)."""
+    _saveSummaryDS(config, instEmissionDF, 'InstEmissionsScratch', basename=f"InstEmissions-{mcRun}",
+                   existingDataBehavior='overwrite_or_ignore')
+
+def summarizeMCRunPieces(config, mcRun):
+    """Per-mcRun 'Option A' accumulator step. Reads exactly this mcRun's raw events (mcRun
+    filter pushed into the pyarrow read, same technique as _buildCacheSliceForMCRun) and
+    derives InstEmissions for just this slice. Returns the small per-mcRun accumulator pieces
+    finalizeSummariesForSite needs to reconstruct the exact SiteSummary/EventSummary/
+    InstEmissions output summarizeSingleSite produces monolithically -- or None if this mcRun
+    has no qualifying events at all (mirrors summarize()'s own "eventDF is None: return"
+    early-out).
+
+    instEmissionDF itself is written straight to its own scratch file (_writeInstEmissionsScratch)
+    rather than included in the returned dict -- by far the largest of these pieces, and the
+    caller (runSummarizeIncremental) would otherwise hold one per mcRun in memory simultaneously
+    for the whole phase. finalizeSummariesForSite reads the scratch slices back as a combined
+    dataset instead of concatenating them from the in-memory pieces list."""
+    eventDF = pl.readParquetEvents(config, site=config['siteName'], mcRun=mcRun, mergeGC=True,
+                                    species=SPECIES, additionalEventFilters=[('command', '=', 'EMISSION')])
+    if eventDF is None or eventDF.empty:
+        return None
+
+    simDurationDays = config['simDurationDays']
+    instEmissionDF = _createEmissionDF(eventDF, simDurationDays * u.SECONDS_PER_DAY)
+    instEmissionNoFugitiveDF = instEmissionDF[instEmissionDF['modelEmissionCategory'] != 'FUGITIVE']
+
+    pieces = {
+        'annualFugitive': aggregateEmittersByRun(instEmissionDF, simDurationDays),
+        'annualNoFugitive': aggregateEmittersByRun(instEmissionNoFugitiveDF, simDurationDays),
+        'emissionFugitive': aggregateEmissionSummaryByRun(instEmissionDF),
+        'emissionNoFugitive': aggregateEmissionSummaryByRun(instEmissionNoFugitiveDF),
+        'eventFugitive': aggregateEventSummaryByRun(instEmissionDF),
+        'eventNoFugitive': aggregateEventSummaryByRun(instEmissionNoFugitiveDF),
+    }
+    _writeInstEmissionsScratch(config, instEmissionDF, mcRun)
+    return pieces
+
+def finalizeSummariesForSite(config, piecesList, confidenceLevel=95):
+    """Combine summarizeMCRunPieces' per-mcRun accumulator pieces (collected across every
+    mcRun for one site) into the exact SiteSummary/EventSummary/InstEmissions output
+    summarizeSingleSite produces monolithically, and write them. Every downstream step here
+    (calculateAnnualSummariesFromAggregated's _doAggHierarchy, applyConversions,
+    calculateC2C1Ratios) is completely unchanged from the prior monolithic code -- only the
+    inputs it's fed (the concatenated per-mcRun accumulators, instead of a fresh reduction
+    over the full multi-mcRun instEmissionDF) are new.
+
+    InstEmissions is written here once per site, combining every mcRun's piece into a single
+    dataset (matching summarizeSingleSite's own single write and the shared single-file-per-
+    site output convention), rather than as a separate file per mcRun. The per-mcRun slices
+    themselves come from disk (_writeInstEmissionsScratch's scratch files), not from
+    piecesList -- summarizeMCRunPieces never puts instEmissionDF in the returned pieces dict
+    at all, since it's by far the largest of them and piecesList already has to hold one
+    entry per mcRun in memory for the whole phase; reading a combined dataset off disk here
+    is a brief, one-time cost instead of a sustained one."""
+    validPieces = [p for p in piecesList if p is not None]
+    if not validPieces:
+        # Matches summarize()'s own "eventDF is None: return" -- a site with zero
+        # qualifying events across every mcRun gets no SiteSummary/EventSummary at all.
+        return
+
+    mcIterations = config['monteCarloIterations']
+    simDurationDays = config['simDurationDays']
+    alpha = 100 - float(confidenceLevel)
+    AGG_FIELDS = _annualSummaryAggFields(alpha)
+
+    combinedInstEmissionDF = _read_parquet_site(config['parquetInstEmissionsScratch'], config['siteName'])
+    _saveSummaryDS(config, combinedInstEmissionDF, 'InstEmissions')
+    del combinedInstEmissionDF
+    # pyarrow's hive-partition writer percent-encodes the partition value when it
+    # contains characters outside its safe set (confirmed live: a real site name with
+    # a space wrote to "site=Foo%20Bar" on disk, not "site=Foo Bar") -- constructing
+    # this path from the raw site name silently missed every such directory, with
+    # shutil.rmtree's ignore_errors=True masking the failure completely. Real-world
+    # site names with spaces/punctuation are the norm, not the exception, so this
+    # left scratch data behind on nearly every real multi-site run (confirmed: 86 of
+    # 89 sites on one real job). Matches pyarrow's own encoding (quote with an empty
+    # safe set) rather than guessing at which characters need escaping.
+    encodedSiteName = urllib.parse.quote(str(config['siteName']), safe='')
+    scratchSitePath = Path(config['parquetInstEmissionsScratch']) / f"site={encodedSiteName}"
+    shutil.rmtree(scratchSitePath, ignore_errors=True)
+
+    additionalConversions = [
+        {'colName': 'emissions_kgPerYear', 'units': US_TONS_PER_YEAR_UNITS_NAME,     'conversion': _convertKGPerYear2USTonsPerYear},
+        {'colName': 'emissions_kgPerYear', 'units': METRIC_TONS_PER_YEAR_UNITS_NAME, 'conversion': _convertKGPerYear2MetricTonsPerYear},
+    ]
+
+    annualFugAgg = pd.concat([p['annualFugitive'] for p in validPieces], ignore_index=True)
+    annualNoFugAgg = pd.concat([p['annualNoFugitive'] for p in validPieces], ignore_index=True)
+
+    summaryEmissionFugitiveDF = calculateAnnualSummariesFromAggregated(annualFugAgg, AGG_FIELDS, mcIterations).assign(includeFugitive=True)
+    summaryEmissionNoFugitiveDF = calculateAnnualSummariesFromAggregated(annualNoFugAgg, AGG_FIELDS, mcIterations).assign(includeFugitive=False)
+
+    fullSummaryEmissionFugitiveDF = applyConversions(summaryEmissionFugitiveDF, additionalConversions, AGG_FIELDS)
+    fullSummaryEmissionNoFugitiveDF = applyConversions(summaryEmissionNoFugitiveDF, additionalConversions, AGG_FIELDS)
+
+    emissionSummaryFugitiveDF = mergeEmissionSummaryByRun([p['emissionFugitive'] for p in validPieces], mcIterations).assign(includeFugitive=True)
+    emissionSummaryNoFugitiveDF = mergeEmissionSummaryByRun([p['emissionNoFugitive'] for p in validPieces], mcIterations).assign(includeFugitive=False)
+
+    fullSummaryEmissionDF = pd.concat([
+        fullSummaryEmissionFugitiveDF,
+        fullSummaryEmissionNoFugitiveDF,
+        emissionSummaryFugitiveDF,
+        emissionSummaryNoFugitiveDF
+    ])
+    fullSummaryEmissionDF = fullSummaryEmissionDF.assign(confidenceLevel=confidenceLevel)
+
+    c2c1DF = calculateC2C1Ratios(fullSummaryEmissionDF, confidenceLevel)
+    if not c2c1DF.empty:
+        fullSummaryEmissionDF = pd.concat([fullSummaryEmissionDF, c2c1DF])
+    fullSummaryEmissionDF = fullSummaryEmissionDF.assign(simDurationDays=simDurationDays)
+
+    _saveSummaryDS(config, fullSummaryEmissionDF, 'SiteSummary')
+
+    eventFugEventPieces = [p['eventFugitive'][0] for p in validPieces]
+    eventFugSitePieces = [p['eventFugitive'][1] for p in validPieces]
+    eventNoFugEventPieces = [p['eventNoFugitive'][0] for p in validPieces]
+    eventNoFugSitePieces = [p['eventNoFugitive'][1] for p in validPieces]
+
+    eventSummaryFugitiveDF = mergeEventSummaryByRun(eventFugEventPieces, eventFugSitePieces, mcIterations, 'eventSummary').assign(includeFugitive=True)
+    eventSummaryNoFugitiveDF = mergeEventSummaryByRun(eventNoFugEventPieces, eventNoFugSitePieces, mcIterations, 'eventSummary').assign(includeFugitive=False)
+
+    fullEventSummaryDF = pd.concat([eventSummaryFugitiveDF, eventSummaryNoFugitiveDF])
+    fullEventSummaryDF = fullEventSummaryDF.assign(simDurationDays=simDurationDays)
+
+    _saveSummaryDS(config, fullEventSummaryDF, 'EventSummary')
+
 def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
     # Implements issue #27: for each MC run, sum values across all sites to produce
     # a distribution of cross-site run totals, then compute all statistics from that
@@ -871,8 +1511,11 @@ def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
             .sum()
         )
 
-        # Compute statistics from the distribution of cross-site run totals.
-        summaryDF = (
+        # Compute statistics from the distribution of cross-site run totals. Quantiles are
+        # computed via one vectorized groupby().quantile() call covering every group at once,
+        # instead of 4 separate per-group Python-UDF np.percentile() calls -- same interpolation
+        # method (linear, both functions' default), so results are numerically identical.
+        aggDF = (
             runTotalsDF
             .groupby(groupCols)
             .agg(
@@ -880,14 +1523,31 @@ def _filterAndPivot(inDF, CICategory, mcIterations, pivotField=None):
                 mean=('readings', lambda x: x.sum() / mcIterations),
                 min=('readings', 'min'),
                 max=('readings', 'max'),
-                lowerQuartile=('readings', lambda x: np.percentile(x, 25)),
-                upperQuartile=('readings', lambda x: np.percentile(x, 75)),
-                lowerCI=('readings', lambda x: np.percentile(x, alpha / 2)),
-                upperCI=('readings', lambda x: np.percentile(x, 100 - alpha / 2)),
                 readings=('readings', list)
             )
-            .reset_index()
         )
+        qLowerCI, qUpperCI = alpha / 200, 1 - alpha / 200
+        if runTotalsDF.empty:
+            # groupby(...).quantile() on zero rows produces no columns at all to unstack
+            # (unlike .agg(), which keeps its named columns regardless of row count) --
+            # build the same empty-but-correctly-shaped frame directly instead.
+            quantilesDF = pd.DataFrame(
+                columns=['lowerQuartile', 'upperQuartile', 'lowerCI', 'upperCI'],
+                index=aggDF.index,
+            )
+        else:
+            quantilesDF = (
+                runTotalsDF
+                .groupby(groupCols)['readings']
+                .quantile([0.25, 0.75, qLowerCI, qUpperCI])
+                .unstack()
+                .rename(columns={0.25: 'lowerQuartile', 0.75: 'upperQuartile',
+                                  qLowerCI: 'lowerCI', qUpperCI: 'upperCI'})
+            )
+        summaryDF = aggDF.join(quantilesDF).reset_index()[
+            groupCols + ['total', 'mean', 'min', 'max',
+                          'lowerQuartile', 'upperQuartile', 'lowerCI', 'upperCI', 'readings']
+        ]
         summaryDF = summaryDF.assign(
             count=mcIterations,
             CICategory=CICategory

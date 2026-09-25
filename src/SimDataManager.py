@@ -36,6 +36,14 @@ class SimDataManager():
     def __exit__(self, *args):
         for singleCache in self.caches:
             singleCache.resetCache()
+        # Runs for every workitem regardless of success or failure (this is a plain
+        # with-block __exit__), which is exactly the guarantee TSTable.cleanupSpillFiles
+        # needs: a simulation that fails after TSTable has already spilled to disk (now
+        # caught and continued by runWorkitem rather than crashing the job) would otherwise
+        # leave those temp files behind forever, since serialize() -- the only other place
+        # anything cleaned them up -- is never reached on that path. self.timeseriesTable is
+        # set unconditionally in __init__ for every workitem, so no None-check needed.
+        self.timeseriesTable.cleanupSpillFiles()
         SimDataManager.SIM_DATA_MANAGER_SINGLETON = None
 
     def registerCache(self, cache):
@@ -55,7 +63,12 @@ class SimDataManager():
         self.gasCompositionsByName = {}
         self.stateDataframe = {}
 
-        self.timeseriesTable = ts.TSTable()
+        # config['MCScenario'] is set for every workitem type (generateSingleWorkitem in
+        # SiteMain2.py), including ones that never call intern() at all (parquet/summarize
+        # workitems construct a TSTable but only ever populate rawTimeseriesTable via
+        # restoreTimeseries's own pd.read_csv, never touching this live table) -- safe to
+        # pass through unconditionally.
+        self.timeseriesTable = ts.TSTable(mcRunNum=config.get('MCScenario'))
         self.gasCompositionTable = gc.GCTable(self)
         self.ffTable = ff.FFTable()
 

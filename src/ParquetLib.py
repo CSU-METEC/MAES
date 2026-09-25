@@ -41,7 +41,8 @@ def toBaseParquet(config, df, dsName, partition_cols=['site', 'mcRun'], baseName
 
     df.to_parquet(pqBase, existing_data_behavior='delete_matching', **toParquetkwArgs)
 
-def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None):
+def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun'], basename=None,
+                             existing_data_behavior='delete_matching'):
     # ── Skip any empty write ──────────────────────
     if df is None or df.empty:
         site_hint = None
@@ -63,10 +64,14 @@ def toBaseParquetFullConfig(config, df, dsName, partition_cols=['site', 'mcRun']
     df.to_parquet(pqBase, partition_cols=partition_cols,
                   basename_template=basename_template,
                   # delete_matching clears all existing files in matching partitions before writing,
-                  # ensuring repeated calls overwrite rather than accumulate files.
-                  # overwrite_or_ignore only overwrites on filename collision; since pyarrow generates
-                  # unique filenames per call, it effectively appends and would cause duplicate rows.
-                  existing_data_behavior='delete_matching',
+                  # ensuring repeated calls overwrite rather than accumulate files. This is the
+                  # default for every caller except deliberate multi-write-per-partition streaming
+                  # (each MC run's PDF cache slice written as its own file) -- that caller passes
+                  # existing_data_behavior='overwrite_or_ignore' explicitly, safe because every run
+                  # writes into a fresh, timestamped output directory: repeated writes into one
+                  # partition only ever happen within one run's own execution (the intended
+                  # accumulation case), never across separate runs' leftover files.
+                  existing_data_behavior=existing_data_behavior,
                   engine='auto',
                   index=False
                   )
@@ -350,7 +355,13 @@ def readParquetSummary(config, site=None, mcRun=None):
 
 def readParquetEvents(config, site=None, mcRun=None, mergeGC=False, species=None, additionalEventFilters=[('command', '=', 'EMISSION')]):
     eventDF = readParquetRawEvents(config, site=site, mcRun=mcRun, additionalFilters=additionalEventFilters)
-    if eventDF.empty:
+    # baseReadParquetFullConfig returns the caught FileNotFoundError itself (not raised, not
+    # an empty DataFrame) when the requested site/mcRun partition doesn't exist on disk --
+    # calling .empty on that would crash with AttributeError instead of the graceful "no
+    # events" path below. Only reachable when a specific mcRun is requested and that run
+    # genuinely recorded zero raw events (no partition ever written for it) -- a site-level
+    # (mcRun=None) caller reads a whole directory and never hits this.
+    if isinstance(eventDF, Exception) or eventDF.empty:
         logging.warning(f"No emissions recorded for site {site} at MC run {mcRun}")
         return None
     tsDF = readParquetTimeseries(config, site=site, mcRun=mcRun)

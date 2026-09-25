@@ -29,7 +29,7 @@
 	{"Model Parameter": "Shut In Duration min",                  "Python Parameter": "shutInMinDays",     "Parameter Type": "Sheet"},
 	{"Model Parameter": "Shut In Duration max",                  "Python Parameter": "shutInMaxDays",     "Parameter Type": "Sheet"},
 	{"Model Parameter": "Shut In Duration max",                  "Python Parameter": "shutInMaxDays",     "Parameter Type": "Sheet"},
-	{"Model Parameter": "Fuel Consumption",                      "Python Parameter": "fuelConsumption",   "Parameter Type": "Sheet"}
+	{"Model Parameter": "Fuel Consumption",                      "Python Parameter": "fuelConsumption",   "Parameter Type": "Sheet", "Optional": "True"}
 	],
   "Emitters": [
   {"Python Category": "Emitter", "Python Class": "CombustedEmitterFF", "Readable Name": "Heater operating", "Category": "FLARED VENT", "Emission Category": "COMBUSTION",

@@ -71,6 +71,9 @@ def getParser(defaultConfig):
     parser.add_argument("-dr", "--directory", help="Study definition folder. Will run every study sheet in directory"),
 
     parser.add_argument("-sn", "--studyName", help="Name of study")
+    parser.add_argument("-ssn", "--seedSiteName", help="Explicit site identity used for RNG "
+                         "seeding only -- decoupled from -sn, which also drives output-path "
+                         "nesting. Falls back to studyName/site if not given.")
 
     parser.add_argument("-fs", "--fullSummaries", help="Generate all summaries (annual, instantaneous, PDFs, and Average Emission Rates and Durations)", default=False)
     parser.add_argument("-as", "--annualSummaries", help="Generate annual emissions summaries", default=False)
@@ -264,7 +267,12 @@ def getEvents(config):
     eventLog = pd.read_csv(emPath, dtype={'facilityID': str, 'unitID': str, 'emitterID': str})
     eventLog = cleanKeys(eventLog)
     secondaryPath = config['secondaryInfoFilename']
-    secondaryDF = pd.read_csv(secondaryPath)
+    # secondaryEventInfo.csv's 'fieldValue' column mixes different kinds of data across
+    # different fieldNames (durations, equipment names, power figures, ...). Without an
+    # explicit dtype, pandas infers it per parse chunk, so the same pivoted column (e.g.
+    # BLOWDOWN) can come back as float in one run and str in another -- pyarrow then fails
+    # to unify the schema across MC runs when writing parquet. Force a single stable dtype.
+    secondaryDF = pd.read_csv(secondaryPath, dtype={'fieldValue': str})
     secondaryInfoWideDF = secondaryDF.pivot(index='eventID', columns='fieldName', values='fieldValue')
     ret = eventLog.merge(secondaryInfoWideDF, left_on='eventID', right_on='eventID', how='left')
     if 'mdGroup' not in ret.columns:

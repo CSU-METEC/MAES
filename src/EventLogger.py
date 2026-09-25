@@ -160,11 +160,31 @@ class StreamingEventLogger(EventLogger):
         return retDF
 
     def logRawEvent(self, timestamp, name, command, **kwargs):
+        # Inlined, single-dict-allocation equivalent of transformEventFields(...) +
+        # flattenEventFields(...) -- this is the hottest call path in the whole simulation
+        # (once per logged event/emission across every mcRun), and the original version
+        # built 3 separate dict copies per call on top of the caller's own kwargs merge.
+        # Mutates one dict in place instead; preserves exact field values/order/inf-handling/
+        # secondary-field routing.
         eventID = self.eventSerialNumber
-        event = transformEventFields(
-            {'eventID': eventID, 'timestamp': timestamp, 'name': name, 'command': command, **kwargs})
-        flatEvent = flattenEventFields(event)
         self.eventSerialNumber += 1
+        inf = float("inf")
+        event = {'eventID': eventID, 'timestamp': timestamp, 'name': name, 'command': command}
+        event.update(kwargs)
+        for k, v in event.items():
+            if v == inf:
+                event[k] = "inf"
+
+        if name:
+            flatEvent = event
+            del flatEvent['name']
+            flatEvent['facilityID'] = name[0]
+            flatEvent['unitID'] = name[1]
+            flatEvent['emitterID'] = name[2]
+            flatEvent['mcRun'] = name[3]
+        else:
+            flatEvent = event
+
         self.dw.writerow(flatEvent)
 
         secondaryInfo = filter(lambda x: x[0] not in CORE_EVENT_FIELDS, flatEvent.items())
@@ -172,7 +192,7 @@ class StreamingEventLogger(EventLogger):
             secondaryDict = {'eventID': eventID, 'fieldName': singleSecondaryField[0], 'fieldValue': singleSecondaryField[1]}
             self.seiDW.writerow(secondaryDict)
 
-        return event['eventID']
+        return eventID
 
     def streamEvents(self):
         for singleEvent in self.eventList:
