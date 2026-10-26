@@ -4494,6 +4494,9 @@ class MEETFFEmitter(mc.EmissionManager):
             # deltat = singleFlow.changeTimeAbsolute - currentTime
             if singleFlow.secondaryID not in self.secondaryID:
                 continue
+            if self.majorEquipment.equipmentType == 'MEETBattery':
+                if not self.majorEquipment.tankMode:
+                    continue
             singleTS = ts.ConstantTimeseriesTableEntry.factory(singleFlow.driverRate, singleFlow.driverUnits)
             self.eventLogger.logEmission(currentTime, deltat, self.key,
                                          driverTSKey=singleTS.serialNum,
